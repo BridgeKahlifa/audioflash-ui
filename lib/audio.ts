@@ -1,10 +1,12 @@
 import * as Speech from "expo-speech";
+import { getSettings } from "./storage";
 
-export function speakChinese(text: string): void {
+export async function speakChinese(text: string): Promise<void> {
+  const settings = await getSettings();
   Speech.stop();
   Speech.speak(text, {
     language: "zh-CN",
-    rate: 0.8,
+    rate: settings.audioRate,
     pitch: 1.0,
   });
 }

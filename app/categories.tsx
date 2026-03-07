@@ -4,9 +4,9 @@ import {
   Text,
   Pressable,
   ScrollView,
-  SafeAreaView,
 } from "react-native";
-import { router } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 interface Topic {
@@ -27,26 +27,46 @@ const topics: Topic[] = [
   { id: "home", title: "Home & Family", description: "Everyday household", icon: "home" },
 ];
 
-export default function Home() {
+export default function Categories() {
+  const { language, languageLabel } = useLocalSearchParams<{
+    language?: string;
+    languageLabel?: string;
+  }>();
+
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
 
   const handleGenerateLesson = () => {
     if (!selectedTopic) return;
     const topic = topics.find((t) => t.id === selectedTopic);
+
     router.push({
       pathname: "/lesson-ready/[topic]",
-      params: { topic: selectedTopic, topicTitle: topic?.title ?? selectedTopic },
+      params: {
+        topic: selectedTopic,
+        topicTitle: topic?.title ?? selectedTopic,
+        language: language ?? "mandarin",
+        languageLabel: languageLabel ?? "Mandarin Chinese",
+      },
     });
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
         <View className="pt-8 pb-6 px-6">
+          <Pressable
+            onPress={() => router.back()}
+            className="w-10 h-10 items-center justify-center rounded-full bg-secondary mb-4"
+          >
+            <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+          </Pressable>
+
           <Text className="text-3xl font-semibold text-foreground tracking-tight">
-            AudioFlash
+            Choose Category
           </Text>
-          <Text className="text-muted mt-1">Practice real conversations</Text>
+          <Text className="text-muted mt-1">
+            Language: <Text className="text-foreground font-medium">{languageLabel ?? "Mandarin Chinese"}</Text>
+          </Text>
         </View>
 
         <ScrollView

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, SafeAreaView } from "react-native";
+import { View, Text, Pressable, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { getProgress } from "../lib/storage";
-import { ProgressData } from "../lib/types";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { getProgress, getSessionHistory } from "../../lib/storage";
+import { ProgressData, SessionHistoryItem } from "../../lib/types";
 
 function last7Days(): { day: string; date: string }[] {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -20,9 +21,12 @@ function last7Days(): { day: string; date: string }[] {
 function SimpleBarChart({ data }: { data: { day: string; cards: number }[] }) {
   const max = Math.max(...data.map((d) => d.cards), 1);
   return (
-    <View className="flex-row items-end justify-between" style={{ height: 120 }}>
+    <View className="flex-row items-end justify-between" style={{ height: 140 }}>
       {data.map((item, i) => (
-        <View key={i} className="flex-1 items-center gap-1">
+        <View key={i} className="flex-1 items-center" style={{ gap: 4 }}>
+          <Text style={{ fontSize: 10, color: item.cards > 0 ? "#FF6B4A" : "transparent", fontWeight: "600" }}>
+            {item.cards}
+          </Text>
           <View
             style={{
               width: 28,
@@ -40,9 +44,11 @@ function SimpleBarChart({ data }: { data: { day: string; cards: number }[] }) {
 
 export default function ProgressDashboard() {
   const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [history, setHistory] = useState<SessionHistoryItem[]>([]);
 
   useEffect(() => {
     getProgress().then(setProgress);
+    getSessionHistory().then((items) => setHistory(items.slice(0, 8)));
   }, []);
 
   const days = last7Days();
@@ -59,18 +65,12 @@ export default function ProgressDashboard() {
       : 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
         <View className="flex-row items-center justify-between px-6 pt-6 pb-4">
           <Text className="text-2xl font-semibold text-foreground">
             Your Progress
           </Text>
-          <Pressable
-            onPress={() => router.replace("/")}
-            className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
-          >
-            <Ionicons name="home" size={20} color="#1A1A1A" />
-          </Pressable>
         </View>
 
         <ScrollView
@@ -78,6 +78,21 @@ export default function ProgressDashboard() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
         >
+          <View className="flex-row gap-3 mb-4">
+            <Pressable
+              onPress={() => router.push("/goals")}
+              className="flex-1 bg-card border border-border rounded-xl px-4 py-3"
+            >
+              <Text className="text-foreground font-medium text-center">Goals</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/session-summary")}
+              className="flex-1 bg-card border border-border rounded-xl px-4 py-3"
+            >
+              <Text className="text-foreground font-medium text-center">Last Summary</Text>
+            </Pressable>
+          </View>
+
           {/* Streak banner */}
           <View
             className="rounded-3xl p-6 mb-4"
@@ -213,6 +228,49 @@ export default function ProgressDashboard() {
                 Start New Lesson
               </Text>
             </Pressable>
+          </View>
+
+          <View
+            className="bg-card rounded-2xl p-5 border border-border mt-4"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.04,
+              shadowRadius: 4,
+              elevation: 1,
+            }}
+          >
+            <Text className="text-base font-medium text-foreground mb-4">
+              Recent Sessions
+            </Text>
+            {history.length === 0 ? (
+              <Text className="text-muted">No sessions yet.</Text>
+            ) : (
+              <View className="gap-3">
+                {history.map((session) => {
+                  const sessionAccuracy =
+                    session.total > 0
+                      ? Math.round((session.correct / session.total) * 100)
+                      : 0;
+                  return (
+                    <View
+                      key={session.id}
+                      className="bg-secondary rounded-xl px-3 py-2"
+                    >
+                      <Text className="text-foreground font-medium">
+                        {session.topicTitle}
+                      </Text>
+                      <Text className="text-xs text-muted mt-0.5">
+                        {session.languageLabel}
+                      </Text>
+                      <Text className="text-xs text-muted mt-1">
+                        {session.correct}/{session.total} correct ({sessionAccuracy}%)
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
         </ScrollView>
       </View>

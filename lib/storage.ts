@@ -1,13 +1,31 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Flashcard, DailySession, ProgressData } from "./types";
+import {
+  AppSettings,
+  DailySession,
+  Flashcard,
+  ProgressData,
+  ReviewCard,
+  SessionCardResult,
+  SessionHistoryItem,
+} from "./types";
 
 const KEYS = {
   PROGRESS: "audioflash:progress",
   CURRENT_CARDS: "audioflash:cards:",
+  SESSION_HISTORY: "audioflash:session-history",
+  LAST_SESSION: "audioflash:last-session",
+  REVIEW_QUEUE: "audioflash:review-queue",
+  SETTINGS: "audioflash:settings",
 } as const;
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 function previousDay(dateStr: string): string {
@@ -44,6 +62,13 @@ const defaultProgress: ProgressData = {
   totalCorrect: 0,
   streak: 0,
   lastPracticeDate: null,
+};
+
+const defaultSettings: AppSettings = {
+  cardsPerSession: 20,
+  audioRate: 0.8,
+  remindersEnabled: false,
+  dailyGoalCards: 25,
 };
 
 export async function getProgress(): Promise<ProgressData> {
@@ -99,4 +124,172 @@ export async function setCurrentCards(
   } catch {
     // Non-critical
   }
+}
+
+export async function getSettings(): Promise<AppSettings> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.SETTINGS);
+    if (!raw) return defaultSettings;
+    return { ...defaultSettings, ...(JSON.parse(raw) as Partial<AppSettings>) };
+  } catch {
+    return defaultSettings;
+  }
+}
+
+export async function setSettings(settings: AppSettings): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.SETTINGS, JSON.stringify(settings));
+  } catch {
+    // Non-critical
+  }
+}
+
+export async function getSessionHistory(): Promise<SessionHistoryItem[]> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.SESSION_HISTORY);
+    return raw ? (JSON.parse(raw) as SessionHistoryItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function setSessionHistory(history: SessionHistoryItem[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.SESSION_HISTORY, JSON.stringify(history));
+  } catch {
+    // Non-critical
+  }
+}
+
+export async function getLastSession(): Promise<SessionHistoryItem | null> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.LAST_SESSION);
+    return raw ? (JSON.parse(raw) as SessionHistoryItem) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function setLastSession(session: SessionHistoryItem): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.LAST_SESSION, JSON.stringify(session));
+  } catch {
+    // Non-critical
+  }
+}
+
+function reviewKey(language: string, chinese: string): string {
+  return `${language}:${chinese}`;
+}
+
+export async function getReviewQueue(): Promise<ReviewCard[]> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.REVIEW_QUEUE);
+    return raw ? (JSON.parse(raw) as ReviewCard[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function setReviewQueue(cards: ReviewCard[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.REVIEW_QUEUE, JSON.stringify(cards));
+  } catch {
+    // Non-critical
+  }
+}
+
+export async function getDueReviewCards(): Promise<ReviewCard[]> {
+  const today = todayStr();
+  const all = await getReviewQueue();
+  return all.filter((item) => item.dueDate <= today);
+}
+
+async function applyReviewSessionResults(
+  topic: string,
+  topicTitle: string,
+  language: string,
+  languageLabel: string,
+  cards: SessionCardResult[]
+): Promise<void> {
+  const queue = await getReviewQueue();
+  const byKey = new Map(queue.map((item) => [reviewKey(item.language, item.chinese), item]));
+
+  cards.forEach((card) => {
+    const key = reviewKey(language, card.chinese);
+    const existing = byKey.get(key);
+
+    if (!card.knew) {
+      byKey.set(key, {
+        id: existing?.id ?? `${Date.now()}-${card.cardId}-${Math.random().toString(36).slice(2, 8)}`,
+        topic,
+        topicTitle,
+        language,
+        languageLabel,
+        chinese: card.chinese,
+        pinyin: card.pinyin,
+        english: card.english,
+        dueDate: todayStr(),
+        intervalDays: 1,
+        incorrectCount: (existing?.incorrectCount ?? 0) + 1,
+      });
+      return;
+    }
+
+    if (!existing) {
+      return;
+    }
+
+    const nextInterval = Math.min(Math.max(existing.intervalDays * 2, 2), 14);
+    byKey.set(key, {
+      ...existing,
+      dueDate: addDays(todayStr(), nextInterval),
+      intervalDays: nextInterval,
+      incorrectCount: Math.max(existing.incorrectCount - 1, 0),
+    });
+  });
+
+  await setReviewQueue(Array.from(byKey.values()));
+}
+
+export async function saveCompletedSession(input: {
+  topic: string;
+  topicTitle: string;
+  language: string;
+  languageLabel: string;
+  cards: SessionCardResult[];
+}): Promise<SessionHistoryItem> {
+  const total = input.cards.length;
+  const correct = input.cards.filter((card) => card.knew).length;
+
+  await recordSession(correct, total);
+
+  const entry: SessionHistoryItem = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    completedAt: new Date().toISOString(),
+    topic: input.topic,
+    topicTitle: input.topicTitle,
+    language: input.language,
+    languageLabel: input.languageLabel,
+    correct,
+    total,
+    cards: input.cards,
+  };
+
+  const history = await getSessionHistory();
+  const updatedHistory = [entry, ...history].slice(0, 100);
+
+  await Promise.all([
+    setSessionHistory(updatedHistory),
+    setLastSession(entry),
+    applyReviewSessionResults(
+      input.topic,
+      input.topicTitle,
+      input.language,
+      input.languageLabel,
+      input.cards
+    ),
+  ]);
+
+  return entry;
 }
