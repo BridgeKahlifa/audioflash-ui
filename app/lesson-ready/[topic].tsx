@@ -1,0 +1,108 @@
+import { useEffect, useState } from "react";
+import { View, Text, Pressable, ActivityIndicator, SafeAreaView } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { generateFlashcards } from "../../lib/ai";
+import { setCurrentCards } from "../../lib/storage";
+
+export default function LessonReady() {
+  const { topic, topicTitle } = useLocalSearchParams<{
+    topic: string;
+    topicTitle: string;
+  }>();
+
+  const [status, setStatus] = useState<"generating" | "ready" | "error">("generating");
+  const [cardCount, setCardCount] = useState(0);
+
+  useEffect(() => {
+    async function generate() {
+      try {
+        const cards = await generateFlashcards(topic, topicTitle ?? topic);
+        await setCurrentCards(topic, cards);
+        setCardCount(cards.length);
+        setStatus("ready");
+      } catch {
+        setStatus("error");
+      }
+    }
+    generate();
+  }, [topic, topicTitle]);
+
+  const handleStart = () => {
+    router.push({
+      pathname: "/practice/[topic]",
+      params: { topic },
+    });
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-background items-center justify-center p-6">
+      <View className="w-full max-w-md bg-card rounded-3xl p-8 items-center"
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 16,
+          elevation: 4,
+        }}
+      >
+        <View className="w-24 h-24 bg-accent rounded-full items-center justify-center mb-6">
+          {status === "generating" ? (
+            <ActivityIndicator size="large" color="#FF6B4A" />
+          ) : status === "error" ? (
+            <Ionicons name="alert-circle" size={48} color="#FF6B4A" />
+          ) : (
+            <Ionicons name="headset" size={48} color="#FF6B4A" />
+          )}
+        </View>
+
+        <Text className="text-2xl font-semibold text-foreground mb-3 text-center">
+          {status === "generating"
+            ? "Generating your lesson..."
+            : status === "error"
+            ? "Using sample phrases"
+            : "Your lesson is ready"}
+        </Text>
+
+        <View className="mb-8 items-center gap-1">
+          <Text className="text-muted">
+            Topic:{" "}
+            <Text className="text-foreground font-medium">
+              {topicTitle ?? topic}
+            </Text>
+          </Text>
+          {status !== "generating" && (
+            <Text className="text-muted">{cardCount} phrases generated</Text>
+          )}
+        </View>
+
+        <Pressable
+          onPress={handleStart}
+          disabled={status === "generating"}
+          className={`w-full py-4 rounded-2xl items-center ${
+            status === "generating" ? "bg-secondary" : "bg-primary"
+          }`}
+          style={
+            status !== "generating"
+              ? {
+                  shadowColor: "#FF6B4A",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }
+              : undefined
+          }
+        >
+          <Text
+            className={`text-base font-semibold ${
+              status === "generating" ? "text-muted" : "text-primary-foreground"
+            }`}
+          >
+            Start Practice
+          </Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
