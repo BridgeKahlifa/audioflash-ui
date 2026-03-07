@@ -144,10 +144,13 @@ export default function FlashcardPractice() {
         <View className="flex-1 px-4 pb-4">
           <Animated.View
             {...panResponder.panHandlers}
-            className="bg-card rounded-3xl p-8 items-center justify-center"
+            className="bg-card rounded-3xl p-8"
             style={{
               transform: [{ translateX }],
               flex: 1,
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.08,
