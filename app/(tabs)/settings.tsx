@@ -5,12 +5,14 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { AppSettings } from "../../lib/types";
 import { getSettings, setSettings } from "../../lib/storage";
+import { useAuth } from "../../lib/auth-context";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
 export default function SettingsScreen() {
+  const { user, signOut } = useAuth();
   const [settings, setLocalSettings] = useState<AppSettings | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -105,6 +107,19 @@ export default function SettingsScreen() {
             className="py-4 rounded-2xl items-center bg-secondary mt-3"
           >
             <Text className="text-foreground font-medium">Open Goals</Text>
+          </Pressable>
+
+          <View className="bg-card border border-border rounded-2xl p-5 mt-4">
+            <Text className="text-muted text-sm mb-1">Signed in as</Text>
+            <Text className="text-foreground font-medium">{user?.email}</Text>
+          </View>
+
+          <Pressable
+            onPress={signOut}
+            className="py-4 rounded-2xl items-center bg-secondary mt-3 flex-row justify-center gap-2"
+          >
+            <Ionicons name="log-out-outline" size={18} color="#6B7280" />
+            <Text className="text-foreground font-medium">Sign Out</Text>
           </Pressable>
         </ScrollView>
       </View>
