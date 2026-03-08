@@ -7,10 +7,11 @@ const MODEL =
 
 export async function generateFlashcards(
   topic: string,
-  topicTitle: string
+  topicTitle: string,
+  cardCount = 20
 ): Promise<Flashcard[]> {
   if (!API_KEY) {
-    return getFallbackCards(topic);
+    return getFallbackCards(topic, cardCount);
   }
 
   try {
@@ -29,7 +30,7 @@ export async function generateFlashcards(
           messages: [
             {
               role: "user",
-              content: `Generate 20 Chinese (Mandarin) conversational flashcards for the topic "${topicTitle}".
+              content: `Generate ${cardCount} Chinese (Mandarin) conversational flashcards for the topic "${topicTitle}".
 
 Return ONLY a valid JSON array with no markdown, code blocks, or explanation. Each object must have exactly these three fields:
 - "chinese": the Chinese phrase in characters
@@ -62,8 +63,8 @@ Example format:
       english: string;
     }[];
 
-    return parsed.map((card, i) => ({ ...card, id: i + 1 }));
+    return parsed.slice(0, cardCount).map((card, i) => ({ ...card, id: i + 1 }));
   } catch {
-    return getFallbackCards(topic);
+    return getFallbackCards(topic, cardCount);
   }
 }

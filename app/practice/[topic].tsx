@@ -3,24 +3,31 @@ import {
   View,
   Text,
   Pressable,
-  SafeAreaView,
   PanResponder,
   Animated,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Flashcard } from "../../lib/types";
+import { Flashcard, SessionCardResult } from "../../lib/types";
 import { getFallbackCards } from "../../lib/flashcards";
 import { getCurrentCards } from "../../lib/storage";
-import { recordSession } from "../../lib/storage";
+import { saveCompletedSession } from "../../lib/storage";
 import { speakChinese } from "../../lib/audio";
 
 export default function FlashcardPractice() {
-  const { topic } = useLocalSearchParams<{ topic: string }>();
+  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiLoaded } = useLocalSearchParams<{
+    topic: string;
+    topicTitle?: string;
+    language?: string;
+    languageLabel?: string;
+    apiLanguageId?: string;
+    apiLoaded?: string;
+  }>();
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [results, setResults] = useState<{ cardId: number; knew: boolean }[]>([]);
+  const [results, setResults] = useState<SessionCardResult[]>([]);
 
   // Swipe animation
   const translateX = useRef(new Animated.Value(0)).current;
@@ -89,48 +96,69 @@ export default function FlashcardPractice() {
 
   async function handleResult(knew: boolean) {
     if (!currentCard) return;
-    const newResults = [...results, { cardId: currentCard.id, knew }];
+    const newResults = [
+      ...results,
+      {
+        cardId: currentCard.id,
+        chinese: currentCard.chinese,
+        pinyin: currentCard.pinyin,
+        english: currentCard.english,
+        knew,
+      },
+    ];
     setResults(newResults);
 
     if (currentIndex < cards.length - 1) {
       setCurrentIndex((i) => i + 1);
       setShowAnswer(false);
     } else {
-      const correct = newResults.filter((r) => r.knew).length;
-      await recordSession(correct, newResults.length);
-      router.replace("/progress");
+      await saveCompletedSession({
+        topic,
+        topicTitle: topicTitle ?? topic,
+        language: language ?? "mandarin",
+        languageLabel: languageLabel ?? "Mandarin Chinese",
+        cards: newResults,
+      });
+      router.replace("/session-summary");
     }
   }
 
   if (cards.length === 0 || !currentCard) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <Text className="text-muted">Loading cards...</Text>
+      <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
+        <View className="flex-1 items-center justify-center max-w-md w-full mx-auto">
+          <Text className="text-muted">Loading cards...</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
           <Pressable
-            onPress={() => router.replace("/")}
+            onPress={() =>
+              router.replace({
+                pathname: "/categories",
+                params: {
+                  language: language ?? "mandarin",
+                  languageLabel: languageLabel ?? "Mandarin Chinese",
+                  apiLanguageId: apiLanguageId ?? "",
+                  apiLoaded: apiLoaded ?? "",
+                },
+              })
+            }
             className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
           >
             <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
           </Pressable>
-          <Text className="text-sm text-muted">
-            {currentIndex + 1} / {cards.length}
-          </Text>
-          <Pressable
-            onPress={() => router.replace("/")}
-            className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
-          >
-            <Ionicons name="close" size={22} color="#1A1A1A" />
-          </Pressable>
+          <View className="w-10 h-10" />
         </View>
+        <Text className="text-sm text-muted text-center mb-2">
+          {currentIndex + 1} / {cards.length}
+        </Text>
 
         {/* Progress bar */}
         <View className="mx-4 mb-4 h-1.5 bg-secondary rounded-full overflow-hidden">

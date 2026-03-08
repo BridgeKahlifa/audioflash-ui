@@ -99,6 +99,8 @@ const fallbackCards: Record<string, Flashcard[]> = {
   ],
 };
 
-export function getFallbackCards(topic: string): Flashcard[] {
-  return fallbackCards[topic] ?? fallbackCards.travel;
+export function getFallbackCards(topic: string, limit?: number): Flashcard[] {
+  const cards = fallbackCards[topic] ?? fallbackCards.travel;
+  if (!limit) return cards;
+  return cards.slice(0, Math.max(1, limit));
 }
