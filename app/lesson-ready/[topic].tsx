@@ -5,13 +5,17 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { generateFlashcards } from "../../lib/ai";
 import { getSettings, setCurrentCards } from "../../lib/storage";
+import { fetchLessonCards } from "../../lib/api";
 
 export default function LessonReady() {
-  const { topic, topicTitle, language, languageLabel } = useLocalSearchParams<{
+  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded } = useLocalSearchParams<{
     topic: string;
     topicTitle: string;
     language?: string;
     languageLabel?: string;
+    apiLanguageId?: string;
+    apiCategoryId?: string;
+    apiLoaded?: string;
   }>();
 
   const [status, setStatus] = useState<"generating" | "ready" | "error">("generating");
@@ -21,11 +25,31 @@ export default function LessonReady() {
     async function generate() {
       try {
         const settings = await getSettings();
-        const cards = await generateFlashcards(
+        let cards = await generateFlashcards(
           topic,
           topicTitle ?? topic,
           settings.cardsPerSession
         );
+
+        if (apiLanguageId && apiCategoryId) {
+          const categoryIdNum = Number(apiCategoryId);
+          if (Number.isNaN(categoryIdNum)) {
+            throw new Error("Invalid category id");
+          }
+          const lessonCards = await fetchLessonCards({
+            languageId: apiLanguageId,
+            categoryId: categoryIdNum,
+            limit: settings.cardsPerSession,
+          });
+          if (lessonCards.length > 0) {
+            cards = lessonCards.map((card, index) => ({
+              id: index + 1,
+              chinese: card.source_text,
+              pinyin: card.romanization ?? "",
+              english: card.translation,
+            }));
+          }
+        }
         await setCurrentCards(topic, cards);
         setCardCount(cards.length);
         setStatus("ready");
@@ -34,7 +58,7 @@ export default function LessonReady() {
       }
     }
     generate();
-  }, [topic, topicTitle]);
+  }, [topic, topicTitle, apiLanguageId, apiCategoryId]);
 
   const handleStart = () => {
     router.push({
@@ -44,6 +68,9 @@ export default function LessonReady() {
         topicTitle: topicTitle ?? topic,
         language: language ?? "mandarin",
         languageLabel: languageLabel ?? "Mandarin Chinese",
+        apiLanguageId: apiLanguageId ?? "",
+        apiLoaded: apiLoaded ?? "",
+        apiCategoryId: apiCategoryId ?? "",
       },
     });
   };
@@ -58,6 +85,8 @@ export default function LessonReady() {
               params: {
                 language: language ?? "mandarin",
                 languageLabel: languageLabel ?? "Mandarin Chinese",
+                apiLanguageId: apiLanguageId ?? "",
+                apiLoaded: apiLoaded ?? "",
               },
             })
           }

@@ -9,7 +9,6 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
         <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
-        <Stack.Screen name="categories" options={{ animation: "fade" }} />
         <Stack.Screen
           name="lesson-ready/[topic]"
           options={{ animation: "slide_from_right" }}

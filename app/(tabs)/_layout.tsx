@@ -25,7 +25,8 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         paddingHorizontal: 6,
       }}
     >
-      {state.routes.map((route, index) => {
+      {state.routes.filter((route) => ICON_MAP[route.name]).map((route) => {
+        const index = state.routes.findIndex((r) => r.key === route.key);
         const { options } = descriptors[route.key];
         const label = options.title ?? route.name;
         const isFocused = state.index === index;
@@ -95,6 +96,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="progress" options={{ title: "Progress" }} />
       <Tabs.Screen name="goals" options={{ title: "Goals" }} />
       <Tabs.Screen name="settings" options={{ title: "Settings" }} />
+      <Tabs.Screen name="categories" options={{ href: null }} />
     </Tabs>
   );
 }

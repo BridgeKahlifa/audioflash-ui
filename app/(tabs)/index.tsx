@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { ApiLanguage, fetchLanguages } from "../../lib/api";
 
 interface Language {
   id: string;
@@ -11,34 +12,61 @@ interface Language {
   available: boolean;
 }
 
-const languages: Language[] = [
-  {
-    id: "mandarin",
-    label: "Mandarin Chinese",
-    description: "Characters + pinyin support",
-    flag: "🇨🇳",
-    available: true,
-  },
-  {
-    id: "spanish",
-    label: "Spanish",
-    description: "Coming soon",
-    flag: "🇪🇸",
-    available: false,
-  },
-  {
-    id: "japanese",
-    label: "Japanese",
-    description: "Coming soon",
-    flag: "🇯🇵",
-    available: false,
-  },
+const fallbackLanguages: Language[] = [
+  { id: "1", label: "Mandarin Chinese", description: "Characters + pinyin support", flag: "🇨🇳", available: true },
+  { id: "2", label: "Spanish", description: "Coming soon", flag: "🇪🇸", available: false },
+  { id: "3", label: "Japanese", description: "Coming soon", flag: "🇯🇵", available: false },
 ];
+
+function languageFlag(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes("mandarin") || lower.includes("chinese")) return "🇨🇳";
+  if (lower.includes("spanish")) return "🇪🇸";
+  if (lower.includes("japanese")) return "🇯🇵";
+  if (lower.includes("french")) return "🇫🇷";
+  if (lower.includes("korean")) return "🇰🇷";
+  return "🌐";
+}
+
+function toUiLanguage(language: ApiLanguage): Language {
+  const available = !language.language.toLowerCase().includes("coming soon");
+  return {
+    id: language.id,
+    label: language.language,
+    description: available ? "Practice lessons available" : "Coming soon",
+    flag: languageFlag(language.language),
+    available,
+  };
+}
+
+function languageKey(label: string): string {
+  return label.toLowerCase().replace(/\s+/g, "-");
+}
 
 export default function Home() {
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
+  const [languages, setLanguages] = useState<Language[]>(fallbackLanguages);
+  const [apiLoaded, setApiLoaded] = useState(false);
 
-  const selected = languages.find((language) => language.id === selectedLanguage);
+  useEffect(() => {
+    async function loadLanguages() {
+      try {
+        const data = await fetchLanguages();
+        if (data.length > 0) {
+          setLanguages(data.map(toUiLanguage));
+          setApiLoaded(true);
+        }
+      } catch {
+        // Keep fallback language list for offline/dev mode
+      }
+    }
+    loadLanguages();
+  }, []);
+
+  const selected = useMemo(
+    () => languages.find((language) => language.id === selectedLanguage),
+    [languages, selectedLanguage]
+  );
 
   const handleContinue = () => {
     if (!selected || !selected.available) return;
@@ -46,8 +74,10 @@ export default function Home() {
     router.push({
       pathname: "/categories",
       params: {
-        language: selected.id,
+        language: languageKey(selected.label),
         languageLabel: selected.label,
+        apiLanguageId: String(selected.id),
+        apiLoaded: apiLoaded ? "true" : "false",
       },
     });
   };
@@ -75,11 +105,10 @@ export default function Home() {
                   key={language.id}
                   onPress={() => language.available && setSelectedLanguage(language.id)}
                   disabled={!language.available}
-                  className={`rounded-2xl p-4 border-2 flex-row items-center ${
-                    isSelected
+                  className={`rounded-2xl p-4 border-2 flex-row items-center ${isSelected
                       ? "bg-accent border-primary"
                       : "bg-card border-transparent"
-                  } ${!language.available ? "opacity-60" : ""}`}
+                    } ${!language.available ? "opacity-60" : ""}`}
                   style={{
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 1 },
@@ -110,27 +139,25 @@ export default function Home() {
           <Pressable
             onPress={handleContinue}
             disabled={!selectedLanguage || !selected?.available}
-            className={`py-4 rounded-2xl items-center ${
-              selectedLanguage && selected?.available ? "bg-primary" : "bg-secondary"
-            }`}
+            className={`py-4 rounded-2xl items-center ${selectedLanguage && selected?.available ? "bg-primary" : "bg-secondary"
+              }`}
             style={
               selectedLanguage && selected?.available
                 ? {
-                    shadowColor: "#FF6B4A",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 4,
-                  }
+                  shadowColor: "#FF6B4A",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }
                 : undefined
             }
           >
             <Text
-              className={`text-base font-semibold ${
-                selectedLanguage && selected?.available
+              className={`text-base font-semibold ${selectedLanguage && selected?.available
                   ? "text-primary-foreground"
                   : "text-muted"
-              }`}
+                }`}
             >
               Continue
             </Text>

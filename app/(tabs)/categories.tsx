@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { fetchCategories } from "../../lib/api";
 
 interface Topic {
   id: string;
   title: string;
   description: string;
   icon: keyof typeof Ionicons.glyphMap;
+  apiCategoryId?: number;
 }
 
-const topics: Topic[] = [
+const fallbackTopics: Topic[] = [
   { id: "travel", title: "Travel", description: "Navigate a new country", icon: "airplane" },
   { id: "taxi", title: "Taxi", description: "Get around town", icon: "car" },
   { id: "ordering-food", title: "Ordering Food", description: "Restaurant & dining", icon: "restaurant" },
@@ -28,12 +30,47 @@ const topics: Topic[] = [
 ];
 
 export default function Categories() {
-  const { language, languageLabel } = useLocalSearchParams<{
+  const { language, languageLabel, apiLanguageId, apiLoaded } = useLocalSearchParams<{
     language?: string;
     languageLabel?: string;
+    apiLanguageId?: string;
+    apiLoaded?: string;
   }>();
 
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const [topics, setTopics] = useState<Topic[]>(fallbackTopics);
+
+  useEffect(() => {
+    async function loadCategories() {
+      if (apiLoaded !== "true") return;
+      try {
+        const categories = await fetchCategories();
+        if (categories.length === 0) return;
+        const icons: (keyof typeof Ionicons.glyphMap)[] = [
+          "airplane",
+          "car",
+          "restaurant",
+          "heart",
+          "briefcase",
+          "school",
+          "bag-handle",
+          "home",
+        ];
+        setTopics(
+          categories.map((category, index) => ({
+            id: `category-${category.id}`,
+            title: category.name,
+            description: "Real-world practice",
+            icon: icons[index % icons.length],
+            apiCategoryId: category.id,
+          }))
+        );
+      } catch {
+        // Keep fallback categories
+      }
+    }
+    loadCategories();
+  }, [apiLoaded]);
 
   const handleGenerateLesson = () => {
     if (!selectedTopic) return;
@@ -46,6 +83,9 @@ export default function Categories() {
         topicTitle: topic?.title ?? selectedTopic,
         language: language ?? "mandarin",
         languageLabel: languageLabel ?? "Mandarin Chinese",
+        apiLanguageId: apiLanguageId ?? "",
+        apiLoaded: apiLoaded ?? "",
+        apiCategoryId: topic?.apiCategoryId ? String(topic.apiCategoryId) : "",
       },
     });
   };
