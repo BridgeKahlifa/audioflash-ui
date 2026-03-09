@@ -10,7 +10,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Flashcard, SessionCardResult } from "../../lib/types";
-import { getFallbackCards } from "../../lib/flashcards";
 import { getCurrentCards } from "../../lib/storage";
 import { saveCompletedSession } from "../../lib/storage";
 import { speakChinese } from "../../lib/audio";
@@ -35,7 +34,7 @@ export default function FlashcardPractice() {
   useEffect(() => {
     async function loadCards() {
       const stored = await getCurrentCards(topic);
-      setCards(stored ?? getFallbackCards(topic));
+      setCards(stored ?? []);
     }
     loadCards();
   }, [topic]);
@@ -115,8 +114,8 @@ export default function FlashcardPractice() {
       await saveCompletedSession({
         topic,
         topicTitle: topicTitle ?? topic,
-        language: language ?? "mandarin",
-        languageLabel: languageLabel ?? "Mandarin Chinese",
+        language: language,
+        languageLabel: languageLabel,
         cards: newResults,
       });
       router.replace("/session-summary");
@@ -143,8 +142,8 @@ export default function FlashcardPractice() {
               router.replace({
                 pathname: "/categories",
                 params: {
-                  language: language ?? "mandarin",
-                  languageLabel: languageLabel ?? "Mandarin Chinese",
+                  language: language,
+                  languageLabel: languageLabel,
                   apiLanguageId: apiLanguageId ?? "",
                   apiLoaded: apiLoaded ?? "",
                 },
