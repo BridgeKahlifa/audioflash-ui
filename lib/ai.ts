@@ -1,19 +1,13 @@
 import { Flashcard } from "./types";
-import { getFallbackCards } from "./flashcards";
 
 const API_KEY = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
-const MODEL =
-  process.env.EXPO_PUBLIC_AI_MODEL ?? "anthropic/claude-haiku-4-5";
+const MODEL = process.env.EXPO_PUBLIC_AI_MODEL ?? "anthropic/claude-haiku-4-5";
 
 export async function generateFlashcards(
   topic: string,
   topicTitle: string,
-  cardCount = 20
+  cardCount = 20,
 ): Promise<Flashcard[]> {
-  if (!API_KEY) {
-    return getFallbackCards(topic, cardCount);
-  }
-
   try {
     const response = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
@@ -45,7 +39,7 @@ Example format:
           ],
           temperature: 0.7,
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -56,15 +50,21 @@ Example format:
     const content: string = data.choices[0]?.message?.content ?? "";
 
     // Strip any accidental markdown code blocks
-    const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const cleaned = content
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
     const parsed = JSON.parse(cleaned) as {
       chinese: string;
       pinyin: string;
       english: string;
     }[];
 
-    return parsed.slice(0, cardCount).map((card, i) => ({ ...card, id: i + 1 }));
+    return parsed
+      .slice(0, cardCount)
+      .map((card, i) => ({ ...card, id: i + 1 }));
   } catch {
-    return getFallbackCards(topic, cardCount);
+    // In case of any error, return an empty array
+    return [];
   }
 }

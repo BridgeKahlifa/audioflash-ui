@@ -66,8 +66,8 @@ export default function LessonReady() {
       params: {
         topic,
         topicTitle: topicTitle ?? topic,
-        language: language ?? "mandarin",
-        languageLabel: languageLabel ?? "Mandarin Chinese",
+        language: language,
+        languageLabel: languageLabel,
         apiLanguageId: apiLanguageId ?? "",
         apiLoaded: apiLoaded ?? "",
         apiCategoryId: apiCategoryId ?? "",
@@ -83,8 +83,8 @@ export default function LessonReady() {
             router.replace({
               pathname: "/categories",
               params: {
-                language: language ?? "mandarin",
-                languageLabel: languageLabel ?? "Mandarin Chinese",
+                language: language,
+                languageLabel: languageLabel,
                 apiLanguageId: apiLanguageId ?? "",
                 apiLoaded: apiLoaded ?? "",
               },
@@ -128,7 +128,7 @@ export default function LessonReady() {
             <Text className="text-muted">
               Language:{" "}
               <Text className="text-foreground font-medium">
-                {languageLabel ?? "Mandarin Chinese"}
+                {languageLabel}
               </Text>
             </Text>
             <Text className="text-muted">
