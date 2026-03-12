@@ -25,25 +25,18 @@ export async function fetchCategories(): Promise<ApiCategory[]> {
 }
 
 export async function fetchLessonCards(params: {
-  languageId: ApiLanguage["id"];
-  categoryId: ApiCategory["id"];
-  limit?: number;
+  languageId: string;
+  categoryId: string;
 }): Promise<ApiLessonCard[]> {
-  const requestedLimit = params.limit ?? 20;
-  const res = await fetch(`${API_BASE_URL}/lessons/flashcards`);
-  const cards = await parseJson<ApiLessonCard[]>(res);
-  const filtered = cards.filter(
-    (card) =>
-      String(card.language_id) === String(params.languageId) &&
-      String(card.category_id) === String(params.categoryId)
-  );
-  const selected = filtered.slice(0, requestedLimit);
-
-  if (__DEV__) {
-    console.log(
-      `[api] lessons/flashcards language=${params.languageId} category=${params.categoryId} requested=${requestedLimit} received=${cards.length} filtered=${filtered.length} selected=${selected.length}`
-    );
+  if (!params.languageId || !params.categoryId) {
+    throw new Error("Both languageId and categoryId are required");
   }
 
-  return selected;
+  const query = new URLSearchParams({
+    category_id: params.categoryId,
+    language_id: params.languageId,
+  });
+
+  const res = await fetch(`${API_BASE_URL}/lessons/flashcards?${query.toString()}`);
+  return parseJson<ApiLessonCard[]>(res);
 }

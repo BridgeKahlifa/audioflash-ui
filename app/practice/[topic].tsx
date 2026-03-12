@@ -16,12 +16,13 @@ import { saveCompletedSession } from "../../lib/storage";
 import { speakChinese } from "../../lib/audio";
 
 export default function FlashcardPractice() {
-  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiLoaded } = useLocalSearchParams<{
+  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded } = useLocalSearchParams<{
     topic: string;
     topicTitle?: string;
     language?: string;
     languageLabel?: string;
     apiLanguageId?: string;
+    apiCategoryId?: string;
     apiLoaded?: string;
   }>();
   const [cards, setCards] = useState<Flashcard[]>([]);
@@ -146,6 +147,7 @@ export default function FlashcardPractice() {
                   language: language ?? "mandarin",
                   languageLabel: languageLabel ?? "Mandarin Chinese",
                   apiLanguageId: apiLanguageId ?? "",
+                  apiCategoryId: apiCategoryId ?? "",
                   apiLoaded: apiLoaded ?? "",
                 },
               })

@@ -1,5 +1,5 @@
 export interface Flashcard {
-  id: number;
+  id: string | number;
   chinese: string;
   pinyin: string;
   english: string;
@@ -20,7 +20,7 @@ export interface ProgressData {
 }
 
 export interface SessionCardResult {
-  cardId: number;
+  cardId: string | number;
   chinese: string;
   pinyin: string;
   english: string;

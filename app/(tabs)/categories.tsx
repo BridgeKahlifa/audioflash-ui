@@ -15,7 +15,7 @@ interface Topic {
   title: string;
   description: string;
   icon: keyof typeof Ionicons.glyphMap;
-  apiCategoryId?: number;
+  apiCategoryId?: string;
 }
 
 const fallbackTopics: Topic[] = [
@@ -62,7 +62,7 @@ export default function Categories() {
             title: category.name,
             description: "Real-world practice",
             icon: icons[index % icons.length],
-            apiCategoryId: category.id,
+            apiCategoryId: String(category.id),
           }))
         );
       } catch {
@@ -85,7 +85,7 @@ export default function Categories() {
         languageLabel: languageLabel ?? "Mandarin Chinese",
         apiLanguageId: apiLanguageId ?? "",
         apiLoaded: apiLoaded ?? "",
-        apiCategoryId: topic?.apiCategoryId ? String(topic.apiCategoryId) : "",
+        apiCategoryId: topic?.apiCategoryId ?? "",
       },
     });
   };

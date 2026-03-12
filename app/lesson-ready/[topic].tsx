@@ -3,9 +3,9 @@ import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { generateFlashcards } from "../../lib/ai";
 import { getSettings, setCurrentCards } from "../../lib/storage";
 import { fetchLessonCards } from "../../lib/api";
+import { Flashcard } from "../../lib/types";
 
 export default function LessonReady() {
   const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded } = useLocalSearchParams<{
@@ -18,49 +18,62 @@ export default function LessonReady() {
     apiLoaded?: string;
   }>();
 
-  const [status, setStatus] = useState<"generating" | "ready" | "error">("generating");
+  const [status, setStatus] = useState<"loading" | "ready" | "empty" | "error">("loading");
   const [cardCount, setCardCount] = useState(0);
+  const [cards, setCards] = useState<Flashcard[]>([]);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    async function generate() {
-      try {
-        const settings = await getSettings();
-        let cards = await generateFlashcards(
-          topic,
-          topicTitle ?? topic,
-          settings.cardsPerSession
-        );
+    async function loadLesson() {
+      setStatus("loading");
+      setErrorMessage("");
 
-        if (apiLanguageId && apiCategoryId) {
-          const categoryIdNum = Number(apiCategoryId);
-          if (Number.isNaN(categoryIdNum)) {
-            throw new Error("Invalid category id");
-          }
-          const lessonCards = await fetchLessonCards({
-            languageId: apiLanguageId,
-            categoryId: categoryIdNum,
-            limit: settings.cardsPerSession,
-          });
-          if (lessonCards.length > 0) {
-            cards = lessonCards.map((card, index) => ({
-              id: index + 1,
-              chinese: card.source_text,
-              pinyin: card.romanization ?? "",
-              english: card.translation,
-            }));
-          }
+      try {
+        if (!apiLanguageId || !apiCategoryId) {
+          setCards([]);
+          setCardCount(0);
+          setStatus("error");
+          setErrorMessage("Lesson details are missing. Please choose a language and category again.");
+          return;
         }
-        await setCurrentCards(topic, cards);
-        setCardCount(cards.length);
+
+        const lessonCards = await fetchLessonCards({
+          languageId: apiLanguageId,
+          categoryId: apiCategoryId,
+        });
+
+        if (lessonCards.length === 0) {
+          setCards([]);
+          setCardCount(0);
+          setStatus("empty");
+          return;
+        }
+
+        const mappedCards = lessonCards.map((card) => ({
+          id: card.id,
+          chinese: card.source_text,
+          pinyin: card.romanization ?? "",
+          english: card.translation,
+        }));
+
+        setCards(mappedCards);
+        await setCurrentCards(topic, mappedCards);
+        setCardCount(mappedCards.length);
         setStatus("ready");
-      } catch {
+      } catch (error) {
+        console.error("Failed to load lesson flashcards", error);
+        setCards([]);
+        setCardCount(0);
         setStatus("error");
+        setErrorMessage("We couldn’t load flashcards right now. Please try again.");
       }
     }
-    generate();
+    loadLesson();
   }, [topic, topicTitle, apiLanguageId, apiCategoryId]);
 
   const handleStart = () => {
+    if (cards.length === 0) return;
+
     router.push({
       pathname: "/practice/[topic]",
       params: {
@@ -107,8 +120,10 @@ export default function LessonReady() {
           }}
         >
           <View className="w-24 h-24 bg-accent rounded-full items-center justify-center mb-6">
-            {status === "generating" ? (
+            {status === "loading" ? (
               <ActivityIndicator size="large" color="#FF6B4A" />
+            ) : status === "empty" ? (
+              <Ionicons name="albums-outline" size={48} color="#9CA3AF" />
             ) : status === "error" ? (
               <Ionicons name="alert-circle" size={48} color="#FF6B4A" />
             ) : (
@@ -117,10 +132,12 @@ export default function LessonReady() {
           </View>
 
           <Text className="text-2xl font-semibold text-foreground mb-3 text-center">
-            {status === "generating"
-              ? "Generating your lesson..."
+            {status === "loading"
+              ? "Loading your lesson..."
+              : status === "empty"
+              ? "No flashcards found for this lesson"
               : status === "error"
-              ? "Using sample phrases"
+              ? "Unable to load lesson"
               : "Your lesson is ready"}
           </Text>
 
@@ -137,19 +154,27 @@ export default function LessonReady() {
                 {topicTitle ?? topic}
               </Text>
             </Text>
-            {status !== "generating" && (
-              <Text className="text-muted">{cardCount} phrases generated</Text>
+            {status === "ready" && (
+              <Text className="text-muted">{cardCount} phrases loaded</Text>
             )}
+            {status === "empty" && (
+              <Text className="text-muted text-center">
+                No flashcards found for this lesson.
+              </Text>
+            )}
+            {status === "error" && errorMessage ? (
+              <Text className="text-muted text-center">{errorMessage}</Text>
+            ) : null}
           </View>
 
           <Pressable
             onPress={handleStart}
-            disabled={status === "generating"}
+            disabled={status !== "ready"}
             className={`w-full py-4 rounded-2xl items-center ${
-              status === "generating" ? "bg-secondary" : "bg-primary"
+              status === "ready" ? "bg-primary" : "bg-secondary"
             }`}
             style={
-              status !== "generating"
+              status === "ready"
                 ? {
                     shadowColor: "#FF6B4A",
                     shadowOffset: { width: 0, height: 4 },
@@ -162,10 +187,10 @@ export default function LessonReady() {
           >
             <Text
               className={`text-base font-semibold ${
-                status === "generating" ? "text-muted" : "text-primary-foreground"
+                status === "ready" ? "text-primary-foreground" : "text-muted"
               }`}
             >
-              Start Practice
+              {status === "loading" ? "Loading..." : "Start Practice"}
             </Text>
           </Pressable>
         </View>

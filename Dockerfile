@@ -1,0 +1,33 @@
+FROM node:22-bookworm-slim AS base
+
+WORKDIR /app
+ENV EXPO_NO_TELEMETRY=1
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM base AS dev
+
+COPY . .
+EXPOSE 8081 19000 19001 19002
+CMD ["npx", "expo", "start", "--web", "--port", "8081", "--non-interactive"]
+
+FROM base AS build
+
+ARG EXPO_PUBLIC_OPENROUTER_API_KEY=""
+ARG EXPO_PUBLIC_AI_MODEL="anthropic/claude-haiku-4-5"
+ARG EXPO_PUBLIC_SUPABASE_URL=""
+ARG EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=""
+
+ENV EXPO_PUBLIC_OPENROUTER_API_KEY=$EXPO_PUBLIC_OPENROUTER_API_KEY
+ENV EXPO_PUBLIC_AI_MODEL=$EXPO_PUBLIC_AI_MODEL
+ENV EXPO_PUBLIC_SUPABASE_URL=$EXPO_PUBLIC_SUPABASE_URL
+ENV EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+COPY . .
+RUN npx expo export --platform web
+
+FROM nginx:1.27-alpine AS production
+
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
