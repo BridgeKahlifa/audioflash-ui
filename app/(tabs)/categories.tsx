@@ -4,6 +4,7 @@ import {
   Text,
   Pressable,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -18,16 +19,6 @@ interface Topic {
   apiCategoryId?: string;
 }
 
-const fallbackTopics: Topic[] = [
-  { id: "travel", title: "Travel", description: "Navigate a new country", icon: "airplane" },
-  { id: "taxi", title: "Taxi", description: "Get around town", icon: "car" },
-  { id: "ordering-food", title: "Ordering Food", description: "Restaurant & dining", icon: "restaurant" },
-  { id: "dating", title: "Dating", description: "Casual conversation", icon: "heart" },
-  { id: "business", title: "Business", description: "Professional communication", icon: "briefcase" },
-  { id: "education", title: "Education", description: "Academic discussions", icon: "school" },
-  { id: "shopping", title: "Shopping", description: "Market & retail", icon: "bag-handle" },
-  { id: "home", title: "Home & Family", description: "Everyday household", icon: "home" },
-];
 
 export default function Categories() {
   const { language, languageLabel, apiLanguageId, apiLoaded } = useLocalSearchParams<{
@@ -38,7 +29,8 @@ export default function Categories() {
   }>();
 
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  const [topics, setTopics] = useState<Topic[]>(fallbackTopics);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [isLoading, setIsLoading] = useState(apiLoaded === "true");
 
   useEffect(() => {
     async function loadCategories() {
@@ -66,7 +58,9 @@ export default function Categories() {
           }))
         );
       } catch {
-        // Keep fallback categories
+        // ignore
+      } finally {
+        setIsLoading(false);
       }
     }
     loadCategories();
@@ -81,8 +75,8 @@ export default function Categories() {
       params: {
         topic: selectedTopic,
         topicTitle: topic?.title ?? selectedTopic,
-        language: language ?? "mandarin",
-        languageLabel: languageLabel ?? "Mandarin Chinese",
+        language: language,
+        languageLabel: languageLabel,
         apiLanguageId: apiLanguageId ?? "",
         apiLoaded: apiLoaded ?? "",
         apiCategoryId: topic?.apiCategoryId ?? "",
@@ -105,7 +99,7 @@ export default function Categories() {
             Choose Category
           </Text>
           <Text className="text-muted mt-1">
-            Language: <Text className="text-foreground font-medium">{languageLabel ?? "Mandarin Chinese"}</Text>
+            Language: <Text className="text-foreground font-medium">{languageLabel}</Text>
           </Text>
         </View>
 
@@ -114,6 +108,15 @@ export default function Categories() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 16 }}
         >
+          {isLoading ? (
+            <View className="flex-1 items-center justify-center py-16">
+              <ActivityIndicator size="large" color="#FF6B4A" />
+            </View>
+          ) : topics.length === 0 ? (
+            <View className="flex-1 items-center justify-center py-16">
+              <Text className="text-muted text-center">No categories available</Text>
+            </View>
+          ) : null}
           <View className="flex-row flex-wrap gap-3">
             {topics.map((topic) => {
               const isSelected = selectedTopic === topic.id;

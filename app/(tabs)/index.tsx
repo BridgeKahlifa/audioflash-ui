@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ApiLanguage, fetchLanguages } from "../../lib/api";
@@ -11,12 +11,6 @@ interface Language {
   flag: string;
   available: boolean;
 }
-
-const fallbackLanguages: Language[] = [
-  { id: "1", label: "Mandarin Chinese", description: "Characters + pinyin support", flag: "🇨🇳", available: true },
-  { id: "2", label: "Spanish", description: "Coming soon", flag: "🇪🇸", available: false },
-  { id: "3", label: "Japanese", description: "Coming soon", flag: "🇯🇵", available: false },
-];
 
 function languageFlag(name: string): string {
   const lower = name.toLowerCase();
@@ -45,8 +39,9 @@ function languageKey(label: string): string {
 
 export default function Home() {
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
-  const [languages, setLanguages] = useState<Language[]>(fallbackLanguages);
+  const [languages, setLanguages] = useState<Language[]>([]);
   const [apiLoaded, setApiLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadLanguages() {
@@ -57,7 +52,9 @@ export default function Home() {
           setApiLoaded(true);
         }
       } catch {
-        // Keep fallback language list for offline/dev mode
+        // ignore
+      } finally {
+        setIsLoading(false);
       }
     }
     loadLanguages();
@@ -97,6 +94,15 @@ export default function Home() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 16 }}
         >
+          {isLoading ? (
+            <View className="flex-1 items-center justify-center py-16">
+              <ActivityIndicator size="large" color="#FF6B4A" />
+            </View>
+          ) : languages.length === 0 ? (
+            <View className="flex-1 items-center justify-center py-16">
+              <Text className="text-muted text-center">No languages available</Text>
+            </View>
+          ) : null}
           <View className="gap-3">
             {languages.map((language) => {
               const isSelected = selectedLanguage === language.id;

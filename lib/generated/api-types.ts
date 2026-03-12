@@ -75,6 +75,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lessons/flashcards/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk Create Flashcards */
+        post: operations["bulk_create_flashcards_api_lessons_flashcards_bulk_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Profile */
+        get: operations["get_profile_api_profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Profile */
+        patch: operations["update_profile_api_profile_patch"];
+        trace?: never;
+    };
+    "/api/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sessions */
+        get: operations["list_sessions_api_sessions_get"];
+        put?: never;
+        /** Create Session */
+        post: operations["create_session_api_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stats */
+        get: operations["get_stats_api_sessions_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -98,8 +168,11 @@ export interface components {
     schemas: {
         /** CategoryResponse */
         CategoryResponse: {
-            /** Id */
-            id: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** Name */
             name: string;
         };
@@ -110,8 +183,11 @@ export interface components {
         };
         /** CreateFlashcardRequest */
         CreateFlashcardRequest: {
-            /** Category Id */
-            category_id: number;
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
             /**
              * Language Id
              * Format: uuid
@@ -133,6 +209,21 @@ export interface components {
             /** Language */
             language: string;
         };
+        /** CreateSessionRequest */
+        CreateSessionRequest: {
+            /** Topic Title */
+            topic_title?: string | null;
+            /** Language Label */
+            language_label?: string | null;
+            /** Category Id */
+            category_id?: string | null;
+            /** Cards Attempted */
+            cards_attempted: number;
+            /** Cards Correct */
+            cards_correct: number;
+            /** Completed At */
+            completed_at?: string | null;
+        };
         /** FlashcardResponse */
         FlashcardResponse: {
             /**
@@ -140,8 +231,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /** Category Id */
-            category_id: number;
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
             /**
              * Language Id
              * Format: uuid
@@ -182,6 +276,81 @@ export interface components {
             id: string;
             /** Language */
             language: string;
+        };
+        /** ProfileResponse */
+        ProfileResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Display Name */
+            display_name: string | null;
+            /** Native Language Id */
+            native_language_id: string | null;
+            /** Target Language Id */
+            target_language_id: string | null;
+            /** Audio Speed */
+            audio_speed: number;
+            /** Cards Per Session */
+            cards_per_session: number;
+            /** Daily Goal */
+            daily_goal: number;
+            /** Notifications Enabled */
+            notifications_enabled: boolean;
+            /**
+             * Notification Time
+             * Format: time
+             */
+            notification_time: string;
+            /** Streak Count */
+            streak_count: number;
+        };
+        /** SessionResponse */
+        SessionResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Topic Title */
+            topic_title: string | null;
+            /** Language Label */
+            language_label: string | null;
+            /** Cards Attempted */
+            cards_attempted: number;
+            /** Cards Correct */
+            cards_correct: number;
+            /** Completed At */
+            completed_at: string | null;
+        };
+        /** SessionStatsResponse */
+        SessionStatsResponse: {
+            /** Total Cards */
+            total_cards: number;
+            /** Total Correct */
+            total_correct: number;
+            /** Streak */
+            streak: number;
+        };
+        /** UpdateProfileRequest */
+        UpdateProfileRequest: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Native Language Id */
+            native_language_id?: string | null;
+            /** Target Language Id */
+            target_language_id?: string | null;
+            /** Audio Speed */
+            audio_speed?: number | null;
+            /** Cards Per Session */
+            cards_per_session?: number | null;
+            /** Daily Goal */
+            daily_goal?: number | null;
+            /** Notifications Enabled */
+            notifications_enabled?: boolean | null;
+            /** Notification Time */
+            notification_time?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -380,6 +549,165 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_create_flashcards_api_lessons_flashcards_bulk_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFlashcardRequest"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlashcardResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_profile_api_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+        };
+    };
+    update_profile_api_profile_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_api_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"][];
+                };
+            };
+        };
+    };
+    create_session_api_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stats_api_sessions_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionStatsResponse"];
                 };
             };
         };
