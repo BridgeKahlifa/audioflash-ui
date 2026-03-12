@@ -3,26 +3,23 @@ import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { getSettings, setCurrentCards } from "../../lib/storage";
+import { setCurrentCards, getSettings } from "../../lib/storage";
 import { Flashcard } from "../../lib/types";
-import { generateFlashcards } from "../../lib/ai";
-import { fetchLessonCards, bulkCreateFlashcards } from "../../lib/api";
-import { useAuth } from "../../lib/auth-context";
+import { fetchLessonsByCategory } from "../../lib/api";
 
 export default function LessonReady() {
-  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded } = useLocalSearchParams<{
-    topic: string;
-    topicTitle: string;
-    language?: string;
-    languageLabel?: string;
-    apiLanguageId?: string;
-    apiCategoryId?: string;
-    apiLoaded?: string;
-  }>();
+  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded } =
+    useLocalSearchParams<{
+      topic: string;
+      topicTitle: string;
+      language?: string;
+      languageLabel?: string;
+      apiLanguageId?: string;
+      apiCategoryId?: string;
+      apiLoaded?: string;
+    }>();
 
   const [status, setStatus] = useState<"loading" | "ready" | "empty" | "error">("loading");
-  const { profile } = useAuth();
-  const [status, setStatus] = useState<"generating" | "ready" | "error">("generating");
   const [cardCount, setCardCount] = useState(0);
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
@@ -33,62 +30,18 @@ export default function LessonReady() {
       setErrorMessage("");
 
       try {
-        if (!apiLanguageId || !apiCategoryId) {
+        if (!apiCategoryId) {
           setCards([]);
           setCardCount(0);
           setStatus("error");
-          setErrorMessage("Lesson details are missing. Please choose a language and category again.");
+          setErrorMessage("Lesson details are missing. Please choose a category again.");
           return;
-    async function generate() {
-      try {
-        const cardsPerSession = profile?.cards_per_session ?? 20;
-        let cards = await generateFlashcards(
-          topic,
-          topicTitle ?? topic,
-          cardsPerSession
-        );
-
-        if (apiLanguageId && apiCategoryId) {
-          const lessonCards = await fetchLessonCards({
-            languageId: apiLanguageId,
-            categoryId: apiCategoryId,
-            limit: cardsPerSession,
-          });
-          if (lessonCards.length > 0) {
-            // Use curated API cards — they already have DB IDs
-            cards = lessonCards.map((card, index) => ({
-              id: index + 1,
-              dbId: String(card.id),
-              chinese: card.source_text,
-              pinyin: card.romanization ?? "",
-              english: card.translation,
-            }));
-          } else if (cards.length > 0) {
-            // No curated cards — persist AI-generated cards to the DB
-            try {
-              const saved = await bulkCreateFlashcards(
-                cards.map((card) => ({
-                  language_id: apiLanguageId,
-                  category_id: apiCategoryId,
-                  source_text: card.chinese,
-                  romanization: card.pinyin,
-                  translation: card.english,
-                  difficulty: 1,
-                }))
-              );
-              cards = cards.map((card, i) => ({
-                ...card,
-                dbId: saved[i] ? String(saved[i].id) : undefined,
-              }));
-            } catch {
-              // Non-critical — cards still usable without DB IDs
-            }
-          }
         }
 
-        const lessonCards = await fetchLessonCards({
-          languageId: apiLanguageId,
+        const settings = await getSettings();
+        const lessonCards = await fetchLessonsByCategory({
           categoryId: apiCategoryId,
+          limit: settings.cardsPerSession,
         });
 
         if (lessonCards.length === 0) {
@@ -98,8 +51,9 @@ export default function LessonReady() {
           return;
         }
 
-        const mappedCards = lessonCards.map((card) => ({
-          id: card.id,
+        const mappedCards = lessonCards.map((card, index) => ({
+          id: index + 1,
+          dbId: String(card.id),
           chinese: card.source_text,
           pinyin: card.romanization ?? "",
           english: card.translation,
@@ -110,15 +64,16 @@ export default function LessonReady() {
         setCardCount(mappedCards.length);
         setStatus("ready");
       } catch (error) {
-        console.error("Failed to load lesson flashcards", error);
+        console.error("Failed to load lessons by category", error);
         setCards([]);
         setCardCount(0);
         setStatus("error");
-        setErrorMessage("We couldn’t load flashcards right now. Please try again.");
+        setErrorMessage("We couldn't load lessons right now. Please try again.");
       }
     }
+
     loadLesson();
-  }, [topic, topicTitle, apiLanguageId, apiCategoryId]);
+  }, [apiCategoryId, topic]);
 
   const handleStart = () => {
     if (cards.length === 0) return;
@@ -128,8 +83,8 @@ export default function LessonReady() {
       params: {
         topic,
         topicTitle: topicTitle ?? topic,
-        language: language,
-        languageLabel: languageLabel,
+        language,
+        languageLabel,
         apiLanguageId: apiLanguageId ?? "",
         apiLoaded: apiLoaded ?? "",
         apiCategoryId: apiCategoryId ?? "",
@@ -145,8 +100,8 @@ export default function LessonReady() {
             router.replace({
               pathname: "/categories",
               params: {
-                language: language,
-                languageLabel: languageLabel,
+                language,
+                languageLabel,
                 apiLanguageId: apiLanguageId ?? "",
                 apiLoaded: apiLoaded ?? "",
               },
@@ -159,7 +114,8 @@ export default function LessonReady() {
       </View>
 
       <View className="flex-1 items-center justify-center p-6">
-        <View className="w-full max-w-md bg-card rounded-3xl p-8 items-center"
+        <View
+          className="w-full max-w-md bg-card rounded-3xl p-8 items-center"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 4 },
@@ -184,33 +140,27 @@ export default function LessonReady() {
             {status === "loading"
               ? "Loading your lesson..."
               : status === "empty"
-              ? "No flashcards found for this lesson"
-              : status === "error"
-              ? "Unable to load lesson"
-              : "Your lesson is ready"}
+                ? "No lessons found for this category"
+                : status === "error"
+                  ? "Unable to load lesson"
+                  : "Your lesson is ready"}
           </Text>
 
           <View className="mb-8 items-center gap-1">
             <Text className="text-muted">
-              Language:{" "}
-              <Text className="text-foreground font-medium">
-                {languageLabel}
-              </Text>
+              Language: <Text className="text-foreground font-medium">{languageLabel}</Text>
             </Text>
             <Text className="text-muted">
-              Topic:{" "}
-              <Text className="text-foreground font-medium">
-                {topicTitle ?? topic}
-              </Text>
+              Topic: <Text className="text-foreground font-medium">{topicTitle ?? topic}</Text>
             </Text>
-            {status === "ready" && (
+            {status === "ready" ? (
               <Text className="text-muted">{cardCount} phrases loaded</Text>
-            )}
-            {status === "empty" && (
+            ) : null}
+            {status === "empty" ? (
               <Text className="text-muted text-center">
-                No flashcards found for this lesson.
+                No lessons were returned for this category.
               </Text>
-            )}
+            ) : null}
             {status === "error" && errorMessage ? (
               <Text className="text-muted text-center">{errorMessage}</Text>
             ) : null}
