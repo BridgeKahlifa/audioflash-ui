@@ -30,12 +30,51 @@ npm install
 npx expo start         # scan QR with Expo Go
 ```
 
+## Docker
+
+Docker support is set up for the Expo web target and for a reproducible Expo dev environment.
+It does not build native iOS or Android binaries; keep using Expo Go or EAS for that.
+
+```bash
+# Expo dev server in Docker
+cp .env.example .env
+docker compose up app
+```
+
+The Expo web dev server is exposed on `http://localhost:8081`.
+
+```bash
+# Production-style static web build
+cp .env.example .env
+docker compose up --build web
+```
+
+The exported web app is served on `http://localhost:8080`.
+
+If you prefer plain Docker commands:
+
+```bash
+docker build --target dev -t audioflash-dev .
+docker run --rm -p 8081:8081 --env-file .env audioflash-dev
+
+docker build \
+  --target production \
+  --build-arg EXPO_PUBLIC_OPENROUTER_API_KEY=your_key \
+  --build-arg EXPO_PUBLIC_AI_MODEL=anthropic/claude-haiku-4-5 \
+  --build-arg EXPO_PUBLIC_SUPABASE_URL=your_url \
+  --build-arg EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key \
+  -t audioflash-web .
+docker run --rm -p 8080:80 audioflash-web
+```
+
 ## Configuration
 
 | Variable | Description |
 |---|---|
 | `EXPO_PUBLIC_OPENROUTER_API_KEY` | Your [OpenRouter](https://openrouter.ai) API key |
 | `EXPO_PUBLIC_AI_MODEL` | Model to use, e.g. `anthropic/claude-haiku-4-5` |
+| `EXPO_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Your Supabase publishable/anon key |
 
 Swap models in `.env` any time — no code changes needed.
 

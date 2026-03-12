@@ -18,12 +18,13 @@ import { createSession, fetchSessions, fetchSessionStats } from "../../lib/api";
 import { setCachedSessions, setCachedSessionStats } from "../../lib/storage";
 
 export default function FlashcardPractice() {
-  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiLoaded } = useLocalSearchParams<{
+  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded } = useLocalSearchParams<{
     topic: string;
     topicTitle?: string;
     language?: string;
     languageLabel?: string;
     apiLanguageId?: string;
+    apiCategoryId?: string;
     apiLoaded?: string;
   }>();
   const { profile, session } = useAuth();
@@ -119,8 +120,8 @@ export default function FlashcardPractice() {
       await saveCompletedSession({
         topic,
         topicTitle: topicTitle ?? topic,
-        language: language,
-        languageLabel: languageLabel,
+        language: language ?? "",
+        languageLabel: languageLabel ?? "",
         cards: newResults,
       });
 
@@ -172,6 +173,7 @@ export default function FlashcardPractice() {
                   language: language,
                   languageLabel: languageLabel,
                   apiLanguageId: apiLanguageId ?? "",
+                  apiCategoryId: apiCategoryId ?? "",
                   apiLoaded: apiLoaded ?? "",
                 },
               })
@@ -212,13 +214,6 @@ export default function FlashcardPractice() {
               elevation: 4,
             }}
           >
-            <Text className="text-4xl text-foreground text-center mb-3">
-              {currentCard.chinese}
-            </Text>
-            <Text className="text-xl text-muted text-center mb-8">
-              {currentCard.pinyin}
-            </Text>
-
             <Pressable
               onPress={() => speakChinese(currentCard.chinese, profile?.audio_speed ?? 1.0)}
               className="w-20 h-20 bg-primary rounded-full items-center justify-center"
@@ -235,6 +230,12 @@ export default function FlashcardPractice() {
 
             {showAnswer && (
               <View className="mt-8 items-center">
+                <Text className="text-4xl text-foreground text-center mb-3">
+                  {currentCard.chinese}
+                </Text>
+                <Text className="text-xl text-muted text-center mb-6">
+                  {currentCard.pinyin}
+                </Text>
                 <Text className="text-xl text-foreground text-center">
                   {currentCard.english}
                 </Text>

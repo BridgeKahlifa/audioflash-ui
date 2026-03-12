@@ -54,7 +54,7 @@ export default function Categories() {
             title: category.name,
             description: "Real-world practice",
             icon: icons[index % icons.length],
-            apiCategoryId: category.id,
+            apiCategoryId: String(category.id),
           }))
         );
       } catch {

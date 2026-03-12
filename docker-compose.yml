@@ -1,0 +1,27 @@
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    env_file:
+      - .env
+    ports:
+      - "8082:8081"
+      - "19000:19000"
+      - "19001:19001"
+      - "19002:19002"
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  web:
+    build:
+      context: .
+      target: production
+      args:
+        EXPO_PUBLIC_OPENROUTER_API_KEY: ${EXPO_PUBLIC_OPENROUTER_API_KEY:-}
+        EXPO_PUBLIC_AI_MODEL: ${EXPO_PUBLIC_AI_MODEL:-anthropic/claude-haiku-4-5}
+        EXPO_PUBLIC_SUPABASE_URL: ${EXPO_PUBLIC_SUPABASE_URL:-}
+        EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
+    ports:
+      - "8083:80"

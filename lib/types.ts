@@ -1,5 +1,5 @@
 export interface Flashcard {
-  id: number;
+  id: string | number;
   dbId?: string; // UUID from the DB, present when card has been persisted
   chinese: string;
   pinyin: string;
@@ -21,7 +21,7 @@ export interface ProgressData {
 }
 
 export interface SessionCardResult {
-  cardId: number;
+  cardId: string | number;
   chinese: string;
   pinyin: string;
   english: string;
