@@ -110,6 +110,41 @@ export interface paths {
         patch: operations["update_profile_api_profile_patch"];
         trace?: never;
     };
+    "/api/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sessions */
+        get: operations["list_sessions_api_sessions_get"];
+        put?: never;
+        /** Create Session */
+        post: operations["create_session_api_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stats */
+        get: operations["get_stats_api_sessions_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -173,6 +208,21 @@ export interface components {
         CreateLanguageRequest: {
             /** Language */
             language: string;
+        };
+        /** CreateSessionRequest */
+        CreateSessionRequest: {
+            /** Topic Title */
+            topic_title?: string | null;
+            /** Language Label */
+            language_label?: string | null;
+            /** Category Id */
+            category_id?: string | null;
+            /** Cards Attempted */
+            cards_attempted: number;
+            /** Cards Correct */
+            cards_correct: number;
+            /** Completed At */
+            completed_at?: string | null;
         };
         /** FlashcardResponse */
         FlashcardResponse: {
@@ -255,6 +305,33 @@ export interface components {
             notification_time: string;
             /** Streak Count */
             streak_count: number;
+        };
+        /** SessionResponse */
+        SessionResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Topic Title */
+            topic_title: string | null;
+            /** Language Label */
+            language_label: string | null;
+            /** Cards Attempted */
+            cards_attempted: number;
+            /** Cards Correct */
+            cards_correct: number;
+            /** Completed At */
+            completed_at: string | null;
+        };
+        /** SessionStatsResponse */
+        SessionStatsResponse: {
+            /** Total Cards */
+            total_cards: number;
+            /** Total Correct */
+            total_correct: number;
+            /** Streak */
+            streak: number;
         };
         /** UpdateProfileRequest */
         UpdateProfileRequest: {
@@ -558,6 +635,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_api_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"][];
+                };
+            };
+        };
+    };
+    create_session_api_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stats_api_sessions_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionStatsResponse"];
                 };
             };
         };

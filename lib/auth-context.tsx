@@ -2,11 +2,17 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { Passkey, PasskeyCreateResult, PasskeyGetResult } from "react-native-passkey";
 import { supabase } from "./supabase";
+import { ApiProfile, ApiUpdateProfile, fetchProfile, updateProfile } from "./api";
+import { getCachedProfile, setCachedProfile, clearCachedProfile } from "./storage";
 
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  // Profile
+  profile: ApiProfile | null;
+  profileLoading: boolean;
+  updateProfileData: (updates: ApiUpdateProfile) => Promise<{ error: string | null }>;
   // OTP flow
   sendOtp: (email: string) => Promise<{ error: string | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
@@ -24,6 +30,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [passkeySupported, setPasskeySupported] = useState(false);
+  const [profile, setProfile] = useState<ApiProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  // Stale-while-revalidate: show cached profile instantly, then refresh from API in background
+  useEffect(() => {
+    if (!session?.access_token) {
+      setProfile(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadProfile() {
+      const cached = await getCachedProfile();
+      if (cached) {
+        if (!cancelled) setProfile(cached);
+      } else {
+        if (!cancelled) setProfileLoading(true);
+      }
+
+      try {
+        const fresh = await fetchProfile(session!.access_token);
+        if (!cancelled) {
+          setProfile(fresh);
+          setCachedProfile(fresh);
+        }
+      } catch {
+        // Keep showing cached data if API fails
+      } finally {
+        if (!cancelled) setProfileLoading(false);
+      }
+    }
+
+    loadProfile();
+    return () => { cancelled = true; };
+  }, [session?.user?.id]); // re-fetch only if the logged-in user changes, not on token refresh
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -89,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signInWithPasskey() {
     try {
-      const { data, error } = await supabase.auth.signInAnonymously();
+      const { error } = await supabase.auth.signInAnonymously();
       if (error) return { error: error.message };
 
       // Get MFA factors and find webauthn
@@ -122,8 +164,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function updateProfileData(updates: ApiUpdateProfile) {
+    if (!session?.access_token) return { error: "Not authenticated" };
+
+    // Optimistic update
+    const previous = profile;
+    if (previous) {
+      const optimistic = { ...previous, ...updates } as ApiProfile;
+      setProfile(optimistic);
+    }
+
+    try {
+      const updated = await updateProfile(session.access_token, updates);
+      setProfile(updated);
+      setCachedProfile(updated);
+      return { error: null };
+    } catch (e: any) {
+      // Revert on failure
+      setProfile(previous);
+      return { error: e?.message ?? "Failed to update profile" };
+    }
+  }
+
   async function signOut() {
-    await supabase.auth.signOut();
+    await Promise.all([supabase.auth.signOut(), clearCachedProfile()]);
   }
 
   return (
@@ -131,6 +195,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       user: session?.user ?? null,
       loading,
+      profile,
+      profileLoading,
+      updateProfileData,
       sendOtp,
       verifyOtp,
       passkeySupported,
