@@ -4,8 +4,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { generateFlashcards } from "../../lib/ai";
-import { getSettings, setCurrentCards } from "../../lib/storage";
-import { fetchLessonCards } from "../../lib/api";
+import { setCurrentCards } from "../../lib/storage";
+import { fetchLessonCards, bulkCreateFlashcards } from "../../lib/api";
+import { useAuth } from "../../lib/auth-context";
 
 export default function LessonReady() {
   const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded } = useLocalSearchParams<{
@@ -18,36 +19,55 @@ export default function LessonReady() {
     apiLoaded?: string;
   }>();
 
+  const { profile } = useAuth();
   const [status, setStatus] = useState<"generating" | "ready" | "error">("generating");
   const [cardCount, setCardCount] = useState(0);
 
   useEffect(() => {
     async function generate() {
       try {
-        const settings = await getSettings();
+        const cardsPerSession = profile?.cards_per_session ?? 20;
         let cards = await generateFlashcards(
           topic,
           topicTitle ?? topic,
-          settings.cardsPerSession
+          cardsPerSession
         );
 
         if (apiLanguageId && apiCategoryId) {
-          const categoryIdNum = Number(apiCategoryId);
-          if (Number.isNaN(categoryIdNum)) {
-            throw new Error("Invalid category id");
-          }
           const lessonCards = await fetchLessonCards({
             languageId: apiLanguageId,
-            categoryId: categoryIdNum,
-            limit: settings.cardsPerSession,
+            categoryId: apiCategoryId,
+            limit: cardsPerSession,
           });
           if (lessonCards.length > 0) {
+            // Use curated API cards — they already have DB IDs
             cards = lessonCards.map((card, index) => ({
               id: index + 1,
+              dbId: String(card.id),
               chinese: card.source_text,
               pinyin: card.romanization ?? "",
               english: card.translation,
             }));
+          } else if (cards.length > 0) {
+            // No curated cards — persist AI-generated cards to the DB
+            try {
+              const saved = await bulkCreateFlashcards(
+                cards.map((card) => ({
+                  language_id: apiLanguageId,
+                  category_id: apiCategoryId,
+                  source_text: card.chinese,
+                  romanization: card.pinyin,
+                  translation: card.english,
+                  difficulty: 1,
+                }))
+              );
+              cards = cards.map((card, i) => ({
+                ...card,
+                dbId: saved[i] ? String(saved[i].id) : undefined,
+              }));
+            } catch {
+              // Non-critical — cards still usable without DB IDs
+            }
           }
         }
         await setCurrentCards(topic, cards);

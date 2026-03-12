@@ -8,6 +8,7 @@ import {
   SessionCardResult,
   SessionHistoryItem,
 } from "./types";
+import type { ApiProfile, ApiSession, ApiSessionStats } from "./api";
 
 const KEYS = {
   PROGRESS: "audioflash:progress",
@@ -16,7 +17,69 @@ const KEYS = {
   LAST_SESSION: "audioflash:last-session",
   REVIEW_QUEUE: "audioflash:review-queue",
   SETTINGS: "audioflash:settings",
+  PROFILE: "audioflash:profile",
+  SESSIONS: "audioflash:sessions",
+  SESSION_STATS: "audioflash:session-stats",
 } as const;
+
+export async function getCachedProfile(): Promise<ApiProfile | null> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.PROFILE);
+    return raw ? (JSON.parse(raw) as ApiProfile) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setCachedProfile(profile: ApiProfile): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(profile));
+  } catch {
+    // Non-critical
+  }
+}
+
+export async function clearCachedProfile(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(KEYS.PROFILE);
+  } catch {
+    // Non-critical
+  }
+}
+
+export async function getCachedSessions(): Promise<ApiSession[] | null> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.SESSIONS);
+    return raw ? (JSON.parse(raw) as ApiSession[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setCachedSessions(sessions: ApiSession[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.SESSIONS, JSON.stringify(sessions));
+  } catch {
+    // Non-critical
+  }
+}
+
+export async function getCachedSessionStats(): Promise<ApiSessionStats | null> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.SESSION_STATS);
+    return raw ? (JSON.parse(raw) as ApiSessionStats) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setCachedSessionStats(stats: ApiSessionStats): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.SESSION_STATS, JSON.stringify(stats));
+  } catch {
+    // Non-critical
+  }
+}
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);

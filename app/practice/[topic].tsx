@@ -13,6 +13,9 @@ import { Flashcard, SessionCardResult } from "../../lib/types";
 import { getCurrentCards } from "../../lib/storage";
 import { saveCompletedSession } from "../../lib/storage";
 import { speakChinese } from "../../lib/audio";
+import { useAuth } from "../../lib/auth-context";
+import { createSession, fetchSessions, fetchSessionStats } from "../../lib/api";
+import { setCachedSessions, setCachedSessionStats } from "../../lib/storage";
 
 export default function FlashcardPractice() {
   const { topic, topicTitle, language, languageLabel, apiLanguageId, apiLoaded } = useLocalSearchParams<{
@@ -23,6 +26,7 @@ export default function FlashcardPractice() {
     apiLanguageId?: string;
     apiLoaded?: string;
   }>();
+  const { profile, session } = useAuth();
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -111,6 +115,7 @@ export default function FlashcardPractice() {
       setCurrentIndex((i) => i + 1);
       setShowAnswer(false);
     } else {
+      const correct = newResults.filter((r) => r.knew).length;
       await saveCompletedSession({
         topic,
         topicTitle: topicTitle ?? topic,
@@ -118,6 +123,28 @@ export default function FlashcardPractice() {
         languageLabel: languageLabel,
         cards: newResults,
       });
+
+      // Sync to API in the background — don't block navigation
+      if (session?.access_token) {
+        const token = session.access_token;
+        Promise.all([
+          createSession(token, {
+            topic_title: topicTitle ?? topic,
+            language_label: languageLabel,
+            cards_attempted: newResults.length,
+            cards_correct: correct,
+            completed_at: new Date().toISOString(),
+          }),
+          fetchSessions(token),
+          fetchSessionStats(token),
+        ]).then(([, freshSessions, freshStats]) => {
+          setCachedSessions(freshSessions);
+          setCachedSessionStats(freshStats);
+        }).catch(() => {
+          // Non-critical — local storage still has the data
+        });
+      }
+
       router.replace("/session-summary");
     }
   }
@@ -193,7 +220,7 @@ export default function FlashcardPractice() {
             </Text>
 
             <Pressable
-              onPress={() => speakChinese(currentCard.chinese)}
+              onPress={() => speakChinese(currentCard.chinese, profile?.audio_speed ?? 1.0)}
               className="w-20 h-20 bg-primary rounded-full items-center justify-center"
               style={{
                 shadowColor: "#FF6B4A",

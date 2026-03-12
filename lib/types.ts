@@ -1,5 +1,6 @@
 export interface Flashcard {
   id: number;
+  dbId?: string; // UUID from the DB, present when card has been persisted
   chinese: string;
   pinyin: string;
   english: string;
