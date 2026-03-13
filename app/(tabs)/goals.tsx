@@ -99,12 +99,7 @@ export default function GoalsScreen() {
             </Pressable>
           </View>
 
-          <Pressable
-            onPress={() => router.push("/settings")}
-            className="py-4 rounded-2xl items-center bg-secondary"
-          >
-            <Text className="text-foreground font-medium">Open Settings</Text>
-          </Pressable>
+
         </ScrollView>
       </View>
     </SafeAreaView>

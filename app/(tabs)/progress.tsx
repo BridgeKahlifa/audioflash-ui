@@ -99,20 +99,6 @@ export default function ProgressDashboard() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
         >
-          <View className="flex-row gap-3 mb-4">
-            <Pressable
-              onPress={() => router.push("/goals")}
-              className="flex-1 bg-card border border-border rounded-xl px-4 py-3"
-            >
-              <Text className="text-foreground font-medium text-center">Goals</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/session-summary")}
-              className="flex-1 bg-card border border-border rounded-xl px-4 py-3"
-            >
-              <Text className="text-foreground font-medium text-center">Last Summary</Text>
-            </Pressable>
-          </View>
 
           {/* Streak banner */}
           <View className="rounded-3xl p-6 mb-4" style={{ backgroundColor: "#FF6B4A" }}>

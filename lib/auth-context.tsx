@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { Passkey, PasskeyCreateResult, PasskeyGetResult } from "react-native-passkey";
 import { supabase } from "./supabase";
-import { ApiProfile, ApiUpdateProfile, fetchProfile, updateProfile } from "./api";
+import { ApiProfile, ApiUpdateProfile, fetchProfile, updateProfile, deleteAccount as apiDeleteAccount } from "./api";
 import { getCachedProfile, setCachedProfile, clearCachedProfile } from "./storage";
 
 interface AuthContextValue {
@@ -20,6 +20,8 @@ interface AuthContextValue {
   passkeySupported: boolean;
   registerPasskey: () => Promise<{ error: string | null }>;
   signInWithPasskey: () => Promise<{ error: string | null }>;
+  updateEmail: (email: string) => Promise<{ error: string | null }>;
+  deleteAccount: () => Promise<{ error: string | null }>;
   // Session
   signOut: () => Promise<void>;
 }
@@ -186,6 +188,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function updateEmail(email: string) {
+    const { error } = await supabase.auth.updateUser({ email });
+    if (error) return { error: error.message };
+    return { error: null };
+  }
+
+  async function deleteAccount() {
+    if (!session?.access_token) return { error: "Not authenticated" };
+    try {
+      await apiDeleteAccount(session.access_token);
+      await Promise.all([supabase.auth.signOut(), clearCachedProfile()]);
+      return { error: null };
+    } catch (e: any) {
+      return { error: e?.message ?? "Failed to delete account" };
+    }
+  }
+
   async function signOut() {
     await Promise.all([supabase.auth.signOut(), clearCachedProfile()]);
   }
@@ -198,6 +217,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       profileLoading,
       updateProfileData,
+      updateEmail,
+      deleteAccount,
       sendOtp,
       verifyOtp,
       passkeySupported,
