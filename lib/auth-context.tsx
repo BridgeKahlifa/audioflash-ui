@@ -194,6 +194,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   }
 
+  function getDeleteAccountErrorMessage(e: any): string {
+    // Log raw error for debugging/monitoring
+    console.error("deleteAccount error", e);
+
+    const raw = typeof e?.message === "string"
+      ? e.message
+      : typeof e === "string"
+        ? e
+        : "";
+
+    const message = raw.toLowerCase();
+
+    // Session/authentication issues
+    if (message.includes("401") || message.includes("unauthorized")) {
+      return "Your session has expired. Please sign in again.";
+    }
+
+    if (message.includes("403") || message.includes("forbidden")) {
+      return "You do not have permission to delete this account.";
+    }
+
+    // Network/offline issues
+    if (
+      message.includes("network") ||
+      message.includes("offline") ||
+      (typeof navigator !== "undefined" && navigator && (navigator as any).onLine === false)
+    ) {
+      return "You appear to be offline. Check your internet connection and try again.";
+    }
+
+    // Generic fallback
+    return "Something went wrong while deleting your account. Please try again.";
+  }
+
   async function deleteAccount() {
     if (!session?.access_token) return { error: "Not authenticated" };
     try {
@@ -201,7 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await Promise.all([supabase.auth.signOut(), clearCachedProfile()]);
       return { error: null };
     } catch (e: any) {
-      return { error: e?.message ?? "Failed to delete account" };
+      return { error: getDeleteAccountErrorMessage(e) };
     }
   }
 
