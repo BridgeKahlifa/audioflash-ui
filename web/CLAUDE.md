@@ -41,6 +41,10 @@ Copy `.env.example` to `.env.local` and fill in:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
+## Vercel / serverless gotchas
+
+- **Always `await` Resend calls** — do not use fire-and-forget (`.catch()` without `await`). Vercel shuts down the function immediately after the response is returned, so any unawaited async work is silently dropped.
+
 ## Conventions
 
 - Brand colors are pulled from `packages/shared/src/colors.ts` and mirrored in `tailwind.config.ts` — keep them in sync
