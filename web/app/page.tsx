@@ -5,49 +5,49 @@ import { useState, FormEvent } from "react";
 
 const features = [
   {
-    icon: "✨",
-    title: "AI-Generated Lessons",
+    icon: "🎧",
+    title: "Listening-First Flashcards",
     description:
-      "Pick any topic and get 20 flashcards instantly — crafted by AI around real conversations, not textbook phrases.",
-  },
-  {
-    icon: "🔊",
-    title: "Audio-First Learning",
-    description:
-      "Every card ships with high-quality audio. You hear and speak the language, not just read it off a page.",
+      "Train your ear with useful phrases and natural pacing so spoken language feels less overwhelming.",
   },
   {
     icon: "🔁",
-    title: "Spaced Repetition",
+    title: "Spaced Repetition Timing",
     description:
-      "Cards resurface at exactly the right interval so what you learn actually sticks long-term.",
+      "Review cards at the right moment so words and phrases move from short-term memory to recall you can use.",
+  },
+  {
+    icon: "🧠",
+    title: "Active Recall Practice",
+    description:
+      "Hear a prompt, answer from memory, then check yourself. This trains the skill you need in real conversations.",
   },
   {
     icon: "🔥",
-    title: "Daily Streaks",
+    title: "5-Minute Daily Sessions",
     description:
-      "Two-to-five minute sessions fit into any schedule. Build a habit, track your streak, stay motivated.",
+      "Short sessions make consistency realistic, which is what drives progress in language learning.",
   },
 ];
 
 const steps = [
   {
     number: "01",
-    title: "Pick your language & topic",
+    title: "Choose language and level",
     description:
-      "Choose from Mandarin, Spanish, Japanese, and more. Then select a real-world topic: Travel, Food, Dating, Business.",
+      "Start in Spanish, French, Japanese, or Mandarin and pick a level that matches where you are now.",
   },
   {
     number: "02",
-    title: "AI builds your lesson",
+    title: "Listen, then recall",
     description:
-      "In seconds, AudioFlash generates 20 flashcards with native-sounding audio tailored to your topic.",
+      "Play short audio prompts and pull the meaning from memory before you reveal the answer.",
   },
   {
     number: "03",
-    title: "Practice and progress",
+    title: "Review what matters most",
     description:
-      "Swipe through cards, tap to hear audio, mark what you know. Your stats and streak update automatically.",
+      "AudioFlash repeats weak cards on a smart schedule so your listening and recall keep improving.",
   },
 ];
 
@@ -56,7 +56,29 @@ const languages = [
   { flag: "🇪🇸", label: "Spanish", available: true },
   { flag: "🇯🇵", label: "Japanese", available: true },
   { flag: "🇫🇷", label: "French", available: true },
-  { flag: "🇰🇷", label: "Korean", available: false },
+];
+
+const faqs = [
+  {
+    question: "Who is AudioFlash for?",
+    answer:
+      "AudioFlash is for beginner to intermediate learners who can study vocabulary but still struggle to follow spoken language.",
+  },
+  {
+    question: "Which languages are in early access?",
+    answer:
+      "Spanish, French, Japanese, and Mandarin are first. Join the waitlist and pick your target language so we can prioritize invites.",
+  },
+  {
+    question: "Is this a full course?",
+    answer:
+      "No. AudioFlash is a focused practice tool for listening and recall speed. It works well on its own or alongside your main course app.",
+  },
+  {
+    question: "When will invites start?",
+    answer:
+      "We are rolling out early access in batches. Waitlist members get first notice and launch pricing details by email.",
+  },
 ];
 
 const mockLanguages = [
@@ -351,31 +373,36 @@ export default function HomePage() {
             <div className="inline-flex items-center gap-2 bg-accent rounded-full px-3 py-1.5 mb-6">
               <span className="text-xs">🚀</span>
               <span className="text-xs font-medium text-primary">
-                Now in early access — 4 languages available
+                Early access waitlist open for 4 launch languages
               </span>
             </div>
 
             <h1 className="text-5xl lg:text-6xl font-bold text-foreground tracking-tight leading-tight mb-6">
-              Master real
+              Turn vocabulary
               <br />
-              conversations,
+              into real
               <br />
-              <span className="text-primary">one audio card</span>
+              <span className="text-primary">listening comprehension</span>
               <br />
-              at a time.
+              faster.
             </h1>
 
             <p className="text-lg text-muted leading-relaxed mb-8 max-w-md mx-auto lg:mx-0">
-              AudioFlash uses AI to generate personalized flashcard lessons from
-              real-world topics. Practice with native-sounding audio and build
-              fluency in just 5 minutes a day.
+              Audio flashcards plus spaced repetition for Spanish, French,
+              Japanese, and Mandarin. Build faster recall and better listening in
+              five focused minutes a day.
             </p>
 
             <EmailForm variant="hero" />
 
-            <p className="text-xs text-muted mt-3 pl-1">
-              Free to join. No credit card needed.
-            </p>
+            <div className="mt-4 flex flex-col items-center lg:items-start gap-2">
+              <p className="text-xs text-muted pl-1">
+                Get early access, launch pricing updates, and your first study deck.
+              </p>
+              <a href="#how-it-works" className="text-sm font-medium text-primary hover:underline">
+                See how it works
+              </a>
+            </div>
           </div>
 
           {/* Right: phone mockup */}
@@ -390,11 +417,11 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-foreground tracking-tight mb-3">
-              Built for how you actually learn
+              Built for learners who want to understand spoken language
             </h2>
             <p className="text-muted max-w-md mx-auto">
-              Not another vocabulary list. AudioFlash focuses on listening,
-              speaking, and real-world usage.
+              AudioFlash trains the gap between recognizing words and recalling
+              them when you hear real speech.
             </p>
           </div>
 
@@ -423,13 +450,13 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="max-w-5xl mx-auto px-6 py-20">
+      <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-foreground tracking-tight mb-3">
-            From zero to lesson in seconds
+            How AudioFlash works
           </h2>
           <p className="text-muted max-w-sm mx-auto">
-            No curriculum to set up. No textbook to buy. Just pick and go.
+            Simple loop: listen, recall, review.
           </p>
         </div>
 
@@ -453,7 +480,7 @@ export default function HomePage() {
             Languages
           </h2>
           <p className="text-muted text-sm mb-8">
-            Practice in Mandarin, Spanish, Japanese, or French — Korean coming soon.
+            Early access is focused on Mandarin, Spanish, Japanese, and French.
           </p>
 
           <div className="flex flex-wrap justify-center gap-3">
@@ -472,12 +499,33 @@ export default function HomePage() {
                 >
                   {lang.label}
                 </span>
-                {!lang.available && (
-                  <span className="text-xs text-muted bg-secondary rounded-full px-2 py-0.5">
-                    Soon
-                  </span>
-                )}
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-5xl mx-auto px-6 py-20">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold text-foreground tracking-tight text-center mb-3">
+            Waitlist FAQ
+          </h2>
+          <p className="text-muted text-center mb-10">
+            Quick answers before you join.
+          </p>
+          <div className="space-y-3">
+            {faqs.map((faq) => (
+              <details
+                key={faq.question}
+                className="bg-white border border-border rounded-2xl px-5 py-4"
+              >
+                <summary className="cursor-pointer list-none font-semibold text-foreground">
+                  {faq.question}
+                </summary>
+                <p className="text-muted text-sm leading-relaxed mt-3">
+                  {faq.answer}
+                </p>
+              </details>
             ))}
           </div>
         </div>
@@ -493,11 +541,10 @@ export default function HomePage() {
       >
         <div className="max-w-2xl mx-auto px-6 text-center">
           <h2 className="text-4xl font-bold text-white tracking-tight mb-4">
-            Ready to start speaking?
+            Join early access before public launch
           </h2>
           <p className="text-white/80 mb-8 text-lg">
-            Join the waitlist and get early access when AudioFlash launches on
-            iOS and Android.
+            We are inviting waitlist members first across iOS and Android.
           </p>
 
           <div className="flex justify-center">
