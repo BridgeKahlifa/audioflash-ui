@@ -6,27 +6,46 @@ import { useState, FormEvent } from "react";
 const features = [
   {
     icon: "✨",
-    title: "AI-Generated Lessons",
+    title: "Your topic, your lesson",
     description:
-      "Pick any topic and get 20 flashcards instantly — crafted by AI around real conversations, not textbook phrases.",
+      "Pick anything — travel, food, dating, business — and get 20 audio flashcards built around it in seconds.",
   },
   {
     icon: "🔊",
-    title: "Audio-First Learning",
+    title: "Train your ear, not just your eyes",
     description:
-      "Every card ships with high-quality audio. You hear and speak the language, not just read it off a page.",
+      "Every card has audio so you hear the language the way it's actually spoken, not read it off a page.",
   },
   {
     icon: "🔁",
-    title: "Spaced Repetition",
+    title: "Progress that compounds",
     description:
-      "Cards resurface at exactly the right interval so what you learn actually sticks long-term.",
+      "Cards resurface at exactly the right interval — right before you'd forget — so what you learn actually sticks.",
   },
   {
     icon: "🔥",
-    title: "Daily Streaks",
+    title: "Habits that fit your life",
     description:
-      "Two-to-five minute sessions fit into any schedule. Build a habit, track your streak, stay motivated.",
+      "Two-to-five minute sessions are short enough to do every day. Build the streak, build the habit.",
+  },
+];
+
+const faqs = [
+  {
+    question: "Is AudioFlash good for complete beginners?",
+    answer: "Yes. Start with high-frequency everyday topics like greetings or food, and build from there at your own pace.",
+  },
+  {
+    question: "Can I use it alongside Duolingo or another app?",
+    answer: "Absolutely. AudioFlash complements reading or grammar-based apps by training the part they often skip: listening and recall.",
+  },
+  {
+    question: "How fast will I notice improvement?",
+    answer: "Most people notice faster listening recognition within the first couple weeks of consistent daily practice.",
+  },
+  {
+    question: "What languages are available right now?",
+    answer: "Mandarin, Spanish, Japanese, and French are live now. Korean is coming soon.",
   },
 ];
 
@@ -356,19 +375,17 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-5xl lg:text-6xl font-bold text-foreground tracking-tight leading-tight mb-6">
-              Master real
+              Learn the vocabulary
               <br />
-              conversations,
+              for your trip, your job,
               <br />
-              <span className="text-primary">one audio card</span>
-              <br />
-              at a time.
+              <span className="text-primary">your life.</span>
             </h1>
 
             <p className="text-lg text-muted leading-relaxed mb-8 max-w-md mx-auto lg:mx-0">
-              AudioFlash uses AI to generate personalized flashcard lessons from
-              real-world topics. Practice with native-sounding audio and build
-              fluency in just 5 minutes a day.
+              Pick a topic — travel, food, dating, business — and AudioFlash
+              builds you a 20-card audio lesson in seconds. Practice with spaced
+              repetition and actually train your ear, not just your memory.
             </p>
 
             <EmailForm variant="hero" />
@@ -392,9 +409,10 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold text-foreground tracking-tight mb-3">
               Built for how you actually learn
             </h2>
-            <p className="text-muted max-w-md mx-auto">
-              Not another vocabulary list. AudioFlash focuses on listening,
-              speaking, and real-world usage.
+            <p className="text-muted max-w-lg mx-auto">
+              Most language apps put you on their path — lessons in their order,
+              vocabulary they chose. AudioFlash works the other way: you pick
+              the topic, AI builds the lesson, audio trains your ear.
             </p>
           </div>
 
@@ -483,6 +501,23 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* FAQ */}
+      <section className="max-w-3xl mx-auto px-6 py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-foreground tracking-tight mb-3">
+            Common questions
+          </h2>
+        </div>
+        <div className="flex flex-col gap-6">
+          {faqs.map((faq) => (
+            <div key={faq.question} className="border-b border-border pb-6">
+              <h3 className="font-semibold text-foreground mb-2">{faq.question}</h3>
+              <p className="text-muted text-sm leading-relaxed">{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* CTA / Waitlist */}
       <section
         id="waitlist"
@@ -493,7 +528,7 @@ export default function HomePage() {
       >
         <div className="max-w-2xl mx-auto px-6 text-center">
           <h2 className="text-4xl font-bold text-white tracking-tight mb-4">
-            Ready to start speaking?
+            Ready to learn the vocabulary for your trip, your job, your life?
           </h2>
           <p className="text-white/80 mb-8 text-lg">
             Join the waitlist and get early access when AudioFlash launches on
