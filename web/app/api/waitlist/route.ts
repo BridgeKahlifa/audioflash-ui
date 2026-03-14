@@ -65,18 +65,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Send welcome email — fire and forget, don't fail the request if this errors
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ?? `https://${req.headers.get("host")}`;
   const link = unsubscribeUrl(normalized, baseUrl);
-  resend.emails
-    .send({
-      from: `${FROM_NAME} <${FROM_ADDRESS}>`,
-      to: normalized,
-      subject: "You're on the AudioFlash waitlist 🎧",
-      html: welcomeEmail(link),
-    })
-    .catch((err) => console.error("Welcome email error:", err));
+  const { error: emailError } = await resend.emails.send({
+    from: `${FROM_NAME} <${FROM_ADDRESS}>`,
+    to: normalized,
+    subject: "You're on the AudioFlash waitlist 🎧",
+    html: welcomeEmail(link),
+  });
+
+  if (emailError) console.error("Welcome email error:", emailError);
 
   return NextResponse.json({ success: true }, { status: 200 });
 }
