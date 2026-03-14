@@ -2,14 +2,20 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AudioFlash — Practice Real Conversations",
+  title: "Audio Flashcards for Language Learning (Hands-Free) | AudioFlash",
   description:
-    "AudioFlash uses AI to generate personalized audio flashcard lessons. Pick a topic, hear native-sounding audio, and build real conversational skills in minutes a day.",
+    "Learn a language with hands-free audio flashcards built on spaced repetition. Train listening and speaking recall in minutes a day with AudioFlash.",
   openGraph: {
-    title: "AudioFlash — Practice Real Conversations",
+    title: "Audio Flashcards for Language Learning (Hands-Free) | AudioFlash",
     description:
-      "AI-generated audio flashcards for real conversational language learning.",
+      "Hands-free audio flashcards built for listening comprehension, speaking recall, and short daily language practice.",
     type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Audio Flashcards for Language Learning (Hands-Free) | AudioFlash",
+    description:
+      "Hands-free audio flashcards built for listening comprehension, speaking recall, and short daily language practice.",
   },
 };
 

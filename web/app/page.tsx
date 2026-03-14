@@ -1,70 +1,181 @@
 "use client";
 
 import Image from "next/image";
-import { useState, FormEvent } from "react";
+import { FormEvent, useState } from "react";
 
-const features = [
-  {
-    icon: "✨",
-    title: "AI-Generated Lessons",
-    description:
-      "Pick any topic and get 20 flashcards instantly — crafted by AI around real conversations, not textbook phrases.",
-  },
-  {
-    icon: "🔊",
-    title: "Audio-First Learning",
-    description:
-      "Every card ships with high-quality audio. You hear and speak the language, not just read it off a page.",
-  },
-  {
-    icon: "🔁",
-    title: "Spaced Repetition",
-    description:
-      "Cards resurface at exactly the right interval so what you learn actually sticks long-term.",
-  },
-  {
-    icon: "🔥",
-    title: "Daily Streaks",
-    description:
-      "Two-to-five minute sessions fit into any schedule. Build a habit, track your streak, stay motivated.",
-  },
+const navLinks = [
+  { href: "#features", label: "Features" },
+  { href: "#how-it-works", label: "How It Works" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "#faq", label: "FAQ" },
+];
+
+const heroBullets = [
+  "Practice in five-minute sessions that fit real schedules.",
+  "Train listening and speaking recall without staring at your phone.",
+  "Use spaced repetition to make useful phrases stick longer.",
+];
+
+const painPoints = [
+  "You studied the words, but real speech still feels too fast.",
+  "You recognize phrases on a screen, then freeze when you need them out loud.",
+  "You do not need perfect study conditions to keep making progress.",
 ];
 
 const steps = [
   {
     number: "01",
-    title: "Pick your language & topic",
+    title: "Choose your language and goal",
     description:
-      "Choose from Mandarin, Spanish, Japanese, and more. Then select a real-world topic: Travel, Food, Dating, Business.",
+      "Start with practical listening and speaking practice built around the situations you actually care about.",
   },
   {
     number: "02",
-    title: "AI builds your lesson",
+    title: "Press play and practice hands-free",
     description:
-      "In seconds, AudioFlash generates 20 flashcards with native-sounding audio tailored to your topic.",
+      "Hear short, useful phrases while walking, commuting, cooking, or moving through your day.",
   },
   {
     number: "03",
-    title: "Practice and progress",
+    title: "Answer, repeat, and review",
     description:
-      "Swipe through cards, tap to hear audio, mark what you know. Your stats and streak update automatically.",
+      "Use quick recall checks and spaced reviews so phrases come back faster the next time you hear them.",
+  },
+];
+
+const features = [
+  {
+    icon: "01",
+    title: "Hands-free language practice",
+    description:
+      "Practice without staring at your phone, which makes AudioFlash easier to use during real life moments.",
+  },
+  {
+    icon: "02",
+    title: "Spaced repetition that adapts",
+    description:
+      "Review the phrases you are about to forget so progress builds instead of resetting every week.",
+  },
+  {
+    icon: "03",
+    title: "Active recall prompts",
+    description:
+      "Train the skill you need in conversation: hearing a phrase, pulling the meaning fast, and answering from memory.",
+  },
+  {
+    icon: "04",
+    title: "Listen-repeat confidence",
+    description:
+      "Build speaking comfort with short audio loops that help pronunciation feel more natural and less stressful.",
+  },
+  {
+    icon: "05",
+    title: "High-quality phrase audio",
+    description:
+      "Train your ear for natural rhythm and useful everyday language instead of isolated word lists.",
+  },
+  {
+    icon: "06",
+    title: "Micro-lessons for busy days",
+    description:
+      "Short sessions make it realistic to keep practicing even when your schedule is crowded.",
+  },
+  {
+    icon: "07",
+    title: "Built for listening and recall",
+    description:
+      "AudioFlash focuses on understanding spoken language and answering faster, not just tapping through screens.",
+  },
+  {
+    icon: "08",
+    title: "Progress you can feel",
+    description:
+      "Notice faster recognition, smoother recall, and less translation lag when speech starts moving quickly.",
+  },
+];
+
+const realLifeMoments = [
+  "Commute-friendly practice for walks, trains, and drives",
+  "Short sessions that fit between meetings, errands, and chores",
+  "An audio-first workflow that works better than screen-heavy review when your day is packed",
+];
+
+const faqs = [
+  {
+    question: "What are audio flashcards for language learning?",
+    answer:
+      "Audio flashcards train you through sound first. You hear a phrase, recall the meaning or response, and repeat it so listening and speaking get trained together.",
+  },
+  {
+    question: "How does spaced repetition help language learning?",
+    answer:
+      "Spaced repetition schedules reviews close to the point where you are likely to forget. That timing helps important words and phrases come back faster with less re-learning.",
+  },
+  {
+    question: "Is AudioFlash good for beginners?",
+    answer:
+      "Yes. Beginners can start with short, high-frequency phrases and build listening confidence before moving into faster material.",
+  },
+  {
+    question: "Can I use AudioFlash with another language app?",
+    answer:
+      "Yes. AudioFlash complements reading, grammar, and game-style apps by focusing on listening comprehension and speaking recall.",
+  },
+  {
+    question: "How quickly will I notice progress?",
+    answer:
+      "Most learners notice listening recognition improving first. With short, consistent practice, recall speed and speaking confidence usually follow.",
+  },
+  {
+    question: "Do I need long study sessions for AudioFlash to work?",
+    answer:
+      "No. AudioFlash is built for short, repeatable sessions, which makes five to ten minutes a day much easier to sustain.",
   },
 ];
 
 const languages = [
-  { flag: "🇨🇳", label: "Mandarin", available: true },
-  { flag: "🇪🇸", label: "Spanish", available: false },
-  { flag: "🇯🇵", label: "Japanese", available: false },
-  { flag: "🇫🇷", label: "French", available: false },
-  { flag: "🇰🇷", label: "Korean", available: false },
+  { label: "Mandarin", available: true },
+  { label: "Spanish", available: false },
+  { label: "Japanese", available: false },
+  { label: "French", available: false },
+  { label: "Korean", available: false },
 ];
+
+function BulletList({ items }: { items: string[] }) {
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div key={item} className="flex items-start gap-3">
+          <div className="mt-1.5 w-2 h-2 rounded-full bg-primary shrink-0" />
+          <p className="text-sm text-muted leading-relaxed">{item}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SectionHeading({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="text-center mb-12">
+      <h2 className="text-3xl font-bold text-foreground tracking-tight mb-3">
+        {title}
+      </h2>
+      <p className="text-muted max-w-2xl mx-auto">{description}</p>
+    </div>
+  );
+}
 
 function FlashcardMockup() {
   const [revealed, setRevealed] = useState(false);
 
   return (
     <div className="relative mx-auto" style={{ width: 300 }}>
-      {/* Phone shell */}
       <div
         className="relative bg-background rounded-[40px] overflow-hidden"
         style={{
@@ -74,10 +185,12 @@ function FlashcardMockup() {
             "0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.08)",
         }}
       >
-        {/* Status bar */}
         <div className="flex justify-between items-center px-6 pt-4 pb-2">
           <span className="text-xs font-semibold text-foreground">9:41</span>
-          <div className="w-20 h-5 bg-foreground rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-3" style={{ width: 80, height: 20 }} />
+          <div
+            className="w-20 h-5 bg-foreground rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-3"
+            style={{ width: 80, height: 20 }}
+          />
           <div className="flex gap-1 items-center">
             <div className="w-4 h-2.5 border border-foreground rounded-sm relative">
               <div className="absolute inset-0.5 right-1 bg-foreground rounded-sm" />
@@ -85,7 +198,6 @@ function FlashcardMockup() {
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="px-5 pt-2">
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs text-muted font-medium">Card 4 / 20</span>
@@ -96,7 +208,6 @@ function FlashcardMockup() {
           </div>
         </div>
 
-        {/* Flashcard */}
         <div className="px-4 pt-4">
           <div
             className="bg-card rounded-3xl p-5 flex flex-col items-center"
@@ -105,17 +216,14 @@ function FlashcardMockup() {
               minHeight: 280,
             }}
           >
-            {/* Chinese */}
             <p
               className="text-foreground font-semibold text-center leading-tight mb-2"
               style={{ fontSize: 32 }}
             >
-              厕所在哪里？
+              Where is the train station?
             </p>
-            {/* Pinyin */}
-            <p className="text-muted text-sm mb-6">cèsuǒ zài nǎlǐ</p>
+            <p className="text-muted text-sm mb-6">Short listening prompt</p>
 
-            {/* Play button */}
             <button
               className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-6 transition-transform active:scale-95"
               style={{
@@ -123,14 +231,13 @@ function FlashcardMockup() {
               }}
               aria-label="Play audio"
             >
-              <span style={{ fontSize: 24 }}>🔊</span>
+              <span className="text-white text-lg font-semibold">Play</span>
             </button>
 
-            {/* Reveal / English */}
             {revealed ? (
               <div className="bg-accent rounded-2xl px-4 py-3 w-full text-center">
                 <p className="text-foreground font-medium text-sm">
-                  Where is the bathroom?
+                  Recall the phrase fast, then repeat it out loud.
                 </p>
               </div>
             ) : (
@@ -138,36 +245,33 @@ function FlashcardMockup() {
                 onClick={() => setRevealed(true)}
                 className="bg-secondary rounded-2xl px-4 py-3 w-full text-center transition-colors hover:bg-accent"
               >
-                <p className="text-muted text-sm font-medium">Reveal Answer</p>
+                <p className="text-muted text-sm font-medium">Reveal Prompt</p>
               </button>
             )}
           </div>
         </div>
 
-        {/* Bottom buttons */}
         <div className="px-4 pt-4 flex gap-3">
           <button
             onClick={() => setRevealed(false)}
             className="flex-1 py-3 rounded-2xl bg-secondary text-muted text-sm font-semibold text-center transition-colors hover:bg-red-50 hover:text-red-500"
           >
-            Didn't Know
+            Review Again
           </button>
           <button
             onClick={() => setRevealed(false)}
             className="flex-1 py-3 rounded-2xl bg-primary text-white text-sm font-semibold text-center transition-colors"
             style={{ boxShadow: "0 4px 12px rgba(255,107,74,0.3)" }}
           >
-            I Knew It
+            I Know It
           </button>
         </div>
 
-        {/* Hint */}
         <p className="text-center text-xs text-muted mt-4">
-          Tap the buttons above to try it
+          Listen, recall, repeat, and keep moving
         </p>
       </div>
 
-      {/* Glow behind phone */}
       <div
         className="absolute -z-10 rounded-full blur-3xl opacity-30"
         style={{
@@ -223,13 +327,12 @@ function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
           variant === "hero" ? "bg-accent" : "bg-white/10"
         }`}
       >
-        <span className="text-xl">🎉</span>
         <div>
           <p className={`font-semibold text-sm ${variant === "cta" ? "text-white" : "text-foreground"}`}>
-            You&apos;re on the list!
+            You are on the list.
           </p>
           <p className={`text-xs mt-0.5 ${variant === "cta" ? "text-white/70" : "text-muted"}`}>
-            We&apos;ll email you when AudioFlash launches.
+            We will email you when AudioFlash opens up early access.
           </p>
         </div>
       </div>
@@ -257,7 +360,7 @@ function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
           className="rounded-2xl px-5 py-3.5 bg-primary text-white text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90 disabled:opacity-60"
           style={{ boxShadow: "0 4px 14px rgba(255,107,74,0.35)" }}
         >
-          {status === "loading" ? "..." : "Join Waitlist"}
+          {status === "loading" ? "..." : "Get Early Access"}
         </button>
       </div>
       {status === "error" && (
@@ -267,13 +370,32 @@ function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
   );
 }
 
+function FAQItem({
+  question,
+  answer,
+}: {
+  question: string;
+  answer: string;
+}) {
+  return (
+    <details className="group rounded-2xl border border-border bg-white p-5">
+      <summary className="cursor-pointer list-none font-semibold text-foreground pr-8 relative">
+        {question}
+        <span className="absolute right-0 top-0 text-muted transition-transform group-open:rotate-45">
+          +
+        </span>
+      </summary>
+      <p className="mt-3 text-sm leading-relaxed text-muted">{answer}</p>
+    </details>
+  );
+}
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Nav */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+          <a href="#" className="flex items-center gap-2 shrink-0">
             <Image
               src="/AudioFlashLogo.png"
               alt="AudioFlash logo"
@@ -285,6 +407,17 @@ export default function HomePage() {
             <span className="font-semibold text-foreground text-lg tracking-tight">
               AudioFlash
             </span>
+          </a>
+          <div className="hidden md:flex items-center gap-6">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
           <a
             href="#waitlist"
@@ -295,149 +428,292 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="max-w-5xl mx-auto px-6 pt-20 pb-16">
+      <section className="max-w-6xl mx-auto px-6 pt-20 pb-16">
         <div className="flex flex-col lg:flex-row items-center gap-16">
-          {/* Left: copy */}
           <div className="flex-1 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 bg-accent rounded-full px-3 py-1.5 mb-6">
-              <span className="text-xs">🚀</span>
               <span className="text-xs font-medium text-primary">
-                Now in early access — Mandarin available
+                Audio-first language practice for busy adults
               </span>
             </div>
 
             <h1 className="text-5xl lg:text-6xl font-bold text-foreground tracking-tight leading-tight mb-6">
-              Master real
+              Hands-Free Audio Flashcards
               <br />
-              conversations,
+              That Make Real
               <br />
-              <span className="text-primary">one audio card</span>
-              <br />
-              at a time.
+              Language Stick
             </h1>
 
-            <p className="text-lg text-muted leading-relaxed mb-8 max-w-md mx-auto lg:mx-0">
-              AudioFlash uses AI to generate personalized flashcard lessons from
-              real-world topics. Practice with native-sounding audio and build
-              fluency in just 5 minutes a day.
+            <p className="text-lg text-muted leading-relaxed mb-6 max-w-xl mx-auto lg:mx-0">
+              Learn with hands-free audio flashcards built for listening
+              comprehension and speaking recall. AudioFlash uses spaced
+              repetition to help useful phrases stick in minutes a day.
             </p>
 
-            <EmailForm variant="hero" />
+            <div className="mb-8 max-w-xl mx-auto lg:mx-0">
+              <BulletList items={heroBullets} />
+            </div>
 
-            <p className="text-xs text-muted mt-3 pl-1">
-              Free to join. No credit card needed.
-            </p>
+            <div className="flex flex-col sm:flex-row gap-3 mb-6 justify-center lg:justify-start">
+              <a
+                href="#waitlist"
+                className="rounded-2xl px-5 py-3.5 bg-primary text-white text-sm font-semibold whitespace-nowrap text-center transition-opacity hover:opacity-90"
+                style={{ boxShadow: "0 4px 14px rgba(255,107,74,0.35)" }}
+              >
+                Start Free
+              </a>
+              <a
+                href="#how-it-works"
+                className="rounded-2xl px-5 py-3.5 border border-border text-foreground text-sm font-semibold whitespace-nowrap text-center transition-colors hover:bg-secondary"
+              >
+                See How It Works
+              </a>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-3 text-left">
+              {[
+                "Built for short daily practice",
+                "Designed around spaced repetition",
+                "Made for listening and speaking recall",
+              ].map((item) => (
+                <div key={item} className="rounded-2xl bg-white border border-border px-4 py-3">
+                  <p className="text-xs font-medium text-foreground">{item}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Right: phone mockup */}
           <div className="flex-shrink-0">
             <FlashcardMockup />
           </div>
         </div>
       </section>
 
-      {/* Features */}
       <section className="bg-white border-y border-border py-20">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground tracking-tight mb-3">
-              Built for how you actually learn
+        <div className="max-w-6xl mx-auto px-6 grid lg:grid-cols-[0.8fr_1.2fr] gap-12 items-center">
+          <div>
+            <p className="text-sm font-semibold text-primary mb-3">
+              Problem to solve
+            </p>
+            <h2 className="text-3xl font-bold text-foreground tracking-tight mb-4">
+              Studying is not the same as hearing and answering real speech
             </h2>
-            <p className="text-muted max-w-md mx-auto">
-              Not another vocabulary list. AudioFlash focuses on listening,
-              speaking, and real-world usage.
+            <p className="text-muted leading-relaxed">
+              Many language apps make you better at recognizing words on a
+              screen. AudioFlash is built for the moment someone speaks to you
+              at full speed and you need to understand, recall, and respond.
             </p>
           </div>
+          <div className="bg-background rounded-3xl p-6 border border-border">
+            <BulletList items={painPoints} />
+          </div>
+        </div>
+      </section>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="bg-background rounded-2xl p-5"
-                style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
-              >
-                <div
-                  className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-xl mb-4"
-                >
-                  {feature.icon}
+      <section className="max-w-6xl mx-auto px-6 py-20">
+        <SectionHeading
+          title="Why audio flashcards work for language learning"
+          description="Audio-first practice trains the skill you use in real life: hearing meaning through sound and answering without pausing to translate."
+        />
+        <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-10 items-center">
+          <div>
+            <p className="text-lg text-muted leading-relaxed mb-5">
+              Most apps are built for tapping and reading. That can help you
+              recognize vocabulary on a screen, but real conversations move
+              through sound. Audio flashcards train you to hear a phrase, pull
+              the meaning quickly, and answer without panic.
+            </p>
+            <p className="text-lg text-muted leading-relaxed">
+              AudioFlash pairs that audio-first workflow with spaced
+              repetition, so you review important words and phrases close to the
+              moment they would otherwise fade. That helps listening
+              comprehension, recall speed, and speaking confidence improve
+              together.
+            </p>
+          </div>
+          <div className="bg-white rounded-3xl p-6 border border-border">
+            <p className="text-sm font-semibold text-foreground mb-4">
+              Listen - Recall - Repeat - Review
+            </p>
+            <div className="space-y-3">
+              {[
+                "Hear a useful phrase in context",
+                "Pull the meaning or response from memory",
+                "Repeat it until it feels more natural",
+                "Review it again at the right interval",
+              ].map((item) => (
+                <div key={item} className="rounded-2xl bg-background px-4 py-3 text-sm text-muted">
+                  {item}
                 </div>
-                <h3 className="font-semibold text-foreground text-sm mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-muted text-sm leading-relaxed">
-                  {feature.description}
-                </p>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="how-it-works" className="bg-white border-y border-border py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <SectionHeading
+            title="How it works"
+            description="Choose a language, press play, and build listening and speaking recall through short repeated practice."
+          />
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {steps.map((step) => (
+              <div key={step.number} className="relative">
+                <div className="text-5xl font-bold text-border mb-4 leading-none">
+                  {step.number}
+                </div>
+                <h3 className="font-semibold text-foreground mb-2">{step.title}</h3>
+                <p className="text-muted text-sm leading-relaxed">{step.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="max-w-5xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-foreground tracking-tight mb-3">
-            From zero to lesson in seconds
-          </h2>
-          <p className="text-muted max-w-sm mx-auto">
-            No curriculum to set up. No textbook to buy. Just pick and go.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {steps.map((step) => (
-            <div key={step.number} className="relative">
-              <div className="text-5xl font-bold text-border mb-4 leading-none">
-                {step.number}
+      <section id="features" className="max-w-6xl mx-auto px-6 py-20">
+        <SectionHeading
+          title="What you get in AudioFlash"
+          description="Feature copy centered on the SEO position the report recommended: hands-free audio flashcards for listening and speaking recall."
+        />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {features.map((feature) => (
+            <div
+              key={feature.title}
+              className="bg-white rounded-2xl p-5 border border-border"
+              style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+            >
+              <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-sm font-semibold text-primary mb-4">
+                {feature.icon}
               </div>
-              <h3 className="font-semibold text-foreground mb-2">{step.title}</h3>
-              <p className="text-muted text-sm leading-relaxed">{step.description}</p>
+              <h3 className="font-semibold text-foreground text-sm mb-2">
+                {feature.title}
+              </h3>
+              <p className="text-muted text-sm leading-relaxed">
+                {feature.description}
+              </p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Languages */}
       <section className="bg-white border-y border-border py-16">
-        <div className="max-w-5xl mx-auto px-6 text-center">
-          <h2 className="text-2xl font-bold text-foreground tracking-tight mb-2">
-            Languages
-          </h2>
-          <p className="text-muted text-sm mb-8">
-            Starting with Mandarin Chinese — more coming soon.
-          </p>
-
-          <div className="flex flex-wrap justify-center gap-3">
-            {languages.map((lang) => (
-              <div
-                key={lang.label}
-                className={`flex items-center gap-2.5 rounded-2xl px-4 py-2.5 border ${
-                  lang.available
-                    ? "bg-accent border-primary/30"
-                    : "bg-background border-border opacity-50"
-                }`}
-              >
-                <span className="text-xl">{lang.flag}</span>
-                <span
-                  className={`text-sm font-medium ${
-                    lang.available ? "text-foreground" : "text-muted"
-                  }`}
-                >
-                  {lang.label}
-                </span>
-                {!lang.available && (
-                  <span className="text-xs text-muted bg-secondary rounded-full px-2 py-0.5">
-                    Soon
-                  </span>
-                )}
-              </div>
-            ))}
+        <div className="max-w-6xl mx-auto px-6">
+          <SectionHeading
+            title="Built for real life"
+            description="AudioFlash is designed for the moments when you can realistically practice, not just when you can sit and stare at a screen."
+          />
+          <div className="grid lg:grid-cols-2 gap-8 items-start">
+            <div className="bg-background rounded-3xl p-6 border border-border">
+              <BulletList items={realLifeMoments} />
+            </div>
+            <div className="bg-accent rounded-3xl p-6 border border-primary/10">
+              <h3 className="font-semibold text-foreground text-lg mb-4">
+                Why that matters
+              </h3>
+              <p className="text-muted leading-relaxed">
+                The easiest language routine to keep is the one that fits into
+                your day. AudioFlash is built for quick, repeatable practice so
+                you can keep building listening fluency and speaking recall
+                without needing perfect study conditions.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* CTA / Waitlist */}
+      <section className="max-w-6xl mx-auto px-6 py-16">
+        <SectionHeading
+          title="Languages"
+          description="Mandarin is first. More languages are planned as AudioFlash expands."
+        />
+
+        <div className="flex flex-wrap justify-center gap-3">
+          {languages.map((lang) => (
+            <div
+              key={lang.label}
+              className={`flex items-center gap-2.5 rounded-2xl px-4 py-2.5 border ${
+                lang.available
+                  ? "bg-accent border-primary/30"
+                  : "bg-white border-border opacity-60"
+              }`}
+            >
+              <span
+                className={`text-sm font-medium ${
+                  lang.available ? "text-foreground" : "text-muted"
+                }`}
+              >
+                {lang.label}
+              </span>
+              {!lang.available && (
+                <span className="text-xs text-muted bg-secondary rounded-full px-2 py-0.5">
+                  Soon
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="pricing" className="bg-white border-y border-border py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <SectionHeading
+            title="Pricing"
+            description="Clear plan framing keeps expectations realistic now and makes room for exact pricing details later."
+          />
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="rounded-3xl border border-border bg-background p-6">
+              <p className="text-sm font-semibold text-primary mb-2">Free</p>
+              <h3 className="text-2xl font-bold text-foreground mb-3">
+                Start the habit before you upgrade
+              </h3>
+              <p className="text-muted text-sm leading-relaxed mb-5">
+                Try audio flashcards, test the workflow, and see how short daily
+                listening practice fits your routine.
+              </p>
+              <BulletList
+                items={[
+                  "Try the core audio flashcard workflow",
+                  "Build a five-minute practice habit",
+                  "See if the method clicks before committing",
+                ]}
+              />
+            </div>
+            <div className="rounded-3xl border border-primary/20 bg-accent p-6">
+              <p className="text-sm font-semibold text-primary mb-2">Pro</p>
+              <h3 className="text-2xl font-bold text-foreground mb-3">
+                Go deeper with more practice and smarter review
+              </h3>
+              <p className="text-muted text-sm leading-relaxed mb-5">
+                Unlock more decks, more repetition, and more ways to make
+                listening and speaking practice part of everyday life.
+              </p>
+              <BulletList
+                items={[
+                  "Expanded deck access",
+                  "More advanced review flow",
+                  "Premium practice features as AudioFlash grows",
+                ]}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" className="max-w-6xl mx-auto px-6 py-20">
+        <SectionHeading
+          title="FAQ"
+          description="These questions target the exact objections and long-tail searches the report recommended capturing on-page."
+        />
+        <div className="grid gap-4 max-w-4xl mx-auto">
+          {faqs.map((faq) => (
+            <FAQItem key={faq.question} question={faq.question} answer={faq.answer} />
+          ))}
+        </div>
+      </section>
+
       <section
         id="waitlist"
         className="py-24"
@@ -447,36 +723,39 @@ export default function HomePage() {
       >
         <div className="max-w-2xl mx-auto px-6 text-center">
           <h2 className="text-4xl font-bold text-white tracking-tight mb-4">
-            Ready to start speaking?
+            Start your first deck with AudioFlash
           </h2>
           <p className="text-white/80 mb-8 text-lg">
-            Join the waitlist and get early access when AudioFlash launches on
-            iOS and Android.
+            Get early access to hands-free audio flashcards built for listening
+            comprehension, speaking recall, and short daily practice.
           </p>
 
           <div className="flex justify-center">
             <EmailForm variant="cta" />
           </div>
 
-          <p className="text-white/50 text-xs mt-4">
-            We respect your inbox. No spam, ever.
+          <p className="text-white/60 text-xs mt-4">
+            Join free. We will email you when early access opens.
           </p>
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-border py-8">
-        <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-xs">
-              A
-            </div>
+            <Image
+              src="/AudioFlashLogo.png"
+              alt="AudioFlash logo"
+              width={24}
+              height={24}
+              className="w-6 h-6 object-contain"
+            />
             <span className="font-semibold text-foreground text-sm">
               AudioFlash
             </span>
           </div>
           <p className="text-muted text-xs">
-            © {new Date().getFullYear()} AudioFlash. All rights reserved.
+            Audio flashcards for language learning, built for listening and speaking recall.
           </p>
         </div>
       </footer>
