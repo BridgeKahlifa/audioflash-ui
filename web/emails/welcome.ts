@@ -1,4 +1,14 @@
+function htmlAttributeEscape(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 export function welcomeEmail(unsubscribeLink: string): string {
+  const safeUnsubscribeLink = htmlAttributeEscape(unsubscribeLink);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -97,7 +107,7 @@ export function welcomeEmail(unsubscribeLink: string): string {
             <td style="padding-top:24px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#737373;line-height:1.6;">
                 You're receiving this because you signed up at audioflash.ai.<br />
-                <a href="${unsubscribeLink}" style="color:#737373;text-decoration:underline;">Unsubscribe</a>
+                <a href="${safeUnsubscribeLink}" style="color:#737373;text-decoration:underline;">Unsubscribe</a>
               </p>
             </td>
           </tr>
