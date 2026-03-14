@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { Passkey, PasskeyCreateResult, PasskeyGetResult } from "react-native-passkey";
 import { supabase } from "./supabase";
-import { ApiProfile, ApiUpdateProfile, fetchProfile, updateProfile } from "./api";
+import { ApiProfile, ApiUpdateProfile, fetchProfile, updateProfile, deleteAccount as apiDeleteAccount } from "./api";
 import { getCachedProfile, setCachedProfile, clearCachedProfile } from "./storage";
 
 interface AuthContextValue {
@@ -20,6 +20,8 @@ interface AuthContextValue {
   passkeySupported: boolean;
   registerPasskey: () => Promise<{ error: string | null }>;
   signInWithPasskey: () => Promise<{ error: string | null }>;
+  updateEmail: (email: string) => Promise<{ error: string | null }>;
+  deleteAccount: () => Promise<{ error: string | null }>;
   // Session
   signOut: () => Promise<void>;
 }
@@ -186,6 +188,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function updateEmail(email: string) {
+    const { error } = await supabase.auth.updateUser({ email });
+    if (error) return { error: error.message };
+    return { error: null };
+  }
+
+  function getDeleteAccountErrorMessage(e: any): string {
+    // Log raw error for debugging/monitoring
+    console.error("deleteAccount error", e);
+
+    const raw = typeof e?.message === "string"
+      ? e.message
+      : typeof e === "string"
+        ? e
+        : "";
+
+    const message = raw.toLowerCase();
+
+    // Session/authentication issues
+    if (message.includes("401") || message.includes("unauthorized")) {
+      return "Your session has expired. Please sign in again.";
+    }
+
+    if (message.includes("403") || message.includes("forbidden")) {
+      return "You do not have permission to delete this account.";
+    }
+
+    // Network/offline issues
+    if (
+      message.includes("network") ||
+      message.includes("offline") ||
+      (typeof navigator !== "undefined" && navigator && (navigator as any).onLine === false)
+    ) {
+      return "You appear to be offline. Check your internet connection and try again.";
+    }
+
+    // Generic fallback
+    return "Something went wrong while deleting your account. Please try again.";
+  }
+
+  async function deleteAccount() {
+    if (!session?.access_token) return { error: "Not authenticated" };
+    try {
+      await apiDeleteAccount(session.access_token);
+      await Promise.all([supabase.auth.signOut(), clearCachedProfile()]);
+      return { error: null };
+    } catch (e: any) {
+      return { error: getDeleteAccountErrorMessage(e) };
+    }
+  }
+
   async function signOut() {
     await Promise.all([supabase.auth.signOut(), clearCachedProfile()]);
   }
@@ -198,6 +251,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       profileLoading,
       updateProfileData,
+      updateEmail,
+      deleteAccount,
       sendOtp,
       verifyOtp,
       passkeySupported,

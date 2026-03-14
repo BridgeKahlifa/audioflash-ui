@@ -103,7 +103,8 @@ export interface paths {
         get: operations["get_profile_api_profile_get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Profile */
+        delete: operations["delete_profile_api_profile_delete"];
         options?: never;
         head?: never;
         /** Update Profile */
@@ -284,12 +285,12 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /** Display Name */
-            display_name: string | null;
+            /** Name */
+            name: string | null;
             /** Native Language Id */
             native_language_id: string | null;
-            /** Target Language Id */
-            target_language_id: string | null;
+            /** Target Language Ids */
+            target_language_ids: string[];
             /** Audio Speed */
             audio_speed: number;
             /** Cards Per Session */
@@ -335,12 +336,12 @@ export interface components {
         };
         /** UpdateProfileRequest */
         UpdateProfileRequest: {
-            /** Display Name */
-            display_name?: string | null;
+            /** Name */
+            name?: string | null;
             /** Native Language Id */
             native_language_id?: string | null;
-            /** Target Language Id */
-            target_language_id?: string | null;
+            /** Target Language Ids */
+            target_language_ids?: string[] | null;
             /** Audio Speed */
             audio_speed?: number | null;
             /** Cards Per Session */
@@ -603,6 +604,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProfileResponse"];
                 };
+            };
+        };
+    };
+    delete_profile_api_profile_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
