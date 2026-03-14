@@ -6,27 +6,27 @@ import { useState, FormEvent } from "react";
 const features = [
   {
     icon: "✨",
-    title: "AI-Generated Lessons",
+    title: "Topics you actually care about",
     description:
-      "Pick any topic and get 20 flashcards instantly — crafted by AI around real conversations, not textbook phrases.",
+      "Any topic, any level. AI builds 20 flashcards around what's useful to you — not a generic textbook.",
   },
   {
     icon: "🔊",
     title: "Audio-First Learning",
     description:
-      "Every card ships with high-quality audio. You hear and speak the language, not just read it off a page.",
+      "Train your ear for real rhythm and accent — not robotic text-to-speech — so fast native speech stops sounding like noise.",
   },
   {
     icon: "🔁",
     title: "Spaced Repetition",
     description:
-      "Cards resurface at exactly the right interval so what you learn actually sticks long-term.",
+      "Review right before you forget — so your vocab compounds instead of resetting every week.",
   },
   {
     icon: "🔥",
-    title: "Daily Streaks",
+    title: "Fits into 5 minutes",
     description:
-      "Two-to-five minute sessions fit into any schedule. Build a habit, track your streak, stay motivated.",
+      "Short sessions that fit any schedule. Enough to build a real habit without the guilt when you miss a day.",
   },
 ];
 
@@ -39,15 +39,15 @@ const steps = [
   },
   {
     number: "02",
-    title: "AI builds your lesson",
+    title: "Press play — AI builds your lesson instantly",
     description:
       "In seconds, AudioFlash generates 20 flashcards with native-sounding audio tailored to your topic.",
   },
   {
     number: "03",
-    title: "Practice and progress",
+    title: "Hear, recall, repeat",
     description:
-      "Swipe through cards, tap to hear audio, mark what you know. Your stats and streak update automatically.",
+      "Tap to hear audio, reveal the answer, mark what you know. Your review schedule adjusts as you improve.",
   },
 ];
 
@@ -356,20 +356,33 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-5xl lg:text-6xl font-bold text-foreground tracking-tight leading-tight mb-6">
-              Master real
+              Hear it.
               <br />
-              conversations,
+              Say it.
               <br />
-              <span className="text-primary">one audio card</span>
-              <br />
-              at a time.
+              <span className="text-primary">Remember it.</span>
             </h1>
 
-            <p className="text-lg text-muted leading-relaxed mb-8 max-w-md mx-auto lg:mx-0">
-              AudioFlash uses AI to generate personalized flashcard lessons from
-              real-world topics. Practice with native-sounding audio and build
-              fluency in just 5 minutes a day.
+            <p className="text-lg text-muted leading-relaxed mb-5 max-w-md mx-auto lg:mx-0">
+              Most apps train you to read a language. AudioFlash trains you to
+              hear and speak it — with AI-generated audio flashcards built on
+              spaced repetition.
             </p>
+
+            <ul className="mb-8 space-y-2 max-w-md mx-auto lg:mx-0 text-left">
+              <li className="flex items-start gap-2 text-sm text-muted">
+                <span className="text-primary mt-0.5">✓</span>
+                <span><span className="font-medium text-foreground">Hands-free</span> — practice while commuting, cooking, or walking</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-muted">
+                <span className="text-primary mt-0.5">✓</span>
+                <span><span className="font-medium text-foreground">Spaced repetition</span> — review right before you forget</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-muted">
+                <span className="text-primary mt-0.5">✓</span>
+                <span><span className="font-medium text-foreground">5 minutes a day</span> — short sessions that actually build a habit</span>
+              </li>
+            </ul>
 
             <EmailForm variant="hero" />
 
@@ -383,6 +396,19 @@ export default function HomePage() {
             <FlashcardMockup />
           </div>
         </div>
+      </section>
+
+      {/* Problem → Solution */}
+      <section className="max-w-3xl mx-auto px-6 py-16 text-center">
+        <h2 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight mb-4">
+          Studied for months. Still freeze when someone speaks to you?
+        </h2>
+        <p className="text-muted leading-relaxed text-lg max-w-2xl mx-auto">
+          That&apos;s because most apps train your eyes, not your ears. You can recognize words on a screen — but the moment real speech hits, at full speed, with an accent, your brain stalls.
+        </p>
+        <p className="text-muted leading-relaxed text-lg max-w-2xl mx-auto mt-4">
+          AudioFlash is built to close that gap. Short audio flashcards + spaced repetition = faster listening recall, less translation lag, more real conversations.
+        </p>
       </section>
 
       {/* Features */}
@@ -480,6 +506,49 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="max-w-2xl mx-auto px-6 py-20">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-bold text-foreground tracking-tight mb-3">
+            Frequently asked questions
+          </h2>
+        </div>
+
+        <div className="space-y-6">
+          {[
+            {
+              q: "Is AudioFlash good for absolute beginners?",
+              a: "Yes. You pick your topic and the app generates flashcards at your level — no prior knowledge required. The audio helps you hear correct pronunciation from day one.",
+            },
+            {
+              q: "How is this different from Duolingo or Anki?",
+              a: "Duolingo focuses on reading and gamification. Anki requires you to build your own decks. AudioFlash is audio-first and generates ready-to-go lessons around any topic you choose — so you're training your ear, not just your eyes, without the setup work.",
+            },
+            {
+              q: "How much time do I need each day?",
+              a: "Sessions are designed to fit in 5 minutes. You can do more, but even a short daily session builds real retention through spaced repetition.",
+            },
+            {
+              q: "Which languages are available right now?",
+              a: "Mandarin, Spanish, Japanese, and French are available now. Korean is coming soon.",
+            },
+            {
+              q: "Do I need to practice every day?",
+              a: "Consistency helps, but AudioFlash is designed for real life. Spaced repetition means your cards resurface at the right time — so missing a day won't erase your progress.",
+            },
+            {
+              q: "When does the app launch?",
+              a: "We're in early access now. Join the waitlist and you'll be among the first to get access on iOS and Android.",
+            },
+          ].map(({ q, a }) => (
+            <div key={q} className="border-b border-border pb-6">
+              <h3 className="font-semibold text-foreground mb-2">{q}</h3>
+              <p className="text-muted text-sm leading-relaxed">{a}</p>
+            </div>
+          ))}
         </div>
       </section>
 
