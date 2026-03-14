@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, FormEvent } from "react";
 
 const features = [
@@ -273,11 +274,14 @@ export default function HomePage() {
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-sm"
-            >
-              A
-            </div>
+            <Image
+              src="/AudioFlashLogo.png"
+              alt="AudioFlash logo"
+              width={32}
+              height={32}
+              className="w-8 h-8 object-contain"
+              priority
+            />
             <span className="font-semibold text-foreground text-lg tracking-tight">
               AudioFlash
             </span>
