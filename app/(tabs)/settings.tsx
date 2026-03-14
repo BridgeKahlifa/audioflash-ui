@@ -172,8 +172,13 @@ export default function SettingsScreen() {
   }
 
   async function saveNativeLanguage(id: string) {
+    const previousId = nativeLanguageId;
     setNativeLanguageId(id);
-    await updateProfileData({ native_language_id: id });
+    const { error } = await updateProfileData({ native_language_id: id });
+    if (error) {
+      setNativeLanguageId(previousId);
+      Alert.alert("Error", error);
+    }
   }
 
   async function toggleTargetLanguage(id: string) {
