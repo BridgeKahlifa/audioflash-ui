@@ -53,131 +53,181 @@ const steps = [
 
 const languages = [
   { flag: "🇨🇳", label: "Mandarin", available: true },
-  { flag: "🇪🇸", label: "Spanish", available: false },
-  { flag: "🇯🇵", label: "Japanese", available: false },
-  { flag: "🇫🇷", label: "French", available: false },
+  { flag: "🇪🇸", label: "Spanish", available: true },
+  { flag: "🇯🇵", label: "Japanese", available: true },
+  { flag: "🇫🇷", label: "French", available: true },
   { flag: "🇰🇷", label: "Korean", available: false },
 ];
 
+const mockLanguages = [
+  { flag: "🇪🇸", label: "Spanish", native: "¿Dónde está el baño?", romanization: "dohn-deh ehs-tah el bahn-yo", translation: "Where is the bathroom?" },
+  { flag: "🇫🇷", label: "French", native: "Où sont les toilettes ?", romanization: "oo sohn lay twah-let", translation: "Where is the bathroom?" },
+  { flag: "🇯🇵", label: "Japanese", native: "トイレはどこですか？", romanization: "Toire wa doko desu ka?", translation: "Where is the bathroom?" },
+  { flag: "🇨🇳", label: "Mandarin", native: "厕所在哪里？", romanization: "cèsuǒ zài nǎlǐ", translation: "Where is the bathroom?" },
+];
+
+function StatusBar() {
+  return (
+    <div className="flex justify-between items-center px-6 pt-4 pb-2">
+      <span className="text-xs font-semibold text-foreground">9:41</span>
+      <div className="bg-foreground rounded-full absolute left-1/2 -translate-x-1/2 top-3" style={{ width: 80, height: 20 }} />
+      <div className="flex gap-1 items-center">
+        <div className="w-4 h-2.5 border border-foreground rounded-sm relative">
+          <div className="absolute inset-0.5 right-1 bg-foreground rounded-sm" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FlashcardMockup() {
+  const [screen, setScreen] = useState<"language" | "flashcard">("language");
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
+
+  const selected = selectedIndex !== null ? mockLanguages[selectedIndex] : null;
+
+  const handleContinue = () => {
+    setRevealed(false);
+    setScreen("flashcard");
+  };
+
+  const handleBack = () => {
+    setScreen("language");
+    setSelectedIndex(null);
+  };
 
   return (
     <div className="relative mx-auto" style={{ width: 300 }}>
-      {/* Phone shell */}
       <div
         className="relative bg-background rounded-[40px] overflow-hidden"
-        style={{
-          width: 300,
-          height: 580,
-          boxShadow:
-            "0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.08)",
-        }}
+        style={{ width: 300, height: 580, boxShadow: "0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.08)" }}
       >
-        {/* Status bar */}
-        <div className="flex justify-between items-center px-6 pt-4 pb-2">
-          <span className="text-xs font-semibold text-foreground">9:41</span>
-          <div className="w-20 h-5 bg-foreground rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-3" style={{ width: 80, height: 20 }} />
-          <div className="flex gap-1 items-center">
-            <div className="w-4 h-2.5 border border-foreground rounded-sm relative">
-              <div className="absolute inset-0.5 right-1 bg-foreground rounded-sm" />
-            </div>
-          </div>
-        </div>
+        <div className="flex flex-col h-full">
+          <StatusBar />
 
-        {/* Progress bar */}
-        <div className="px-5 pt-2">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs text-muted font-medium">Card 4 / 20</span>
-            <span className="text-xs text-primary font-semibold">20%</span>
-          </div>
-          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full" style={{ width: "20%" }} />
-          </div>
-        </div>
-
-        {/* Flashcard */}
-        <div className="px-4 pt-4">
-          <div
-            className="bg-card rounded-3xl p-5 flex flex-col items-center"
-            style={{
-              boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-              minHeight: 280,
-            }}
-          >
-            {/* Chinese */}
-            <p
-              className="text-foreground font-semibold text-center leading-tight mb-2"
-              style={{ fontSize: 32 }}
-            >
-              厕所在哪里？
-            </p>
-            {/* Pinyin */}
-            <p className="text-muted text-sm mb-6">cèsuǒ zài nǎlǐ</p>
-
-            {/* Play button */}
-            <button
-              className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-6 transition-transform active:scale-95"
-              style={{
-                boxShadow: "0 8px 24px rgba(255,107,74,0.35)",
-              }}
-              aria-label="Play audio"
-            >
-              <span style={{ fontSize: 24 }}>🔊</span>
-            </button>
-
-            {/* Reveal / English */}
-            {revealed ? (
-              <div className="bg-accent rounded-2xl px-4 py-3 w-full text-center">
-                <p className="text-foreground font-medium text-sm">
-                  Where is the bathroom?
-                </p>
+          {screen === "language" ? (
+            /* ── Language selection screen ── */
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <div className="px-5 pt-3 pb-4">
+                <p className="text-xl font-bold text-foreground tracking-tight">Choose Language</p>
+                <p className="text-xs text-muted mt-0.5">Pick what you want to practice first</p>
               </div>
-            ) : (
-              <button
-                onClick={() => setRevealed(true)}
-                className="bg-secondary rounded-2xl px-4 py-3 w-full text-center transition-colors hover:bg-accent"
-              >
-                <p className="text-muted text-sm font-medium">Reveal Answer</p>
-              </button>
-            )}
-          </div>
-        </div>
 
-        {/* Bottom buttons */}
-        <div className="px-4 pt-4 flex gap-3">
-          <button
-            onClick={() => setRevealed(false)}
-            className="flex-1 py-3 rounded-2xl bg-secondary text-muted text-sm font-semibold text-center transition-colors hover:bg-red-50 hover:text-red-500"
-          >
-            Didn't Know
-          </button>
-          <button
-            onClick={() => setRevealed(false)}
-            className="flex-1 py-3 rounded-2xl bg-primary text-white text-sm font-semibold text-center transition-colors"
-            style={{ boxShadow: "0 4px 12px rgba(255,107,74,0.3)" }}
-          >
-            I Knew It
-          </button>
-        </div>
+              <div className="flex-1 px-4 flex flex-col gap-2 overflow-hidden">
+                {mockLanguages.map((lang, i) => {
+                  const isSelected = selectedIndex === i;
+                  return (
+                    <button
+                      key={lang.label}
+                      onClick={() => setSelectedIndex(i)}
+                      className="w-full text-left flex items-center gap-3 rounded-2xl px-4 py-3 border-2 transition-all"
+                      style={{
+                        background: isSelected ? "#FFF0ED" : "#FFFFFF",
+                        borderColor: isSelected ? "#FF6B4A" : "transparent",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                      }}
+                    >
+                      <span style={{ fontSize: 24 }}>{lang.flag}</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">{lang.label}</p>
+                      </div>
+                      {isSelected && (
+                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                          <span style={{ color: "#fff", fontSize: 11 }}>✓</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
 
-        {/* Hint */}
-        <p className="text-center text-xs text-muted mt-4">
-          Tap the buttons above to try it
-        </p>
+              <div className="px-4 pt-3 pb-6">
+                <button
+                  onClick={handleContinue}
+                  disabled={selectedIndex === null}
+                  className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-all"
+                  style={{
+                    background: selectedIndex !== null ? "#FF6B4A" : "#F5F5F5",
+                    color: selectedIndex !== null ? "#fff" : "#737373",
+                    boxShadow: selectedIndex !== null ? "0 4px 12px rgba(255,107,74,0.3)" : "none",
+                  }}
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── Flashcard practice screen ── */
+            <div className="flex flex-col flex-1">
+              {/* Progress */}
+              <div className="px-5 pt-2">
+                <div className="flex justify-between items-center mb-2">
+                  <button onClick={handleBack} className="text-xs text-muted font-medium">← Back</button>
+                  <span className="text-xs text-primary font-semibold">20%</span>
+                </div>
+                <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full" style={{ width: "20%" }} />
+                </div>
+                <p className="text-xs text-muted mt-1">Card 4 / 20 · {selected?.label}</p>
+              </div>
+
+              {/* Card */}
+              <div className="px-4 pt-3">
+                <div className="bg-card rounded-3xl p-5 flex flex-col items-center" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+                  <p className="text-foreground font-semibold text-center leading-tight mb-2" style={{ fontSize: selected?.label === "Mandarin" || selected?.label === "Japanese" ? 28 : 18 }}>
+                    {selected?.native}
+                  </p>
+                  <p className="text-muted text-xs mb-4 text-center">{selected?.romanization}</p>
+
+                  <button
+                    className="w-14 h-14 rounded-full bg-primary flex items-center justify-center mb-4"
+                    style={{ boxShadow: "0 8px 24px rgba(255,107,74,0.35)" }}
+                    aria-label="Play audio"
+                  >
+                    <span style={{ fontSize: 22 }}>🔊</span>
+                  </button>
+
+                  {revealed ? (
+                    <div className="bg-accent rounded-2xl px-4 py-3 w-full text-center">
+                      <p className="text-foreground font-medium text-sm">{selected?.translation}</p>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setRevealed(true)}
+                      className="bg-secondary rounded-2xl px-4 py-3 w-full text-center transition-colors hover:bg-accent"
+                    >
+                      <p className="text-muted text-sm font-medium">Reveal Answer</p>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="px-4 pt-3 pb-6 flex gap-3 mt-auto">
+                <button
+                  onClick={() => setRevealed(false)}
+                  className="flex-1 py-3 rounded-2xl bg-secondary text-muted text-sm font-semibold transition-colors hover:bg-red-50 hover:text-red-500"
+                >
+                  Didn&apos;t Know
+                </button>
+                <button
+                  onClick={() => setRevealed(false)}
+                  className="flex-1 py-3 rounded-2xl bg-primary text-white text-sm font-semibold"
+                  style={{ boxShadow: "0 4px 12px rgba(255,107,74,0.3)" }}
+                >
+                  I Knew It
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Glow behind phone */}
+      {/* Glow */}
       <div
         className="absolute -z-10 rounded-full blur-3xl opacity-30"
-        style={{
-          background: "#FF6B4A",
-          width: 200,
-          height: 200,
-          top: "30%",
-          left: "50%",
-          transform: "translateX(-50%)",
-        }}
+        style={{ background: "#FF6B4A", width: 200, height: 200, top: "30%", left: "50%", transform: "translateX(-50%)" }}
       />
     </div>
   );
@@ -219,9 +269,8 @@ function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
   if (status === "success") {
     return (
       <div
-        className={`flex items-center gap-3 rounded-2xl px-5 py-4 ${
-          variant === "hero" ? "bg-accent" : "bg-white/10"
-        }`}
+        className={`flex items-center gap-3 rounded-2xl px-5 py-4 ${variant === "hero" ? "bg-accent" : "bg-white/10"
+          }`}
       >
         <span className="text-xl">🎉</span>
         <div>
@@ -245,11 +294,10 @@ function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="your@email.com"
           required
-          className={`flex-1 rounded-2xl px-4 py-3.5 text-sm outline-none transition-all ${
-            variant === "hero"
-              ? "bg-white border border-border text-foreground placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/10"
-              : "bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:border-white/50"
-          }`}
+          className={`flex-1 rounded-2xl px-4 py-3.5 text-sm outline-none transition-all ${variant === "hero"
+            ? "bg-white border border-border text-foreground placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/10"
+            : "bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:border-white/50"
+            }`}
         />
         <button
           type="submit"
@@ -296,14 +344,14 @@ export default function HomePage() {
       </nav>
 
       {/* Hero */}
-      <section className="max-w-5xl mx-auto px-6 pt-20 pb-16">
+      <section className="max-w-5xl mx-auto px-6 pt-14 pb-16">
         <div className="flex flex-col lg:flex-row items-center gap-16">
           {/* Left: copy */}
           <div className="flex-1 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 bg-accent rounded-full px-3 py-1.5 mb-6">
               <span className="text-xs">🚀</span>
               <span className="text-xs font-medium text-primary">
-                Now in early access — Mandarin available
+                Now in early access — 4 languages available
               </span>
             </div>
 
@@ -405,24 +453,22 @@ export default function HomePage() {
             Languages
           </h2>
           <p className="text-muted text-sm mb-8">
-            Starting with Mandarin Chinese — more coming soon.
+            Practice in Mandarin, Spanish, Japanese, or French — Korean coming soon.
           </p>
 
           <div className="flex flex-wrap justify-center gap-3">
             {languages.map((lang) => (
               <div
                 key={lang.label}
-                className={`flex items-center gap-2.5 rounded-2xl px-4 py-2.5 border ${
-                  lang.available
-                    ? "bg-accent border-primary/30"
-                    : "bg-background border-border opacity-50"
-                }`}
+                className={`flex items-center gap-2.5 rounded-2xl px-4 py-2.5 border ${lang.available
+                  ? "bg-accent border-primary/30"
+                  : "bg-background border-border opacity-50"
+                  }`}
               >
                 <span className="text-xl">{lang.flag}</span>
                 <span
-                  className={`text-sm font-medium ${
-                    lang.available ? "text-foreground" : "text-muted"
-                  }`}
+                  className={`text-sm font-medium ${lang.available ? "text-foreground" : "text-muted"
+                    }`}
                 >
                   {lang.label}
                 </span>
