@@ -54,14 +54,32 @@ export async function POST(req: NextRequest) {
     offset += PAGE_SIZE;
   }
 
+  // Limit the number of recipients per broadcast to avoid long-running requests
+  const BATCH_SIZE = 100;
+  const MAX_BATCHES = 5; // adjust as needed based on your serverless timeout
+  const MAX_RECIPIENTS = BATCH_SIZE * MAX_BATCHES;
+
   if (emails.length === 0) {
     return NextResponse.json({ sent: 0 });
+  }
+
+  if (emails.length > MAX_RECIPIENTS) {
+    return NextResponse.json(
+      {
+        error: "Broadcast too large for synchronous processing.",
+        detail:
+          `This endpoint can send to at most ${MAX_RECIPIENTS} recipients per request. ` +
+          "Use a background job/queue or split the broadcast into smaller segments.",
+        maxRecipients: MAX_RECIPIENTS,
+        totalRecipients: emails.length,
+      },
+      { status: 413 }
+    );
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? `https://${req.headers.get("host")}`;
 
   // Inject a unique unsubscribe link per recipient
-  const BATCH_SIZE = 100;
   let sent = 0;
 
   for (let i = 0; i < emails.length; i += BATCH_SIZE) {
