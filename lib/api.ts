@@ -14,9 +14,42 @@ export type ApiCreateFlashcard =
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090/api";
 
+async function buildApiError(res: Response): Promise<Error> {
+  let detail = "";
+  try {
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const data = await res.json();
+      if (data && typeof data === "object") {
+        const maybeMessage =
+          (data as any).message ??
+          (data as any).error ??
+          (data as any).detail;
+        if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+          detail = maybeMessage.trim();
+        } else {
+          detail = JSON.stringify(data);
+        }
+      }
+    } else {
+      const text = await res.text();
+      if (text && text.trim()) {
+        detail = text.trim();
+      }
+    }
+  } catch {
+    // Ignore parsing errors; fall back to status information only.
+  }
+  const baseMessage = `API ${res.status}${
+    res.statusText ? " " + res.statusText : ""
+  }`;
+  const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
+  return new Error(message);
+}
+
 async function parseJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    throw new Error(`API ${res.status}`);
+    throw await buildApiError(res);
   }
   return (await res.json()) as T;
 }
@@ -52,7 +85,7 @@ export async function deleteAccount(token: string): Promise<void> {
     method: "DELETE",
     headers: authHeaders(token),
   });
-  if (!res.ok) throw new Error(`API ${res.status}`);
+  if (!res.ok) throw await buildApiError(res);
 }
 
 export async function fetchSessions(token: string): Promise<ApiSession[]> {
