@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "../../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../../lib/supabase";
 import { resend, FROM_ADDRESS, FROM_NAME } from "../../../lib/resend";
 import { welcomeEmail } from "../../../emails/welcome";
 import { unsubscribeUrl } from "../../../lib/token";
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   if (error) {
     if (error.code === "23505") {
       // Email exists — check if they previously unsubscribed
-      const { data: existing } = await supabase
+      const { data: existing } = await supabaseAdmin
         .from("waitlist")
         .select("unsubscribed_at")
         .eq("email", normalized)
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
       if (existing?.unsubscribed_at) {
         // Re-subscribe them
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from("waitlist")
           .update({ unsubscribed_at: null })
           .eq("email", normalized);
