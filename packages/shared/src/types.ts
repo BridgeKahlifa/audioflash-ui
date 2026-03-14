@@ -1,6 +1,6 @@
 export interface Flashcard {
   id: string | number;
-  dbId?: string; // UUID from the DB, present when card has been persisted
+  dbId?: string;
   chinese: string;
   pinyin: string;
   english: string;
@@ -30,7 +30,7 @@ export interface SessionCardResult {
 
 export interface SessionHistoryItem {
   id: string;
-  completedAt: string; // ISO timestamp
+  completedAt: string;
   topic: string;
   topicTitle: string;
   language: string;
@@ -49,7 +49,7 @@ export interface ReviewCard {
   chinese: string;
   pinyin: string;
   english: string;
-  dueDate: string; // YYYY-MM-DD
+  dueDate: string;
   intervalDays: number;
   incorrectCount: number;
 }

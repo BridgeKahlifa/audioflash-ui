@@ -1,43 +1,13 @@
 {
   "name": "audioflash",
-  "version": "1.0.0",
-  "main": "expo-router/entry",
-  "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "gen:api-types": "node scripts/generate-api-types.mjs"
-  },
-  "dependencies": {
-    "@expo/vector-icons": "^15.0.3",
-    "@react-native-async-storage/async-storage": "2.2.0",
-    "@supabase/supabase-js": "^2.98.0",
-    "babel-preset-expo": "~54.0.10",
-    "expo": "~54.0.0",
-    "expo-linking": "~8.0.11",
-    "expo-router": "~6.0.23",
-    "expo-secure-store": "~15.0.8",
-    "expo-speech": "~14.0.8",
-    "expo-status-bar": "~3.0.9",
-    "nativewind": "^4.2.2",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-gesture-handler": "~2.28.0",
-    "react-native-passkey": "^3.3.2",
-    "react-native-reanimated": "~4.1.1",
-    "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.16.0",
-    "react-native-url-polyfill": "^3.0.0",
-    "react-native-web": "^0.21.2",
-    "tailwindcss": "^3.4.19"
-  },
-  "devDependencies": {
-    "@types/react": "~19.1.10",
-    "openapi-typescript": "^7.13.0",
-    "typescript": "~5.9.2"
-  },
   "private": true,
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "scripts": {
+    "dev:web": "cd web && npm run dev",
+    "dev:mobile": "cd mobile && npm run start",
+    "dev:mobile:ios": "cd mobile && npm run ios",
+    "dev:mobile:android": "cd mobile && npm run android",
+    "build:web": "cd web && npm run build",
+    "install:web": "cd web && npm install",
+    "install:mobile": "cd mobile && npm install"
+  }
 }
