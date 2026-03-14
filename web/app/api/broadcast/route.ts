@@ -18,18 +18,41 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Fetch all subscribed emails
-  const { data, error } = await supabaseAdmin
-    .from("waitlist")
-    .select("email")
-    .is("unsubscribed_at", null);
+  // Fetch all subscribed emails with pagination to avoid Supabase's default 1000-row limit
+  const PAGE_SIZE = 1000;
+  const emails: string[] = [];
+  let offset = 0;
 
-  if (error) {
-    console.error("Broadcast fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch waitlist." }, { status: 500 });
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from("waitlist")
+      .select("email")
+      .is("unsubscribed_at", null)
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("Broadcast fetch error:", error);
+      return NextResponse.json(
+        { error: "Failed to fetch waitlist." },
+        { status: 500 }
+      );
+    }
+
+    if (!data || data.length === 0) {
+      break;
+    }
+
+    for (const row of data as { email: string }[]) {
+      emails.push(row.email);
+    }
+
+    if (data.length < PAGE_SIZE) {
+      // Last page reached
+      break;
+    }
+
+    offset += PAGE_SIZE;
   }
-
-  const emails = data.map((row: { email: string }) => row.email);
 
   if (emails.length === 0) {
     return NextResponse.json({ sent: 0 });
