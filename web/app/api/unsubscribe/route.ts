@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid token." }, { status: 403 });
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("waitlist")
     .update({ unsubscribed_at: new Date().toISOString() })
     .eq("email", email.toLowerCase().trim())
