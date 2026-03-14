@@ -182,11 +182,16 @@ export default function SettingsScreen() {
   }
 
   async function toggleTargetLanguage(id: string) {
+    const previousTargetLanguageIds = targetLanguageIds;
     const updated = targetLanguageIds.includes(id)
       ? targetLanguageIds.filter((l) => l !== id)
       : [...targetLanguageIds, id];
     setTargetLanguageIds(updated);
-    await updateProfileData({ target_language_ids: updated });
+    const { error } = await updateProfileData({ target_language_ids: updated });
+    if (error) {
+      setTargetLanguageIds(previousTargetLanguageIds);
+      Alert.alert("Error", error);
+    }
   }
 
   function confirmDelete() {
