@@ -138,6 +138,19 @@ export default function SettingsScreen() {
     setTargetLanguageIds(profile.target_language_ids?.map(String) ?? []);
   }, [profile]);
 
+  useEffect(() => {
+    const newEmail = user?.email ?? "";
+    // Only update if the email actually changed to avoid unnecessary re-renders
+    setEmail((prevEmail) => {
+      if (prevEmail === newEmail) {
+        return prevEmail;
+      }
+      return newEmail;
+    });
+    // Reset email status when the underlying user email changes
+    setEmailStatus("idle");
+  }, [user?.email]);
+
   if (profileLoading) {
     return (
       <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
