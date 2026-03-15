@@ -2,20 +2,20 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Audio Flashcards for Language Learning (Hands-Free) | AudioFlash",
+  title: "Audio Flashcards for Language Learning | AudioFlash",
   description:
-    "Learn a language with hands-free audio flashcards built on spaced repetition. Train listening and speaking recall in minutes a day with AudioFlash.",
+    "Learn a language with audio flashcards built on spaced repetition. Train listening and speaking recall in minutes a day with AudioFlash.",
   openGraph: {
-    title: "Audio Flashcards for Language Learning (Hands-Free) | AudioFlash",
+    title: "Audio Flashcards for Language Learning | AudioFlash",
     description:
-      "Hands-free audio flashcards built for listening comprehension, speaking recall, and short daily language practice.",
+      "Audio flashcards built for listening comprehension, speaking recall, and short daily language practice.",
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "Audio Flashcards for Language Learning (Hands-Free) | AudioFlash",
+    title: "Audio Flashcards for Language Learning | AudioFlash",
     description:
-      "Hands-free audio flashcards built for listening comprehension, speaking recall, and short daily language practice.",
+      "Audio flashcards built for listening comprehension, speaking recall, and short daily language practice.",
   },
 };
 
