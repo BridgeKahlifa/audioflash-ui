@@ -2,9 +2,13 @@ services:
   app:
     build:
       context: .
+      dockerfile: mobile/Dockerfile
       target: dev
     env_file:
       - .env
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     ports:
       - "8082:8081"
       - "19000:19000"
@@ -12,11 +16,12 @@ services:
       - "19002:19002"
     volumes:
       - .:/app
-      - /app/node_modules
+      - /app/mobile/node_modules
 
   web:
     build:
       context: .
+      dockerfile: mobile/Dockerfile
       target: production
       args:
         EXPO_PUBLIC_OPENROUTER_API_KEY: ${EXPO_PUBLIC_OPENROUTER_API_KEY:-}

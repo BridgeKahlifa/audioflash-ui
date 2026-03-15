@@ -14,11 +14,26 @@ import { getCurrentCards } from "../../lib/storage";
 import { saveCompletedSession } from "../../lib/storage";
 import { speakChinese } from "../../lib/audio";
 import { useAuth } from "../../lib/auth-context";
-import { createSession, fetchSessions, fetchSessionStats } from "../../lib/api";
+import {
+  createFlashcardAttempt,
+  createSession,
+  endLesson,
+  fetchSessions,
+  fetchSessionStats,
+} from "../../lib/api";
 import { setCachedSessions, setCachedSessionStats } from "../../lib/storage";
 
 export default function FlashcardPractice() {
-  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded } = useLocalSearchParams<{
+  const {
+    topic,
+    topicTitle,
+    language,
+    languageLabel,
+    apiLanguageId,
+    apiCategoryId,
+    apiLoaded,
+    lessonSessionId,
+  } = useLocalSearchParams<{
     topic: string;
     topicTitle?: string;
     language?: string;
@@ -26,12 +41,19 @@ export default function FlashcardPractice() {
     apiLanguageId?: string;
     apiCategoryId?: string;
     apiLoaded?: string;
+    lessonSessionId?: string;
   }>();
   const { profile, session } = useAuth();
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [results, setResults] = useState<SessionCardResult[]>([]);
+  const [selectedConfidence, setSelectedConfidence] = useState<number | null>(null);
+  const [audioPlayCount, setAudioPlayCount] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [attemptError, setAttemptError] = useState("");
+  const shownAtRef = useRef(Date.now());
+  const submitLockRef = useRef(false);
 
   // Swipe animation
   const translateX = useRef(new Animated.Value(0)).current;
@@ -43,6 +65,13 @@ export default function FlashcardPractice() {
     }
     loadCards();
   }, [topic]);
+
+  useEffect(() => {
+    shownAtRef.current = Date.now();
+    setAudioPlayCount(0);
+    setSelectedConfidence(null);
+    setAttemptError("");
+  }, [currentIndex]);
 
   const currentCard = cards[currentIndex];
   const progress = cards.length > 0 ? (currentIndex + 1) / cards.length : 0;
@@ -85,21 +114,52 @@ export default function FlashcardPractice() {
   ).current;
 
   function goPrev() {
-    if (currentIndex > 0) {
+    if (currentIndex > 0 && !submitting) {
       setCurrentIndex((i) => i - 1);
       setShowAnswer(false);
     }
   }
 
   function goNext() {
-    if (currentIndex < cards.length - 1) {
+    if (currentIndex < cards.length - 1 && !submitting) {
       setCurrentIndex((i) => i + 1);
       setShowAnswer(false);
     }
   }
 
   async function handleResult(knew: boolean) {
-    if (!currentCard) return;
+    if (!currentCard || submitting || submitLockRef.current) return;
+
+    submitLockRef.current = true;
+    setSubmitting(true);
+    setAttemptError("");
+    const responseTimeMs = Math.max(0, Date.now() - shownAtRef.current);
+
+    if (!lessonSessionId || !currentCard.dbId) {
+      setAttemptError("We couldn't save this card result because the lesson session is missing.");
+      setSubmitting(false);
+      submitLockRef.current = false;
+      return;
+    }
+
+    try {
+      await createFlashcardAttempt(session?.access_token, {
+        session_id: lessonSessionId,
+        flashcard_id: currentCard.dbId,
+        correct: knew,
+        response_time_ms: responseTimeMs,
+        audio_play_count: audioPlayCount,
+        hint_used: false,
+        confidence_rating: selectedConfidence,
+      });
+    } catch (error) {
+      console.error("Failed to record flashcard attempt", error);
+      setAttemptError("We couldn't save that answer. Please check your connection and try again.");
+      setSubmitting(false);
+      submitLockRef.current = false;
+      return;
+    }
+
     const newResults = [
       ...results,
       {
@@ -108,6 +168,7 @@ export default function FlashcardPractice() {
         pinyin: currentCard.pinyin,
         english: currentCard.english,
         knew,
+        confidenceRating: selectedConfidence,
       },
     ];
     setResults(newResults);
@@ -115,8 +176,32 @@ export default function FlashcardPractice() {
     if (currentIndex < cards.length - 1) {
       setCurrentIndex((i) => i + 1);
       setShowAnswer(false);
+      setSubmitting(false);
+      submitLockRef.current = false;
     } else {
       const correct = newResults.filter((r) => r.knew).length;
+
+      const profileId = profile?.id ?? session?.user?.id;
+      if (!profileId || !lessonSessionId) {
+        setAttemptError("We couldn't finish this lesson because the lesson session is missing.");
+        setSubmitting(false);
+        submitLockRef.current = false;
+        return;
+      }
+
+      try {
+        await endLesson(session?.access_token, {
+          profile_id: profileId,
+          session_id: lessonSessionId,
+        });
+      } catch (error) {
+        console.error("Failed to end lesson session", error);
+        setAttemptError("We couldn't finish the lesson right now. Please try again.");
+        setSubmitting(false);
+        submitLockRef.current = false;
+        return;
+      }
+
       await saveCompletedSession({
         topic,
         topicTitle: topicTitle ?? topic,
@@ -146,6 +231,8 @@ export default function FlashcardPractice() {
         });
       }
 
+      setSubmitting(false);
+      submitLockRef.current = false;
       router.replace("/session-summary");
     }
   }
@@ -215,7 +302,10 @@ export default function FlashcardPractice() {
             }}
           >
             <Pressable
-              onPress={() => speakChinese(currentCard.chinese, profile?.audio_speed ?? 1.0)}
+              onPress={() => {
+                setAudioPlayCount((count) => count + 1);
+                speakChinese(currentCard.chinese, profile?.audio_speed ?? 1.0);
+              }}
               className="w-20 h-20 bg-primary rounded-full items-center justify-center"
               style={{
                 shadowColor: "#FF6B4A",
@@ -250,37 +340,77 @@ export default function FlashcardPractice() {
             <Pressable
               onPress={() => setShowAnswer(true)}
               className="py-4 bg-secondary rounded-2xl items-center"
+              disabled={submitting}
             >
               <Text className="text-base font-medium text-foreground">
                 Reveal Answer
               </Text>
             </Pressable>
           ) : (
-            <View className="flex-row gap-3">
-              <Pressable
-                onPress={() => handleResult(false)}
-                className="flex-1 py-4 bg-secondary rounded-2xl items-center"
-              >
-                <Text className="text-base font-medium text-foreground">
-                  Didn't Know
+            <>
+              <View className="items-center gap-3">
+                <Text className="text-sm font-medium text-muted">
+                  How confident were you?
                 </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => handleResult(true)}
-                className="flex-1 py-4 bg-primary rounded-2xl items-center"
-                style={{
-                  shadowColor: "#FF6B4A",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
-              >
-                <Text className="text-base font-semibold text-primary-foreground">
-                  I Knew It
+                <View className="flex-row gap-2">
+                  {[1, 2, 3, 4, 5].map((value) => {
+                    const selected = selectedConfidence === value;
+                    return (
+                      <Pressable
+                        key={value}
+                        onPress={() => setSelectedConfidence(value)}
+                        className={`w-11 h-11 rounded-full items-center justify-center border ${
+                          selected
+                            ? "bg-primary border-primary"
+                            : "bg-secondary border-border"
+                        }`}
+                        disabled={submitting}
+                      >
+                        <Text
+                          className={`font-semibold ${
+                            selected ? "text-primary-foreground" : "text-foreground"
+                          }`}
+                        >
+                          {value}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+              <View className="flex-row gap-3">
+                <Pressable
+                  onPress={() => handleResult(false)}
+                  disabled={submitting}
+                  className="flex-1 py-4 bg-secondary rounded-2xl items-center"
+                >
+                  <Text className="text-base font-medium text-foreground">
+                    {submitting ? "Saving..." : "Didn't Know"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleResult(true)}
+                  disabled={submitting}
+                  className="flex-1 py-4 bg-primary rounded-2xl items-center"
+                  style={{
+                    shadowColor: "#FF6B4A",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                >
+                  <Text className="text-base font-semibold text-primary-foreground">
+                    {submitting ? "Saving..." : "I Knew It"}
+                  </Text>
+                </Pressable>
+              </View>
+              {attemptError ? (
+                <Text className="text-center text-sm text-red-500">
+                  {attemptError}
                 </Text>
-              </Pressable>
-            </View>
+              ) : null}
+            </>
           )}
           <Text className="text-center text-xs text-muted">
             Swipe left or right to navigate

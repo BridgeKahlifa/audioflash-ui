@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, supabaseAdmin } from "../../../lib/supabase";
+import { getSupabaseAdmin, hasAdminSupabaseConfig } from "../../../lib/supabase";
 import { verifyUnsubscribeToken } from "../../../lib/token";
 
 export async function GET(req: NextRequest) {
@@ -14,6 +14,15 @@ export async function GET(req: NextRequest) {
   if (!verifyUnsubscribeToken(email, token)) {
     return NextResponse.json({ error: "Invalid token." }, { status: 403 });
   }
+
+  if (!hasAdminSupabaseConfig()) {
+    return NextResponse.json(
+      { error: "Server is missing Supabase admin configuration." },
+      { status: 500 }
+    );
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
 
   const { data, error } = await supabaseAdmin
     .from("waitlist")
@@ -38,6 +47,15 @@ export async function POST(req: NextRequest) {
   if (!verifyUnsubscribeToken(email, token)) {
     return NextResponse.json({ error: "Invalid token." }, { status: 403 });
   }
+
+  if (!hasAdminSupabaseConfig()) {
+    return NextResponse.json(
+      { error: "Server is missing Supabase admin configuration." },
+      { status: 500 }
+    );
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
 
   const { error } = await supabaseAdmin
     .from("waitlist")

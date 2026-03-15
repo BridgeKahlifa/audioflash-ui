@@ -6,7 +6,7 @@ const MODEL = process.env.EXPO_PUBLIC_AI_MODEL ?? "anthropic/claude-haiku-4-5";
 export async function generateFlashcards(
   topic: string,
   topicTitle: string,
-  cardCount = 20,
+  cardCount = 5,
 ): Promise<Flashcard[]> {
   try {
     const response = await fetch(

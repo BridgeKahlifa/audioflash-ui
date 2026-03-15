@@ -11,6 +11,54 @@ export type ApiSessionStats = components["schemas"]["SessionStatsResponse"];
 export type ApiCreateFlashcard =
   components["schemas"]["CreateFlashcardRequest"];
 
+export interface ApiStartLesson {
+  profile_id: string;
+  category_id: string;
+  started_at?: string | null;
+}
+
+export interface ApiEndLesson {
+  profile_id: string;
+  session_id: string;
+}
+
+export interface ApiLessonSession {
+  session_id: string;
+  profile_id: string;
+  category_id: string;
+  started_at: string;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  grade_percent: number | null;
+  cards_seen: number;
+  cards_correct: number;
+  completed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiCreateFlashcardAttempt {
+  session_id: string;
+  flashcard_id: string;
+  correct: boolean;
+  response_time_ms: number;
+  audio_play_count: number;
+  hint_used?: boolean;
+  confidence_rating?: number | null;
+}
+
+export interface ApiFlashcardAttempt {
+  attempt_id: string;
+  session_id: string;
+  flashcard_id: string;
+  correct: boolean;
+  shown_at: string;
+  answered_at: string;
+  time_to_answer_ms: number;
+  cards_seen: number;
+  cards_correct: number;
+}
+
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090/api";
 
@@ -54,11 +102,15 @@ async function parseJson<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
-function authHeaders(token: string): HeadersInit {
-  return {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
+function authHeaders(token?: string | null): HeadersInit {
+  return token
+    ? {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      }
+    : {
+        "Content-Type": "application/json",
+      };
 }
 
 export async function fetchProfile(token: string): Promise<ApiProfile> {
@@ -140,6 +192,7 @@ export async function fetchCategories(): Promise<ApiCategory[]> {
 export async function fetchLessonsByCategory(params: {
   categoryId: string;
   limit?: number;
+  difficulty?: number;
 }): Promise<ApiLessonCard[]> {
   if (!params.categoryId) {
     throw new Error("categoryId is required");
@@ -149,10 +202,49 @@ export async function fetchLessonsByCategory(params: {
   if (typeof params.limit === "number") {
     query.set("limit", String(params.limit));
   }
+  if (typeof params.difficulty === "number") {
+    query.set("difficulty", String(params.difficulty));
+  }
 
   const endpoint = `${API_BASE_URL}/lessons/${params.categoryId}`;
   const res = await fetch(
     query.size > 0 ? `${endpoint}?${query.toString()}` : endpoint,
   );
   return parseJson<ApiLessonCard[]>(res);
+}
+
+export async function startLesson(
+  token: string | null | undefined,
+  body: ApiStartLesson,
+): Promise<ApiLessonSession> {
+  const res = await fetch(`${API_BASE_URL}/lessons/start`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiLessonSession>(res);
+}
+
+export async function endLesson(
+  token: string | null | undefined,
+  body: ApiEndLesson,
+): Promise<ApiLessonSession> {
+  const res = await fetch(`${API_BASE_URL}/lessons/end`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiLessonSession>(res);
+}
+
+export async function createFlashcardAttempt(
+  token: string | null | undefined,
+  body: ApiCreateFlashcardAttempt,
+): Promise<ApiFlashcardAttempt> {
+  const res = await fetch(`${API_BASE_URL}/flashcard/attempt`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiFlashcardAttempt>(res);
 }

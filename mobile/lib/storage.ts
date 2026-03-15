@@ -127,8 +127,10 @@ const defaultProgress: ProgressData = {
   lastPracticeDate: null,
 };
 
+const DEFAULT_CARDS_PER_SESSION = 5;
+
 const defaultSettings: AppSettings = {
-  cardsPerSession: 20,
+  cardsPerSession: DEFAULT_CARDS_PER_SESSION,
   audioRate: 0.8,
   remindersEnabled: false,
   dailyGoalCards: 25,
@@ -193,7 +195,15 @@ export async function getSettings(): Promise<AppSettings> {
   try {
     const raw = await AsyncStorage.getItem(KEYS.SETTINGS);
     if (!raw) return defaultSettings;
-    return { ...defaultSettings, ...(JSON.parse(raw) as Partial<AppSettings>) };
+    const parsed = JSON.parse(raw) as Partial<AppSettings>;
+
+    // Migrate the previous default of 20 cards to the new default of 5
+    // without overriding any other custom setting.
+    if (parsed.cardsPerSession === 20) {
+      parsed.cardsPerSession = DEFAULT_CARDS_PER_SESSION;
+    }
+
+    return { ...defaultSettings, ...parsed };
   } catch {
     return defaultSettings;
   }

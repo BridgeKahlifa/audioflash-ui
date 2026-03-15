@@ -1,16 +1,19 @@
 FROM node:22-bookworm-slim AS base
 
-WORKDIR /app
+WORKDIR /app/mobile
 ENV EXPO_NO_TELEMETRY=1
 
-COPY package.json package-lock.json ./
+COPY mobile/package.json mobile/package-lock.json ./
 RUN npm ci
 
 FROM base AS dev
 
-COPY . .
+WORKDIR /app
+COPY mobile ./mobile
+COPY packages ./packages
+WORKDIR /app/mobile
 EXPOSE 8081 19000 19001 19002
-CMD ["npx", "expo", "start", "--web", "--port", "8081", "--non-interactive"]
+CMD ["node", "scripts/dev-web-with-reload.mjs"]
 
 FROM base AS build
 
@@ -24,10 +27,13 @@ ENV EXPO_PUBLIC_AI_MODEL=$EXPO_PUBLIC_AI_MODEL
 ENV EXPO_PUBLIC_SUPABASE_URL=$EXPO_PUBLIC_SUPABASE_URL
 ENV EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
-COPY . .
+WORKDIR /app
+COPY mobile ./mobile
+COPY packages ./packages
+WORKDIR /app/mobile
 RUN npx expo export --platform web
 
 FROM nginx:1.27-alpine AS production
 
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/mobile/dist /usr/share/nginx/html
 EXPOSE 80
