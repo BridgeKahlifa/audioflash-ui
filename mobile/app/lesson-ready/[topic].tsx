@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { setCurrentCards, getSettings } from "../../lib/storage";
 import { Flashcard } from "../../lib/types";
-import { fetchLessonsByCategory } from "../../lib/api";
+import { fetchLessonsByCategory, startLesson } from "../../lib/api";
+import { useAuth } from "../../lib/auth-context";
 
 export default function LessonReady() {
+  const { profile, session } = useAuth();
   const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded } =
     useLocalSearchParams<{
       topic: string;
@@ -19,77 +21,90 @@ export default function LessonReady() {
       apiLoaded?: string;
     }>();
 
-  const [status, setStatus] = useState<"loading" | "ready" | "empty" | "error">("loading");
-  const [cardCount, setCardCount] = useState(0);
-  const [cards, setCards] = useState<Flashcard[]>([]);
+  const [status, setStatus] = useState<"ready" | "empty" | "error">("ready");
+  const [starting, setStarting] = useState(false);
+  const [selectedDifficulty, setSelectedDifficulty] = useState(3);
   const [errorMessage, setErrorMessage] = useState("");
+  const startLockRef = useRef(false);
+  const canStart = Boolean(apiCategoryId) && !starting;
 
   useEffect(() => {
-    async function loadLesson() {
-      setStatus("loading");
-      setErrorMessage("");
+    if (!apiCategoryId) {
+      setStatus("error");
+      setErrorMessage("Lesson details are missing. Please choose a category again.");
+      return;
+    }
+    setStatus("ready");
+    setErrorMessage("");
+  }, [apiCategoryId]);
 
-      try {
-        if (!apiCategoryId) {
-          setCards([]);
-          setCardCount(0);
-          setStatus("error");
-          setErrorMessage("Lesson details are missing. Please choose a category again.");
-          return;
-        }
-
-        const settings = await getSettings();
-        const lessonCards = await fetchLessonsByCategory({
-          categoryId: apiCategoryId,
-          limit: settings.cardsPerSession,
-        });
-
-        if (lessonCards.length === 0) {
-          setCards([]);
-          setCardCount(0);
-          setStatus("empty");
-          return;
-        }
-
-        const mappedCards = lessonCards.map((card, index) => ({
-          id: index + 1,
-          dbId: String(card.id),
-          chinese: card.source_text,
-          pinyin: card.romanization ?? "",
-          english: card.translation,
-        }));
-
-        setCards(mappedCards);
-        await setCurrentCards(topic, mappedCards);
-        setCardCount(mappedCards.length);
-        setStatus("ready");
-      } catch (error) {
-        console.error("Failed to load lessons by category", error);
-        setCards([]);
-        setCardCount(0);
-        setStatus("error");
-        setErrorMessage("We couldn't load lessons right now. Please try again.");
-      }
+  const handleStart = async () => {
+    if (!apiCategoryId || starting || startLockRef.current) {
+      return;
     }
 
-    loadLesson();
-  }, [apiCategoryId, topic]);
+    const profileId = profile?.id ?? session?.user?.id;
+    if (!profileId) {
+      setErrorMessage("We couldn't find your learner profile. Please sign in again.");
+      return;
+    }
 
-  const handleStart = () => {
-    if (cards.length === 0) return;
+    startLockRef.current = true;
+    setStarting(true);
+    setErrorMessage("");
 
-    router.push({
-      pathname: "/practice/[topic]",
-      params: {
-        topic,
-        topicTitle: topicTitle ?? topic,
-        language,
-        languageLabel,
-        apiLanguageId: apiLanguageId ?? "",
-        apiLoaded: apiLoaded ?? "",
-        apiCategoryId: apiCategoryId ?? "",
-      },
-    });
+    try {
+      const settings = await getSettings();
+      const lessonCards = await fetchLessonsByCategory({
+        categoryId: apiCategoryId,
+        limit: settings.cardsPerSession,
+        difficulty: selectedDifficulty,
+      });
+
+      if (lessonCards.length === 0) {
+        setStatus("empty");
+        setErrorMessage("No flashcards were returned for that difficulty. Try another level.");
+        return;
+      }
+
+      const mappedCards: Flashcard[] = lessonCards.map((card, index) => ({
+        id: index + 1,
+        dbId: String(card.id),
+        chinese: card.source_text,
+        pinyin: card.romanization ?? "",
+        english: card.translation,
+      }));
+
+      const lessonSession = await startLesson(session?.access_token, {
+        profile_id: profileId,
+        category_id: apiCategoryId,
+        started_at: new Date().toISOString(),
+      });
+
+      await setCurrentCards(topic, mappedCards);
+
+      router.push({
+        pathname: "/practice/[topic]",
+        params: {
+          topic,
+          topicTitle: topicTitle ?? topic,
+          language,
+          languageLabel,
+          apiLanguageId: apiLanguageId ?? "",
+          apiLoaded: apiLoaded ?? "",
+          apiCategoryId: apiCategoryId ?? "",
+          difficulty: String(selectedDifficulty),
+          lessonSessionId: lessonSession.session_id,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to prepare lesson", error);
+      setStatus("error");
+      setErrorMessage("We couldn't start the lesson right now. Please try again.");
+    } finally {
+      setStarting(false);
+      startLockRef.current = false;
+    }
   };
 
   return (
@@ -125,7 +140,7 @@ export default function LessonReady() {
           }}
         >
           <View className="w-24 h-24 bg-accent rounded-full items-center justify-center mb-6">
-            {status === "loading" ? (
+            {starting ? (
               <ActivityIndicator size="large" color="#FF6B4A" />
             ) : status === "empty" ? (
               <Ionicons name="albums-outline" size={48} color="#9CA3AF" />
@@ -137,8 +152,8 @@ export default function LessonReady() {
           </View>
 
           <Text className="text-2xl font-semibold text-foreground mb-3 text-center">
-            {status === "loading"
-              ? "Loading your lesson..."
+            {starting
+              ? "Preparing your lesson..."
               : status === "empty"
                 ? "No lessons found for this category"
                 : status === "error"
@@ -153,27 +168,56 @@ export default function LessonReady() {
             <Text className="text-muted">
               Topic: <Text className="text-foreground font-medium">{topicTitle ?? topic}</Text>
             </Text>
-            {status === "ready" ? (
-              <Text className="text-muted">{cardCount} phrases loaded</Text>
-            ) : null}
+            <View className="items-center gap-3 mt-5">
+              <Text className="text-sm font-medium text-muted">Choose difficulty</Text>
+              <View className="flex-row gap-2">
+                {[1, 2, 3, 4, 5].map((value) => {
+                  const selected = selectedDifficulty === value;
+                  return (
+                    <Pressable
+                      key={value}
+                      onPress={() => {
+                        setSelectedDifficulty(value);
+                        setStatus("ready");
+                        setErrorMessage("");
+                      }}
+                      className={`w-11 h-11 rounded-full items-center justify-center border ${
+                        selected
+                          ? "bg-primary border-primary"
+                          : "bg-secondary border-border"
+                      }`}
+                      disabled={starting || status === "error"}
+                    >
+                      <Text
+                        className={`font-semibold ${
+                          selected ? "text-primary-foreground" : "text-foreground"
+                        }`}
+                      >
+                        {value}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
             {status === "empty" ? (
               <Text className="text-muted text-center">
-                No lessons were returned for this category.
+                No lessons were returned for this difficulty.
               </Text>
             ) : null}
-            {status === "error" && errorMessage ? (
+            {errorMessage ? (
               <Text className="text-muted text-center">{errorMessage}</Text>
             ) : null}
           </View>
 
           <Pressable
             onPress={handleStart}
-            disabled={status !== "ready"}
+            disabled={!canStart}
             className={`w-full py-4 rounded-2xl items-center ${
-              status === "ready" ? "bg-primary" : "bg-secondary"
+              canStart ? "bg-primary" : "bg-secondary"
             }`}
             style={
-              status === "ready"
+              canStart
                 ? {
                     shadowColor: "#FF6B4A",
                     shadowOffset: { width: 0, height: 4 },
@@ -186,10 +230,10 @@ export default function LessonReady() {
           >
             <Text
               className={`text-base font-semibold ${
-                status === "ready" ? "text-primary-foreground" : "text-muted"
+                canStart ? "text-primary-foreground" : "text-muted"
               }`}
             >
-              {status === "loading" ? "Loading..." : "Start Practice"}
+              {starting ? "Starting..." : "Start Practice"}
             </Text>
           </Pressable>
         </View>

@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, supabaseAdmin } from "../../../lib/supabase";
-import { resend, FROM_ADDRESS, FROM_NAME } from "../../../lib/resend";
+import {
+  getSupabase,
+  getSupabaseAdmin,
+  hasAdminSupabaseConfig,
+  hasPublicSupabaseConfig,
+} from "../../../lib/supabase";
+import {
+  FROM_ADDRESS,
+  FROM_NAME,
+  getResend,
+  hasResendConfig,
+} from "../../../lib/resend";
 import { welcomeEmail } from "../../../emails/welcome";
 import { unsubscribeUrl } from "../../../lib/token";
 
@@ -23,13 +33,29 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (!hasPublicSupabaseConfig()) {
+    return NextResponse.json(
+      { error: "Server is missing Supabase configuration." },
+      { status: 500 },
+    );
+  }
+
+  const supabase = getSupabase();
+  const supabaseAdmin = hasAdminSupabaseConfig() ? getSupabaseAdmin() : null;
+
   const { error } = await supabase
     .from("waitlist")
     .insert({ email: normalized });
 
   if (error) {
     if (error.code === "23505") {
-      // Email exists — check if they previously unsubscribed
+      if (!supabaseAdmin) {
+        return NextResponse.json(
+          { error: "You're already on the list!" },
+          { status: 409 },
+        );
+      }
+
       const { data: existing } = await supabaseAdmin
         .from("waitlist")
         .select("unsubscribed_at")
@@ -37,7 +63,6 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (existing?.unsubscribed_at) {
-        // Re-subscribe them
         const { error: updateError } = await supabaseAdmin
           .from("waitlist")
           .update({ unsubscribed_at: null })
@@ -68,16 +93,19 @@ export async function POST(req: NextRequest) {
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ?? `https://${req.headers.get("host")}`;
   const link = unsubscribeUrl(normalized, baseUrl);
-  try {
-    const { error: emailError } = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_ADDRESS}>`,
-      to: normalized,
-      subject: "You're on the AudioFlash waitlist 🎧",
-      html: welcomeEmail(link),
-    });
-    if (emailError) console.error("Welcome email error:", emailError);
-  } catch (err) {
-    console.error("Welcome email error:", err);
+  if (hasResendConfig()) {
+    try {
+      const resend = getResend();
+      const { error: emailError } = await resend.emails.send({
+        from: `${FROM_NAME} <${FROM_ADDRESS}>`,
+        to: normalized,
+        subject: "You're on the AudioFlash waitlist",
+        html: welcomeEmail(link),
+      });
+      if (emailError) console.error("Welcome email error:", emailError);
+    } catch (err) {
+      console.error("Welcome email error:", err);
+    }
   }
 
   return NextResponse.json({ success: true }, { status: 200 });

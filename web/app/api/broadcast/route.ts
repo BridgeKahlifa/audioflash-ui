@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "../../../lib/supabase";
-import { resend, FROM_ADDRESS, FROM_NAME } from "../../../lib/resend";
+import { getSupabaseAdmin, hasAdminSupabaseConfig } from "../../../lib/supabase";
+import {
+  FROM_ADDRESS,
+  FROM_NAME,
+  getResend,
+  hasResendConfig,
+} from "../../../lib/resend";
 import { unsubscribeUrl } from "../../../lib/token";
 
 export async function POST(req: NextRequest) {
@@ -17,6 +22,23 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  if (!hasAdminSupabaseConfig()) {
+    return NextResponse.json(
+      { error: "Server is missing Supabase admin configuration." },
+      { status: 500 }
+    );
+  }
+
+  if (!hasResendConfig()) {
+    return NextResponse.json(
+      { error: "Server is missing Resend configuration." },
+      { status: 500 }
+    );
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const resend = getResend();
 
   // Fetch all subscribed emails with pagination to avoid Supabase's default 1000-row limit
   const PAGE_SIZE = 1000;

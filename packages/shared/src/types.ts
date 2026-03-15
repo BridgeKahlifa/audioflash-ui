@@ -26,6 +26,7 @@ export interface SessionCardResult {
   pinyin: string;
   english: string;
   knew: boolean;
+  confidenceRating?: number | null;
 }
 
 export interface SessionHistoryItem {

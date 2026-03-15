@@ -1,13 +1,43 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// Anon client — for public-facing operations (waitlist insert)
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabaseUrl() {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL;
+}
 
-// Admin client — for server-side operations that need to bypass RLS (broadcast)
-export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseAnonKey() {
+  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+}
+
+function getSupabaseServiceRoleKey() {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
+export function hasPublicSupabaseConfig() {
+  return Boolean(getSupabaseUrl() && getSupabaseAnonKey());
+}
+
+export function hasAdminSupabaseConfig() {
+  return Boolean(getSupabaseUrl() && getSupabaseServiceRoleKey());
+}
+
+export function getSupabase(): SupabaseClient {
+  const url = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
+
+  if (!url || !anonKey) {
+    throw new Error("Public Supabase configuration is missing.");
+  }
+
+  return createClient(url, anonKey);
+}
+
+export function getSupabaseAdmin(): SupabaseClient {
+  const url = getSupabaseUrl();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
+
+  if (!url || !serviceRoleKey) {
+    throw new Error("Admin Supabase configuration is missing.");
+  }
+
+  return createClient(url, serviceRoleKey);
+}
