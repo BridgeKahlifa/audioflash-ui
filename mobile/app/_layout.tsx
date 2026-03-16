@@ -7,7 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../lib/auth-context";
 
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, isDevAuth } = useAuth();
   const segments = useSegments();
 
   useEffect(() => {
@@ -17,10 +17,10 @@ function RootNavigator() {
 
     if (!session && !inAuthGroup) {
       router.replace("/(auth)/sign-in");
-    } else if (session && inAuthGroup) {
+    } else if ((session || isDevAuth) && inAuthGroup) {
       router.replace("/(tabs)");
     }
-  }, [session, loading, segments]);
+  }, [isDevAuth, session, loading, segments]);
 
   if (loading) {
     return (

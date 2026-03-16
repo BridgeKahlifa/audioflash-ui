@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { fetchCategories } from "../../lib/api";
+import { useAuth } from "../../lib/auth-context";
 
 interface Topic {
   id: string;
@@ -17,10 +18,12 @@ interface Topic {
   description: string;
   icon: keyof typeof Ionicons.glyphMap;
   apiCategoryId?: string;
+  supportedDifficulties: number[];
 }
 
 
 export default function Categories() {
+  const { profileError } = useAuth();
   const { language, languageLabel, apiLanguageId, apiLoaded } = useLocalSearchParams<{
     language?: string;
     languageLabel?: string;
@@ -55,6 +58,7 @@ export default function Categories() {
             description: "Real-world practice",
             icon: icons[index % icons.length],
             apiCategoryId: String(category.id),
+            supportedDifficulties: category.supported_difficulties ?? [],
           }))
         );
       } catch {
@@ -80,6 +84,7 @@ export default function Categories() {
         apiLanguageId: apiLanguageId ?? "",
         apiLoaded: apiLoaded ?? "",
         apiCategoryId: topic?.apiCategoryId ?? "",
+        supportedDifficulties: (topic?.supportedDifficulties ?? []).join(","),
       },
     });
   };
@@ -101,6 +106,13 @@ export default function Categories() {
           <Text className="text-muted mt-1">
             Language: <Text className="text-foreground font-medium">{languageLabel}</Text>
           </Text>
+          {profileError ? (
+            <View className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+              <Text className="text-sm text-red-600">
+                Profile failed to load - support has been notified
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <ScrollView

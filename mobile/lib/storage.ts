@@ -217,6 +217,21 @@ export async function setSettings(settings: AppSettings): Promise<void> {
   }
 }
 
+export async function syncSettingsFromProfile(profile: ApiProfile): Promise<void> {
+  try {
+    const current = await getSettings();
+    await setSettings({
+      ...current,
+      cardsPerSession: profile.cards_per_session,
+      audioRate: profile.audio_speed,
+      remindersEnabled: profile.notifications_enabled,
+      dailyGoalCards: profile.daily_goal,
+    });
+  } catch {
+    // Non-critical
+  }
+}
+
 export async function getSessionHistory(): Promise<SessionHistoryItem[]> {
   try {
     const raw = await AsyncStorage.getItem(KEYS.SESSION_HISTORY);

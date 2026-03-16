@@ -73,10 +73,18 @@ docker run --rm -p 8080:80 audioflash-web
 |---|---|
 | `EXPO_PUBLIC_OPENROUTER_API_KEY` | Your [OpenRouter](https://openrouter.ai) API key |
 | `EXPO_PUBLIC_AI_MODEL` | Model to use, e.g. `anthropic/claude-haiku-4-5` |
+| `EXPO_PUBLIC_AUTH_MODE` | `supabase` by default, or `dev` to bypass frontend login and rely on the API dev auth path |
+| `EXPO_PUBLIC_DEV_USER_ID` | Optional fallback dev user id for UI state |
+| `EXPO_PUBLIC_DEV_USER_EMAIL` | Optional label shown in the UI during dev auth mode |
 | `EXPO_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
 | `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Your Supabase publishable/anon key |
 
 Swap models in `.env` any time — no code changes needed.
+
+For a local mobile UI talking to a dev-backed API, set `EXPO_PUBLIC_AUTH_MODE=dev`
+and point `EXPO_PUBLIC_API_BASE_URL` at that API. The app will skip the Supabase
+sign-in screens, fetch `/api/profile` without a bearer token, and rely on the
+API's existing `AUTH_MODE=dev` behavior.
 
 ## Screens
 

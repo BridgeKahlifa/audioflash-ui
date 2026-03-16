@@ -10,7 +10,7 @@ import { useAuth } from "../../lib/auth-context";
 
 export default function LessonReady() {
   const { profile, session } = useAuth();
-  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded } =
+  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded, supportedDifficulties } =
     useLocalSearchParams<{
       topic: string;
       topicTitle: string;
@@ -19,14 +19,26 @@ export default function LessonReady() {
       apiLanguageId?: string;
       apiCategoryId?: string;
       apiLoaded?: string;
+      supportedDifficulties?: string;
     }>();
 
   const [status, setStatus] = useState<"ready" | "empty" | "error">("ready");
   const [starting, setStarting] = useState(false);
-  const [selectedDifficulty, setSelectedDifficulty] = useState(3);
   const [errorMessage, setErrorMessage] = useState("");
   const startLockRef = useRef(false);
-  const canStart = Boolean(apiCategoryId) && !starting;
+  const availableDifficulties = (supportedDifficulties ?? "")
+    .split(",")
+    .map((value) => Number(value))
+    .filter((value, index, values) => Number.isFinite(value) && !values.slice(0, index).includes(value))
+    .sort((a, b) => a - b);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<number | null>(
+    availableDifficulties[0] ?? null
+  );
+  const canStart = Boolean(apiCategoryId) && selectedDifficulty !== null && !starting;
+
+  useEffect(() => {
+    setSelectedDifficulty(availableDifficulties[0] ?? null);
+  }, [supportedDifficulties]);
 
   useEffect(() => {
     if (!apiCategoryId) {
@@ -34,12 +46,17 @@ export default function LessonReady() {
       setErrorMessage("Lesson details are missing. Please choose a category again.");
       return;
     }
+    if (availableDifficulties.length === 0) {
+      setStatus("error");
+      setErrorMessage("No difficulty options are available for this category yet.");
+      return;
+    }
     setStatus("ready");
     setErrorMessage("");
-  }, [apiCategoryId]);
+  }, [apiCategoryId, supportedDifficulties]);
 
   const handleStart = async () => {
-    if (!apiCategoryId || starting || startLockRef.current) {
+    if (!apiCategoryId || selectedDifficulty === null || starting || startLockRef.current) {
       return;
     }
 
@@ -55,9 +72,10 @@ export default function LessonReady() {
 
     try {
       const settings = await getSettings();
+      const cardsToFetch = profile?.cards_per_session ?? settings.cardsPerSession;
       const lessonCards = await fetchLessonsByCategory({
         categoryId: apiCategoryId,
-        limit: settings.cardsPerSession,
+        limit: cardsToFetch,
         difficulty: selectedDifficulty,
       });
 
@@ -119,6 +137,7 @@ export default function LessonReady() {
                 languageLabel,
                 apiLanguageId: apiLanguageId ?? "",
                 apiLoaded: apiLoaded ?? "",
+                supportedDifficulties: supportedDifficulties ?? "",
               },
             })
           }
@@ -171,7 +190,7 @@ export default function LessonReady() {
             <View className="items-center gap-3 mt-5">
               <Text className="text-sm font-medium text-muted">Choose difficulty</Text>
               <View className="flex-row gap-2">
-                {[1, 2, 3, 4, 5].map((value) => {
+                {availableDifficulties.map((value) => {
                   const selected = selectedDifficulty === value;
                   return (
                     <Pressable

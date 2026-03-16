@@ -1,7 +1,9 @@
 import type { components } from "./generated/api-types";
 
 export type ApiLanguage = components["schemas"]["LanguageResponse"];
-export type ApiCategory = components["schemas"]["CategoryResponse"];
+export type ApiCategory = components["schemas"]["CategoryResponse"] & {
+  supported_difficulties?: number[];
+};
 export type ApiLessonCard = components["schemas"]["FlashcardResponse"];
 export type ApiProfile = components["schemas"]["ProfileResponse"];
 export type ApiUpdateProfile = components["schemas"]["UpdateProfileRequest"];
@@ -62,6 +64,9 @@ export interface ApiFlashcardAttempt {
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090/api";
 
+export const AUTH_MODE = process.env.EXPO_PUBLIC_AUTH_MODE ?? "supabase";
+export const DEV_AUTH_MODE = AUTH_MODE === "dev";
+
 async function buildApiError(res: Response): Promise<Error> {
   let detail = "";
   try {
@@ -102,18 +107,18 @@ async function parseJson<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
-function authHeaders(token?: string | null): HeadersInit {
-  return token
-    ? {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      }
-    : {
-        "Content-Type": "application/json",
-      };
+function authHeaders(
+  token?: string | null,
+  extraHeaders?: Record<string, string>,
+): HeadersInit {
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extraHeaders,
+    "Content-Type": "application/json",
+  };
 }
 
-export async function fetchProfile(token: string): Promise<ApiProfile> {
+export async function fetchProfile(token?: string | null): Promise<ApiProfile> {
   const res = await fetch(`${API_BASE_URL}/profile`, {
     headers: authHeaders(token),
   });
@@ -121,7 +126,7 @@ export async function fetchProfile(token: string): Promise<ApiProfile> {
 }
 
 export async function updateProfile(
-  token: string,
+  token: string | null | undefined,
   body: ApiUpdateProfile,
 ): Promise<ApiProfile> {
   const res = await fetch(`${API_BASE_URL}/profile`, {
@@ -132,7 +137,7 @@ export async function updateProfile(
   return parseJson<ApiProfile>(res);
 }
 
-export async function deleteAccount(token: string): Promise<void> {
+export async function deleteAccount(token: string | null | undefined): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/profile`, {
     method: "DELETE",
     headers: authHeaders(token),
@@ -140,7 +145,7 @@ export async function deleteAccount(token: string): Promise<void> {
   if (!res.ok) throw await buildApiError(res);
 }
 
-export async function fetchSessions(token: string): Promise<ApiSession[]> {
+export async function fetchSessions(token?: string | null): Promise<ApiSession[]> {
   const res = await fetch(`${API_BASE_URL}/sessions`, {
     headers: authHeaders(token),
   });
@@ -148,7 +153,7 @@ export async function fetchSessions(token: string): Promise<ApiSession[]> {
 }
 
 export async function fetchSessionStats(
-  token: string,
+  token?: string | null,
 ): Promise<ApiSessionStats> {
   const res = await fetch(`${API_BASE_URL}/sessions/stats`, {
     headers: authHeaders(token),
@@ -157,7 +162,7 @@ export async function fetchSessionStats(
 }
 
 export async function createSession(
-  token: string,
+  token: string | null | undefined,
   body: ApiCreateSession,
 ): Promise<ApiSession> {
   const res = await fetch(`${API_BASE_URL}/sessions`, {

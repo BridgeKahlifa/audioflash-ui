@@ -100,7 +100,7 @@ function LanguagePickerModal({
 }
 
 export default function SettingsScreen() {
-  const { user, profile, profileLoading, updateProfileData, updateEmail, deleteAccount, signOut } = useAuth();
+  const { user, profile, profileLoading, updateProfileData, updateEmail, deleteAccount, signOut, isDevAuth } = useAuth();
 
   const [localSettings, setLocalSettings] = useState<ApiUpdateProfile>({
     cards_per_session: profile?.cards_per_session ?? 20,
@@ -141,7 +141,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     const newEmail = user?.email ?? "";
     // Only update if the email actually changed to avoid unnecessary re-renders
-    setEmail((prevEmail) => {
+    setEmail((prevEmail: string) => {
       if (prevEmail === newEmail) {
         return prevEmail;
       }
@@ -281,6 +281,7 @@ export default function SettingsScreen() {
                   autoCapitalize="none"
                   returnKeyType="done"
                   className="bg-secondary rounded-xl px-3 py-2.5 text-foreground pr-9"
+                  editable={!isDevAuth}
                 />
                 <View className="absolute right-3 top-0 bottom-0 items-center justify-center">
                   {emailStatus === "saving" && <ActivityIndicator size="small" color="#FF6B4A" />}
@@ -290,6 +291,11 @@ export default function SettingsScreen() {
               </View>
               {emailStatus === "sent" && (
                 <Text className="text-xs text-muted mt-1.5">Check your inbox to confirm the new email.</Text>
+              )}
+              {isDevAuth && (
+                <Text className="text-xs text-muted mt-1.5">
+                  Dev auth mode is active, so account email changes are disabled.
+                </Text>
               )}
             </View>
           </View>
@@ -383,19 +389,29 @@ export default function SettingsScreen() {
           <View className="bg-card border border-border rounded-2xl overflow-hidden">
             <View className="p-4 border-b border-border">
               <Text className="text-xs text-muted mb-0.5">Signed in as</Text>
-              <Text className="text-foreground font-medium">{user?.email}</Text>
+              <Text className="text-foreground font-medium">{user?.email ?? "Dev user"}</Text>
             </View>
-            <Pressable
-              onPress={signOut}
-              className="flex-row items-center gap-2 p-4 border-b border-border"
-            >
-              <Ionicons name="log-out-outline" size={18} color="#6B7280" />
-              <Text className="text-foreground font-medium">Sign Out</Text>
-            </Pressable>
-            <Pressable onPress={confirmDelete} className="flex-row items-center gap-2 p-4">
-              <Ionicons name="trash-outline" size={18} color="#EF4444" />
-              <Text className="text-red-500 font-medium">Delete Account</Text>
-            </Pressable>
+            {isDevAuth ? (
+              <View className="p-4">
+                <Text className="text-xs text-muted">
+                  Dev auth mode is active. Sign out and account deletion are disabled.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Pressable
+                  onPress={signOut}
+                  className="flex-row items-center gap-2 p-4 border-b border-border"
+                >
+                  <Ionicons name="log-out-outline" size={18} color="#6B7280" />
+                  <Text className="text-foreground font-medium">Sign Out</Text>
+                </Pressable>
+                <Pressable onPress={confirmDelete} className="flex-row items-center gap-2 p-4">
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  <Text className="text-red-500 font-medium">Delete Account</Text>
+                </Pressable>
+              </>
+            )}
           </View>
 
         </ScrollView>
