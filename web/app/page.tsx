@@ -10,86 +10,56 @@ const navLinks = [
 ];
 
 const heroBullets = [
-  "Practice in five-minute sessions that fit real schedules.",
-  "Train listening and speaking recall without staring at your phone.",
-  "Use spaced repetition to make useful phrases stick longer.",
-];
-
-const painPoints = [
-  "You studied the words, but real speech still feels too fast.",
-  "You recognize phrases on a screen, then freeze when you need them out loud.",
-  "You do not need perfect study conditions to keep making progress.",
+  "Hear real phrases and recall the meaning quickly.",
+  "Strengthen long-term memory using scientifically proven spaced repetition.",
+  "Quick lessons that train your ear for real conversations.",
 ];
 
 const steps = [
   {
     number: "01",
-    title: "Choose your language and goal",
+    title: "Pick a lesson",
     description:
-      "Start with practical listening and speaking practice built around the situations you actually care about.",
+      "Pick from one of our curated lessons spanning several catagories or generate your own using AI.",
   },
   {
     number: "02",
     title: "Press play and practice anywhere",
     description:
-      "Hear short, useful phrases while walking, commuting, cooking, or moving through your day.",
+      "Hear short, useful phrases. Practice active recall daily.",
   },
   {
     number: "03",
-    title: "Answer, repeat, and review",
+    title: "Review and build confidence",
     description:
-      "Use quick recall checks and spaced reviews so phrases come back faster the next time you hear them.",
+      "Review answers and repeat the process to build your listening skills.",
   },
 ];
 
 const features = [
   {
     icon: "01",
-    title: "Audio-first language practice",
+    title: "Train Fast Conversation Recall",
     description:
-      "Practice without staring at your phone, which makes AudioFlash easier to use during real life moments.",
+      "Hear a phrase, recall the meaning, and respond from memory. This builds the quick thinking needed when native speakers talk at full speed.",
   },
   {
     icon: "02",
-    title: "Spaced repetition that adapts",
+    title: "Spaced Repetition That Adapts",
     description:
-      "Review the phrases you are about to forget so progress builds instead of resetting every week.",
+      "Review phrases right before you forget them. This timing strengthens long-term memory so recognition becomes faster over time.",
   },
   {
     icon: "03",
-    title: "Active recall prompts",
+    title: "Set Goals And Track Your Progress",
     description:
-      "Train the skill you need in conversation: hearing a phrase, pulling the meaning fast, and answering from memory.",
+      "Set daily or weekly goals and track your progress. See how your listening skills improve over time.",
   },
   {
     icon: "04",
-    title: "Listen-repeat confidence",
+    title: "Generate custom flashcards with AI",
     description:
-      "Build speaking comfort with short audio loops that help pronunciation feel more natural and less stressful.",
-  },
-  {
-    icon: "05",
-    title: "High-quality phrase audio",
-    description:
-      "Train your ear for natural rhythm and useful everyday language instead of isolated word lists.",
-  },
-  {
-    icon: "06",
-    title: "Micro-lessons for busy days",
-    description:
-      "Short sessions make it realistic to keep practicing even when your schedule is crowded.",
-  },
-  {
-    icon: "07",
-    title: "Built for listening and recall",
-    description:
-      "AudioFlash focuses on understanding spoken language and answering faster, not just tapping through screens.",
-  },
-  {
-    icon: "08",
-    title: "Progress you can feel",
-    description:
-      "Notice faster recognition, smoother recall, and less translation lag when speech starts moving quickly.",
+      "Tailor your learning to your specific needs. Generate custom audio flashcards for any topic like travel, business, dating, interviews, and niche topics most language apps never cover.",
   },
 ];
 
@@ -192,6 +162,34 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
+function FlowDiagram({ items }: { items: string[] }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr] items-center">
+      {listeningSkillSteps.map((step, index) => (
+        <div key={step.title} className="contents">
+          <div
+            className="rounded-3xl border border-border bg-white p-6"
+            style={{ boxShadow: "0 12px 30px rgba(15, 23, 42, 0.06)" }}
+          >
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-sm font-semibold text-primary">
+              {step.icon}
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-foreground">{step.title}</h3>
+            <p className="text-sm leading-relaxed text-muted">{step.description}</p>
+          </div>
+          {index < listeningSkillSteps.length - 1 ? (
+            <div className="hidden md:flex items-center justify-center text-primary" aria-hidden="true">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/15 bg-white shadow-sm">
+                <span className="text-lg font-semibold">→</span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SectionHeading({
   title,
   description,
@@ -205,6 +203,91 @@ function SectionHeading({
         {title}
       </h2>
       <p className="text-muted max-w-2xl mx-auto">{description}</p>
+    </div>
+  );
+}
+
+function LearningProgressChart() {
+  return (
+    <div
+      className="rounded-3xl border border-border bg-white p-6"
+      style={{ boxShadow: "0 12px 30px rgba(15, 23, 42, 0.06)" }}
+    >
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Cards learned over time</p>
+          <p className="mt-1 text-xs text-muted">Steady review compounds into faster recognition.</p>
+        </div>
+      </div>
+
+      <div className="relative h-60 rounded-2xl bg-background pl-16 pr-6 pb-16 pt-4">
+        <div className="absolute inset-y-4 left-10 w-px bg-border" />
+        <div className="absolute left-10 right-6 bottom-18 h-px bg-border" />
+
+        {[0, 1, 2, 3].map((tick) => (
+          <div
+            key={tick}
+            className="absolute left-10 right-6 h-px border-t border-dashed border-border/80"
+            style={{ bottom: `${18 + tick * 14}%` }}
+          />
+        ))}
+
+        <svg
+          viewBox="0 0 320 180"
+          className="absolute left-10 right-6 top-4 bottom-18 h-[calc(100%-5.5rem)] w-[calc(100%-4rem)] overflow-visible"
+          preserveAspectRatio="none"
+          aria-label="Cards learned chart"
+        >
+          <defs>
+            <linearGradient id="learningArea" x1="0%" x2="0%" y1="0%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255,107,74,0.24)" />
+              <stop offset="100%" stopColor="rgba(255,107,74,0.02)" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M 18 150 C 44 146, 58 140, 82 132 C 108 122, 128 112, 152 95 C 180 76, 198 68, 220 54 C 242 40, 264 30, 302 18"
+            fill="none"
+            stroke="#FF6B4A"
+            strokeWidth="6"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 18 150 C 44 146, 58 140, 82 132 C 108 122, 128 112, 152 95 C 180 76, 198 68, 220 54 C 242 40, 264 30, 302 18 L 302 170 L 18 170 Z"
+            fill="url(#learningArea)"
+          />
+          {[
+            { x: 18, y: 150 },
+            { x: 82, y: 132 },
+            { x: 152, y: 95 },
+            { x: 220, y: 54 },
+            { x: 302, y: 18 },
+          ].map((point) => (
+            <circle
+              key={`${point.x}-${point.y}`}
+              cx={point.x}
+              cy={point.y}
+              r="5"
+              fill="#FFFFFF"
+              stroke="#FF6B4A"
+              strokeWidth="3"
+            />
+          ))}
+        </svg>
+
+        <div className="absolute left-[-24px] top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-medium uppercase tracking-[0.22em] text-muted">
+          Cards learned
+        </div>
+
+        <div className="absolute bottom-8 left-14 right-10 flex justify-between text-xs text-muted">
+          <span>Week 1</span>
+          <span>Week 2</span>
+          <span>Week 3</span>
+          <span>Week 4</span>
+        </div>
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted">
+          Time
+        </div>
+      </div>
     </div>
   );
 }
@@ -435,7 +518,7 @@ function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
           className="rounded-2xl px-5 py-3.5 bg-primary text-white text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90 disabled:opacity-60"
           style={{ boxShadow: "0 4px 14px rgba(255,107,74,0.35)" }}
         >
-          {status === "loading" ? "..." : "Get Early Access"}
+          {status === "loading" ? "..." : "Get Free Early Access"}
         </button>
       </div>
       {status === "error" && (
@@ -508,7 +591,7 @@ export default function HomePage() {
           <div className="flex-1 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 bg-accent rounded-full px-3 py-1.5 mb-6">
               <span className="text-xs font-medium text-primary">
-                Audio-first language practice for busy adults
+                Listen first..then speak with Audio-first language practice
               </span>
             </div>
 
@@ -517,9 +600,8 @@ export default function HomePage() {
             </h1>
 
             <p className="text-lg text-muted leading-relaxed mb-6 max-w-xl mx-auto lg:mx-0">
-              Learn with audio flashcards built for listening
-              comprehension and speaking recall. AudioFlash uses spaced
-              repetition to help useful phrases stick in minutes a day.
+              You studied vocabulary but still can't understand native speakers at full speed.
+               Train your ear to understand real spoken language not just memorize vocabulary.
             </p>
 
             <div className="mb-8 max-w-xl mx-auto lg:mx-0">
@@ -540,64 +622,36 @@ export default function HomePage() {
       </section>
 
       <section className="bg-white border-y border-border py-20">
-        <div className="max-w-6xl mx-auto px-6 grid lg:grid-cols-[0.8fr_1.2fr] gap-12 items-center">
-          <div>
-            <p className="text-sm font-semibold text-primary mb-3">
-              Problem to solve
-            </p>
-            <h2 className="text-3xl font-bold text-foreground tracking-tight mb-4">
-              Studying is not the same as hearing and answering real speech
-            </h2>
-            <p className="text-muted leading-relaxed">
-              Many language apps make you better at recognizing words on a
-              screen. AudioFlash is built for the moment someone speaks to you
-              at full speed and you need to understand, recall, and respond.
-            </p>
-          </div>
-          <div className="bg-background rounded-3xl p-6 border border-border">
-            <BulletList items={painPoints} />
-          </div>
+        <div className="max-w-3xl mx-auto px-6 text-center">
+          <p className="text-sm font-semibold text-primary mb-4">
+            Problem statement
+          </p>
+
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight mb-6">
+            You Studied the Words… But Still Can’t Understand Real Speech
+          </h2>
+
+          <p className="text-lg text-muted leading-relaxed">
+            You know the words. But when someone speaks quickly, your brain needs a second.
+            Most apps are built for tapping and reading. That can help you recognize vocabulary
+            on a screen, but real conversations move through sound.
+          </p>
         </div>
       </section>
 
       <section className="max-w-6xl mx-auto px-6 py-20">
         <SectionHeading
-          title="Why audio flashcards work for language learning"
-          description="Audio-first practice trains the skill you use in real life: hearing meaning through sound and answering without pausing to translate."
+          title="Why audio flashcards train real listening skill"
+          description="Hear the phrase. Understand the meaning. Respond without translating."
         />
         <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-10 items-center">
           <div>
             <p className="text-lg text-muted leading-relaxed mb-5">
-              Most apps are built for tapping and reading. That can help you
-              recognize vocabulary on a screen, but real conversations move
-              through sound. Audio flashcards train you to hear a phrase, pull
-              the meaning quickly, and answer without panic.
-            </p>
-            <p className="text-lg text-muted leading-relaxed">
-              AudioFlash pairs that audio-first workflow with spaced
-              repetition, so you review important words and phrases close to the
-              moment they would otherwise fade. That helps listening
-              comprehension, recall speed, and speaking confidence improve
-              together.
+              Audio flashcards work because they combine active recall and spaced repetition two of the most effective learning techniques in cognitive science. Hearing a phrase and pulling the meaning from memory strengthens the brain’s sound-to-meaning connections, while spaced reviews reinforce them over time. 
+              That’s why recognition becomes faster and real conversations feel easier to follow.
             </p>
           </div>
-          <div className="bg-white rounded-3xl p-6 border border-border">
-            <p className="text-sm font-semibold text-foreground mb-4">
-              Listen - Recall - Repeat - Review
-            </p>
-            <div className="space-y-3">
-              {[
-                "Hear a useful phrase in context",
-                "Pull the meaning or response from memory",
-                "Repeat it until it feels more natural",
-                "Review it again at the right interval",
-              ].map((item) => (
-                <div key={item} className="rounded-2xl bg-background px-4 py-3 text-sm text-muted">
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
+          <LearningProgressChart />
         </div>
       </section>
 
@@ -624,23 +678,23 @@ export default function HomePage() {
 
       <section id="features" className="max-w-6xl mx-auto px-6 py-20">
         <SectionHeading
-          title="What you get in AudioFlash"
-          description=""
+          title="Built for Real Listening Fluency"
+          description="AudioFlash combines audio flashcards, spaced repetition, and AI-generated content to build real listening and speaking recall."
         />
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid gap-6 md:grid-cols-2">
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="bg-white rounded-2xl p-5 border border-border"
-              style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+              className="bg-white rounded-3xl p-8 border border-border transition-transform duration-300 hover:-translate-y-1"
+              style={{ boxShadow: "0 12px 30px rgba(15,23,42,0.06)" }}
             >
-              <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-sm font-semibold text-primary mb-4">
+              <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-base font-semibold text-primary mb-6">
                 {feature.icon}
               </div>
-              <h3 className="font-semibold text-foreground text-sm mb-2">
+              <h3 className="font-semibold text-foreground text-2xl tracking-tight mb-3 max-w-sm">
                 {feature.title}
               </h3>
-              <p className="text-muted text-sm leading-relaxed">
+              <p className="text-muted text-base leading-relaxed max-w-xl">
                 {feature.description}
               </p>
             </div>

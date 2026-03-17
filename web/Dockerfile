@@ -4,6 +4,19 @@ WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
 
+FROM node:20-alpine AS dev
+WORKDIR /app/web
+
+ENV NODE_ENV=development
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+COPY --from=deps /app/web/node_modules ./node_modules
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
+
 FROM node:20-alpine AS builder
 WORKDIR /app
 
