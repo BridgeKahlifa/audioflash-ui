@@ -63,17 +63,11 @@ const features = [
   },
 ];
 
-const realLifeMoments = [
-  "Commute-friendly practice for walks, trains, and drives",
-  "Short sessions that fit between meetings, errands, and chores",
-  "An audio-first workflow that works better than screen-heavy review when your day is packed",
-];
-
 const faqs = [
   {
-    question: "What are audio flashcards for language learning?",
+    question: "Do I need to know how to read the language?",
     answer:
-      "Audio flashcards train you through sound first. You hear a phrase, recall the meaning or response, and repeat it so listening and speaking get trained together.",
+      "No.AudioFlash is designed for audio-first learning, so you can begin training listening recognition even before you learn to read the writing system.",
   },
   {
     question: "How does spaced repetition help language learning?",
@@ -91,14 +85,19 @@ const faqs = [
       "Yes. AudioFlash complements reading, grammar, and game-style apps by focusing on listening comprehension and speaking recall.",
   },
   {
-    question: "How quickly will I notice progress?",
+    question: "How is AudioFlash different from apps like Duolingo?",
     answer:
-      "Most learners notice listening recognition improving first. With short, consistent practice, recall speed and speaking confidence usually follow.",
+      "AudioFlash focuses on listening comprehension and recall. Providing nothing but audio forces you to actively listen and pull from your memory.",
   },
   {
-    question: "Do I need long study sessions for AudioFlash to work?",
+    question: "What does AI-generated practice mean?",
     answer:
-      "No. AudioFlash is built for short, repeatable sessions, which makes five to ten minutes a day much easier to sustain.",
+      "AudioFlash can generate custom flashcard sets for the situations you want to practice. Instead of a fixed curriculum, you can train the conversations you actually want to have.",
+  },
+  {
+    question: "Is Audio Flash free?",
+    answer:
+      "AudioFlash is free to use.",
   },
 ];
 
@@ -581,7 +580,7 @@ export default function HomePage() {
             href="#waitlist"
             className="rounded-xl px-4 py-2 bg-primary text-white text-sm font-semibold transition-opacity hover:opacity-90"
           >
-            Get Early Access
+            Get Free Early Access
           </a>
         </div>
       </nav>
@@ -600,8 +599,8 @@ export default function HomePage() {
             </h1>
 
             <p className="text-lg text-muted leading-relaxed mb-6 max-w-xl mx-auto lg:mx-0">
-              You studied vocabulary but still can't understand native speakers at full speed.
-               Train your ear to understand real spoken language not just memorize vocabulary.
+              You may know the vocabulary, but fast native speech still feels impossible to follow.
+              Train your ear to understand real spoken language, not just memorize words.
             </p>
 
             <div className="mb-8 max-w-xl mx-auto lg:mx-0">
@@ -647,8 +646,10 @@ export default function HomePage() {
         <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-10 items-center">
           <div>
             <p className="text-lg text-muted leading-relaxed mb-5">
-              Audio flashcards work because they combine active recall and spaced repetition two of the most effective learning techniques in cognitive science. Hearing a phrase and pulling the meaning from memory strengthens the brain’s sound-to-meaning connections, while spaced reviews reinforce them over time. 
-              That’s why recognition becomes faster and real conversations feel easier to follow.
+              Audio flashcards train your brain to hear a phrase and pull the meaning from memory quickly.
+              This strengthens the brain’s sound-to-meaning connections, while spaced reviews reinforce them over time.
+              Two of the most effective learning techniques in cognitive science are active recall and spaced repetition.
+              Audio Flash combines both of them so recognition becomes faster and real conversations feel easier to follow.
             </p>
           </div>
           <LearningProgressChart />
@@ -702,42 +703,17 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white border-y border-border py-16">
+      <section id="faq" className="bg-white border-y border-border py-20">
         <div className="max-w-6xl mx-auto px-6">
           <SectionHeading
-            title="Built for real life"
-            description="AudioFlash is designed for the moments when you can realistically practice, not just when you can sit and stare at a screen."
+            title="FAQ"
+            description=""
           />
-          <div className="grid lg:grid-cols-2 gap-8 items-start">
-            <div className="bg-background rounded-3xl p-6 border border-border">
-              <BulletList items={realLifeMoments} />
-            </div>
-            <div className="bg-accent rounded-3xl p-6 border border-primary/10">
-              <h3 className="font-semibold text-foreground text-lg mb-4">
-                Why that matters
-              </h3>
-              <p className="text-muted leading-relaxed">
-                The easiest language routine to keep is the one that fits into
-                your day. AudioFlash is built for quick, repeatable practice so
-                you can keep building listening fluency and speaking recall
-                without needing perfect study conditions.
-              </p>
-            </div>
+          <div className="grid gap-4 max-w-4xl mx-auto">
+            {faqs.map((faq) => (
+              <FAQItem key={faq.question} question={faq.question} answer={faq.answer} />
+            ))}
           </div>
-        </div>
-      </section>
-
-
-
-      <section id="faq" className="max-w-6xl mx-auto px-6 py-20">
-        <SectionHeading
-          title="FAQ"
-          description=""
-        />
-        <div className="grid gap-4 max-w-4xl mx-auto">
-          {faqs.map((faq) => (
-            <FAQItem key={faq.question} question={faq.question} answer={faq.answer} />
-          ))}
         </div>
       </section>
 
@@ -753,7 +729,7 @@ export default function HomePage() {
             Stop freezing when native speakers talk to you in their language.
           </h2>
           <p className="text-white/80 mb-8 text-lg">
-            Get early access to audio flashcards built for listening
+            Get free early access to audio flashcards built for listening
             comprehension, speaking recall, and short daily practice.
           </p>
 
