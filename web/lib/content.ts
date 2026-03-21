@@ -25,7 +25,8 @@ export const steps = [
   {
     number: "03",
     title: "Review and build confidence",
-    description: "Review answers and repeat the process to build your listening skills.",
+    description:
+      "Review answers and repeat the process to build your listening skills.",
   },
 ];
 
@@ -50,7 +51,7 @@ export const features = [
   },
   {
     icon: "04",
-    title: "Generate custom flashcards with AI",
+    title: "Generate Custom Flashcards With AI",
     description:
       "Tailor your learning to your specific needs. Generate custom audio flashcards for any topic like travel, business, dating, interviews, and niche topics most language apps never cover.",
   },
@@ -94,7 +95,7 @@ export const faqs = [
       "Yes. AudioFlash complements reading, grammar, and game-style apps by focusing on listening comprehension and speaking recall.",
   },
   {
-    question: "Is Audio Flash free?",
-    answer: "AudioFlash is free to use.",
+    question: "Is AudioFlash free?",
+    answer: "Yes, AudioFlash is free to use.",
   },
 ];

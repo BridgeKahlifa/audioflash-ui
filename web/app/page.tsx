@@ -168,7 +168,7 @@ export default function HomePage() {
 
       <section className="border-y border-border bg-white py-20">
         <div className="mx-auto max-w-3xl px-6 text-center">
-          <p className="mb-4 text-sm font-semibold text-primary">Problem statement</p>
+
 
           <h2 className="mb-6 text-3xl font-bold leading-tight tracking-tight text-foreground md:text-4xl">
             You Studied the Words... But Still Can't Understand Real Speech
@@ -184,8 +184,8 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-6xl px-6 py-20">
         <SectionHeading
-          title="Why audio flashcards train real listening skill"
-          description="Hear the phrase. Understand the meaning. Respond without translating."
+          title="Why Audio Flashcards Train Real Listening Skill"
+          description="Hear the phrase. Understand the meaning without translating in your head."
         />
         <div className="grid items-center gap-10 lg:grid-cols-[1.2fr_0.8fr]">
           <div>
