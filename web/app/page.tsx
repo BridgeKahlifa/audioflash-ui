@@ -126,9 +126,10 @@ export default function HomePage() {
           </div>
           <a
             href="#waitlist"
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 whitespace-nowrap"
           >
-            Get Free Early Access
+            <span className="sm:hidden">Join Free</span>
+            <span className="hidden sm:inline">Get Free Early Access</span>
           </a>
         </div>
       </nav>
@@ -142,16 +143,16 @@ export default function HomePage() {
               </span>
             </div>
 
-            <h1 className="mb-6 text-5xl font-bold leading-tight tracking-tight text-foreground lg:text-6xl">
+            <h1 className="mb-6 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-6xl">
               Audio Flashcards That Make Language Stick
             </h1>
 
-            <p className="mx-auto mb-6 max-w-xl text-lg leading-relaxed text-muted lg:mx-0">
+            <p className="mx-auto mb-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg lg:mx-0">
               You may know the vocabulary, but fast native speech still feels impossible to
               follow. Train your ear to understand real spoken language, not just memorize words.
             </p>
 
-            <div className="mx-auto mb-8 max-w-xl lg:mx-0">
+            <div className="mx-auto mb-8 max-w-xl text-left lg:mx-0">
               <BulletList items={heroBullets} />
             </div>
 
@@ -160,7 +161,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex-shrink-0">
+          <div className="w-full max-w-[300px] mx-auto lg:flex-shrink-0 lg:w-auto lg:max-w-none">
             <FlashcardMockup />
           </div>
         </div>

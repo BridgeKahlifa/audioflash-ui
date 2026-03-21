@@ -52,14 +52,14 @@ export function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-md">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="your@email.com"
           required
-          className={`flex-1 rounded-2xl px-4 py-3.5 text-sm outline-none transition-all ${
+          className={`min-w-0 flex-1 basis-48 rounded-2xl px-4 py-3.5 text-sm outline-none transition-all ${
             variant === "hero"
               ? "bg-white border border-border text-foreground placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/10"
               : "bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:border-white/50"
@@ -68,7 +68,7 @@ export function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
         <button
           type="submit"
           disabled={status === "loading"}
-          className="rounded-2xl px-5 py-3.5 bg-primary text-white text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="w-full rounded-2xl px-5 py-3.5 bg-primary text-white text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90 disabled:opacity-60 sm:w-auto"
           style={{ boxShadow: "0 4px 14px rgba(255,107,74,0.35)" }}
         >
           {status === "loading" ? "..." : "Get Free Early Access"}

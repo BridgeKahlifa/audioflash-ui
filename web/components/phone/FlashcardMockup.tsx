@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FlagIcon } from "../FlagIcon";
 import { playAudioFile } from "../../lib/audio";
 import { LESSONS, LessonKey, LessonCard, CardResult, getWeeklyData } from "../../lib/lessons";
@@ -25,6 +25,18 @@ export function FlashcardMockup() {
   const [audioPulsing, setAudioPulsing] = useState(false);
   const [revealPulsing, setRevealPulsing] = useState(false);
   const revealEverUsed = useRef(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    if (!wrapperRef.current) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      setScale(Math.min(1, w / 300));
+    });
+    ro.observe(wrapperRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const lesson = selectedLang ? LESSONS[selectedLang] : null;
   const currentCard: LessonCard | undefined = lesson?.cards[currentIndex];
@@ -82,7 +94,10 @@ export function FlashcardMockup() {
 
   return (
     <PhoneCallout pulsing={phonePulsing}>
-      <div className="relative mx-auto" style={{ width: 300 }}>
+      {/* Layout wrapper: measures available width and reserves scaled height */}
+      <div ref={wrapperRef} className="relative mx-auto w-full" style={{ height: 600 * scale }}>
+        {/* Scale container: phone + badge shrink together */}
+        <div className="relative" style={{ width: 300, transformOrigin: "top left", transform: `scale(${scale})` }}>
         <div
           className="relative bg-background rounded-[40px] overflow-hidden"
           style={{ width: 300, height: 600, boxShadow: "0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.08)" }}
@@ -371,6 +386,7 @@ export function FlashcardMockup() {
           >
             Try it out
           </span>
+        </div>
         </div>
       </div>
     </PhoneCallout>
