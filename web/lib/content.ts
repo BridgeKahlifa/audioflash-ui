@@ -15,7 +15,7 @@ export const steps = [
     number: "01",
     title: "Pick a lesson",
     description:
-      "Pick from one of our curated lessons spanning several catagories or generate your own using AI.",
+      "Pick from one of our curated lessons spanning several categories or generate your own using AI.",
   },
   {
     number: "02",
@@ -64,6 +64,21 @@ export const realLifeMoments = [
 
 export const faqs = [
   {
+    question: "How is AudioFlash different from apps like Duolingo?",
+    answer:
+      "AudioFlash focuses on listening comprehension and recall. Providing nothing but audio forces you to actively listen and pull from your memory.",
+  },
+  {
+    question: "What level of language learner is AudioFlash for?",
+    answer:
+      "AudioFlash is designed for learners at all levels, from beginners to advanced speakers. AI-powered customization ensures content matches your current proficiency along with our pre made lessons",
+  },
+  {
+    question: "What does AI-generated practice mean?",
+    answer:
+      "AudioFlash can generate custom flashcard sets for the situations you want to practice. Instead of a fixed curriculum, you can train the conversations you actually want to have.",
+  },
+  {
     question: "Do I need to know how to read the language?",
     answer:
       "No.AudioFlash is designed for audio-first learning, so you can begin training listening recognition even before you learn to read the writing system.",
@@ -74,24 +89,9 @@ export const faqs = [
       "Spaced repetition schedules reviews close to the point where you are likely to forget. That timing helps important words and phrases come back faster with less re-learning.",
   },
   {
-    question: "Is AudioFlash good for beginners?",
-    answer:
-      "Yes. Beginners can start with short, high-frequency phrases and build listening confidence before moving into faster material.",
-  },
-  {
     question: "Can I use AudioFlash with another language app?",
     answer:
       "Yes. AudioFlash complements reading, grammar, and game-style apps by focusing on listening comprehension and speaking recall.",
-  },
-  {
-    question: "How is AudioFlash different from apps like Duolingo?",
-    answer:
-      "AudioFlash focuses on listening comprehension and recall. Providing nothing but audio forces you to actively listen and pull from your memory.",
-  },
-  {
-    question: "What does AI-generated practice mean?",
-    answer:
-      "AudioFlash can generate custom flashcard sets for the situations you want to practice. Instead of a fixed curriculum, you can train the conversations you actually want to have.",
   },
   {
     question: "Is Audio Flash free?",

@@ -9,7 +9,6 @@ import {
   heroBullets,
   steps,
   features,
-  realLifeMoments,
   faqs,
 } from "../lib/content";
 
@@ -139,7 +138,7 @@ export default function HomePage() {
           <div className="flex-1 text-center lg:text-left">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5">
               <span className="text-xs font-medium text-primary">
-                Listen first..then speak with Audio-first language practice
+                Listen first, then speak with audio-first language practice
               </span>
             </div>
 
@@ -191,11 +190,10 @@ export default function HomePage() {
         <div className="grid items-center gap-10 lg:grid-cols-[1.2fr_0.8fr]">
           <div>
             <p className="mb-5 text-lg leading-relaxed text-muted">
-              Audio flashcards train your brain to hear a phrase and pull the meaning from memory
-              quickly. This strengthens the brain&apos;s sound-to-meaning connections, while spaced
-              reviews reinforce them over time. Two of the most effective learning techniques in
-              cognitive science are active recall and spaced repetition. Audio Flash combines both
-              of them so recognition becomes faster and real conversations feel easier to follow.
+              Two of the most effective learning techniques in cognitive science are active recall
+              and spaced repetition. AudioFlash combines both of them by not showing the answer
+              until you&apos;ve tried to recall it first and then spacing the reviews to reinforce
+              long-term retention.
             </p>
           </div>
           <LearningProgressChart />
@@ -206,7 +204,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-6">
           <SectionHeading
             title="How it works"
-            description="Choose a language, press play, and build listening and speaking recall through short repeated practice."
+            description="Choose a language, press play, and build listening recall through short repeated practice."
           />
 
           <div className="grid gap-6 md:grid-cols-3">
@@ -223,7 +221,7 @@ export default function HomePage() {
 
       <section id="features" className="mx-auto max-w-6xl px-6 py-20">
         <SectionHeading
-          title="Built for Real Listening Fluency"
+          title="Features That Build Real Fluency"
           description="AudioFlash combines audio flashcards, spaced repetition, and AI-generated content to build real listening and speaking recall."
         />
         <div className="grid gap-6 md:grid-cols-2">
@@ -247,34 +245,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-border bg-white py-16">
+      <section id="faq" className="border-y border-border bg-white py-20">
         <div className="mx-auto max-w-6xl px-6">
-          <SectionHeading
-            title="Built for real life"
-            description="AudioFlash is designed for the moments when you can realistically practice, not just when you can sit and stare at a screen."
-          />
-          <div className="grid items-start gap-8 lg:grid-cols-2">
-            <div className="rounded-3xl border border-border bg-background p-6">
-              <BulletList items={realLifeMoments} />
-            </div>
-            <div className="rounded-3xl border border-primary/10 bg-accent p-6">
-              <h3 className="mb-4 text-lg font-semibold text-foreground">Why that matters</h3>
-              <p className="leading-relaxed text-muted">
-                The easiest language routine to keep is the one that fits into your day.
-                AudioFlash is built for quick, repeatable practice so you can keep building
-                listening fluency and speaking recall without needing perfect study conditions.
-              </p>
-            </div>
+          <SectionHeading title="FAQ" description="" />
+          <div className="mx-auto grid max-w-4xl gap-4">
+            {faqs.map((faq) => (
+              <FAQItem key={faq.question} question={faq.question} answer={faq.answer} />
+            ))}
           </div>
-        </div>
-      </section>
-
-      <section id="faq" className="mx-auto max-w-6xl px-6 py-20">
-        <SectionHeading title="FAQ" description="" />
-        <div className="mx-auto grid max-w-4xl gap-4">
-          {faqs.map((faq) => (
-            <FAQItem key={faq.question} question={faq.question} answer={faq.answer} />
-          ))}
         </div>
       </section>
 

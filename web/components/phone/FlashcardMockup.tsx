@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { FlagIcon } from "../FlagIcon";
 import { playAudioFile } from "../../lib/audio";
 import { LESSONS, LessonKey, LessonCard, CardResult, getWeeklyData } from "../../lib/lessons";
 import { PhoneCallout } from "./PhoneCallout";
@@ -112,7 +113,11 @@ export function FlashcardMockup() {
                           boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                         }}
                       >
-                        <span style={{ fontSize: 24 }}>{lang.flag}</span>
+                        <FlagIcon
+                          code={lang.flagCode}
+                          label={lang.label}
+                          className="h-6 w-8 rounded-sm shadow-sm"
+                        />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-foreground">{lang.label}</p>
                           <p className="text-xs text-muted">{lang.cards.length} cards</p>
@@ -271,7 +276,14 @@ export function FlashcardMockup() {
                 <div className="px-4 pt-3 pb-2 flex items-center justify-between flex-shrink-0">
                   <div>
                     <p className="text-base font-bold text-foreground leading-tight">Your Progress</p>
-                    <p className="text-xs text-muted">{lesson.flag} {lesson.label} · just completed</p>
+                    <p className="flex items-center gap-1.5 text-xs text-muted">
+                      <FlagIcon
+                        code={lesson.flagCode}
+                        label={lesson.label}
+                        className="h-3.5 w-[18px] rounded-[2px] shadow-sm"
+                      />
+                      <span>{lesson.label} · just completed</span>
+                    </p>
                   </div>
                   <span style={{ fontSize: 20 }}>🎉</span>
                 </div>
