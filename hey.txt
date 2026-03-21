@@ -1,182 +1,24 @@
-[
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你叫什么名字？",
-  "romanization": "nǐ jiào shénme míngzi",
-  "translation": "What is your name?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你从哪里来？",
-  "romanization": "nǐ cóng nǎlǐ lái",
-  "translation": "Where are you from?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你会说中文吗？",
-  "romanization": "nǐ huì shuō zhōngwén ma",
-  "translation": "Can you speak Chinese?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你在这里做什么？",
-  "romanization": "nǐ zài zhèlǐ zuò shénme",
-  "translation": "What are you doing here?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你来中国多久了？",
-  "romanization": "nǐ lái zhōngguó duō jiǔ le",
-  "translation": "How long have you been in China?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你喜欢中国吗？",
-  "romanization": "nǐ xǐhuān zhōngguó ma",
-  "translation": "Do you like China?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你几岁？",
-  "romanization": "nǐ jǐ suì",
-  "translation": "How old are you?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你是学生吗？",
-  "romanization": "nǐ shì xuéshēng ma",
-  "translation": "Are you a student?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你在哪里工作？",
-  "romanization": "nǐ zài nǎlǐ gōngzuò",
-  "translation": "Where do you work?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你喜欢吃什么？",
-  "romanization": "nǐ xǐhuān chī shénme",
-  "translation": "What do you like to eat?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你喜欢喝什么？",
-  "romanization": "nǐ xǐhuān hē shénme",
-  "translation": "What do you like to drink?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你住在哪里？",
-  "romanization": "nǐ zhù zài nǎlǐ",
-  "translation": "Where do you live?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你一个人来的吗？",
-  "romanization": "nǐ yí gè rén lái de ma",
-  "translation": "Did you come alone?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你喜欢这里吗？",
-  "romanization": "nǐ xǐhuān zhèlǐ ma",
-  "translation": "Do you like it here?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你第一次来中国吗？",
-  "romanization": "nǐ dì yī cì lái zhōngguó ma",
-  "translation": "Is this your first time in China?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你会在这里待多久？",
-  "romanization": "nǐ huì zài zhèlǐ dài duō jiǔ",
-  "translation": "How long will you stay here?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你今天忙吗？",
-  "romanization": "nǐ jīntiān máng ma",
-  "translation": "Are you busy today?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你喜欢这个地方吗？",
-  "romanization": "nǐ xǐhuān zhège dìfang ma",
-  "translation": "Do you like this place?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你平时做什么？",
-  "romanization": "nǐ píngshí zuò shénme",
-  "translation": "What do you usually do?",
-  "audio_url": "",
-  "difficulty": 1
-},
-{
-  "category_id": "4a9ecc38-f09d-4e27-a81d-2cd51a6ee11f",
-  "language_id": "a9315cfa-d86c-44dd-b37a-af91e848ac62",
-  "source_text": "你喜欢运动吗？",
-  "romanization": "nǐ xǐhuān yùndòng ma",
-  "translation": "Do you like sports?",
-  "audio_url": "",
-  "difficulty": 1
-}
-]
+Lessons / Flashcards / Progress
+Audio Caching Logic
+Create a place to save the audio 
+Dependency Injection 
+
+Fundemental Changes
+Good landing pages start with a pain. The pain we are fixing
+
+You studied vocabulary but still can't understand real speech.
+Train your brain to recognize and recall phrases at real speaking speed using  audio flashcards you can practice anywhere.
+Tailor your lessons using AI to generate lessons about the subjects you care most about
+
+
+
+TODO
+
+Add an LOVED by early testersconst 
+
+
+
+
+Pick a lesson 
+
+Pick from one of curated lessons spanning several catagories or generate your own using AI

@@ -1,6 +1,10 @@
+import type { FlagCode } from "../components/FlagIcon";
+
 export const LESSONS = {
   es: {
-    flag: "🇪🇸", label: "Spanish", langCode: "es-ES",
+    flagCode: "ES" as FlagCode,
+    label: "Spanish",
+    langCode: "es-ES",
     cards: [
       { phrase: "Hola, ¿cómo estás?", romanization: "OH-la, KOH-mo es-TAS", meaning: "Hi, how are you?" },
       { phrase: "Mucho gusto", romanization: "MOO-cho GOOS-to", meaning: "Nice to meet you" },
@@ -10,7 +14,9 @@ export const LESSONS = {
     ],
   },
   fr: {
-    flag: "🇫🇷", label: "French", langCode: "fr-FR",
+    flagCode: "FR" as FlagCode,
+    label: "French",
+    langCode: "fr-FR",
     cards: [
       { phrase: "Bonjour, comment ça va?", romanization: "bon-ZHOOR, koh-MAHN sa VA", meaning: "Hello, how are you?" },
       { phrase: "Enchanté", romanization: "ahn-shahn-TAY", meaning: "Nice to meet you" },
@@ -20,7 +26,9 @@ export const LESSONS = {
     ],
   },
   ja: {
-    flag: "🇯🇵", label: "Japanese", langCode: "ja-JP",
+    flagCode: "JP" as FlagCode,
+    label: "Japanese",
+    langCode: "ja-JP",
     cards: [
       { phrase: "はじめまして", romanization: "ha-ji-me-ma-shi-te", meaning: "Nice to meet you" },
       { phrase: "ありがとうございます", romanization: "a-ri-ga-TOU go-ZAI-ma-su", meaning: "Thank you very much" },
@@ -30,7 +38,9 @@ export const LESSONS = {
     ],
   },
   zh: {
-    flag: "🇨🇳", label: "Mandarin", langCode: "zh-CN",
+    flagCode: "CN" as FlagCode,
+    label: "Mandarin",
+    langCode: "zh-CN",
     cards: [
       { phrase: "你好吗？", romanization: "nǐ hǎo ma", meaning: "How are you?" },
       { phrase: "很高兴认识你", romanization: "hěn gāo xìng rèn shí nǐ", meaning: "Nice to meet you" },
@@ -42,6 +52,7 @@ export const LESSONS = {
 } as const;
 
 export type LessonKey = keyof typeof LESSONS;
+export type Lesson = (typeof LESSONS)[LessonKey];
 export type LessonCard = { phrase: string; romanization: string; meaning: string };
 export type CardResult = LessonCard & { knew: boolean };
 

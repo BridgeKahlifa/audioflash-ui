@@ -71,7 +71,7 @@ export function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
           className="rounded-2xl px-5 py-3.5 bg-primary text-white text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90 disabled:opacity-60"
           style={{ boxShadow: "0 4px 14px rgba(255,107,74,0.35)" }}
         >
-          {status === "loading" ? "..." : "Get Early Access"}
+          {status === "loading" ? "..." : "Get Free Early Access"}
         </button>
       </div>
       {status === "error" && (

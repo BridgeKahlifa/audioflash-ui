@@ -35,8 +35,14 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
+      target: dev
     environment:
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
       NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     ports:
       - "8084:3000"
+    volumes:
+      - .:/app
+      - /app/web/node_modules
