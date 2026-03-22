@@ -5,6 +5,8 @@ import { Stack, router, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../lib/auth-context";
+import { AuthModeBadge } from "../components/AuthModeBadge";
+import { ConfigProvider } from "../lib/config-context";
 
 function RootNavigator() {
   const { session, loading, isDevAuth } = useAuth();
@@ -46,9 +48,12 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
+      <ConfigProvider>
+        <AuthProvider>
+          <AuthModeBadge />
+          <RootNavigator />
+        </AuthProvider>
+      </ConfigProvider>
     </GestureHandlerRootView>
   );
 }

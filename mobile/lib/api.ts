@@ -13,6 +13,12 @@ export type ApiSessionStats = components["schemas"]["SessionStatsResponse"];
 export type ApiCreateFlashcard =
   components["schemas"]["CreateFlashcardRequest"];
 
+export interface ApiConfig {
+  DB_ENV?: string | null;
+  db_env?: string | null;
+  [key: string]: unknown;
+}
+
 export interface ApiStartLesson {
   profile_id: string;
   category_id: string;
@@ -192,6 +198,11 @@ export async function fetchLanguages(): Promise<ApiLanguage[]> {
 export async function fetchCategories(): Promise<ApiCategory[]> {
   const res = await fetch(`${API_BASE_URL}/lessons/categories`);
   return parseJson<ApiCategory[]>(res);
+}
+
+export async function fetchConfig(): Promise<ApiConfig> {
+  const res = await fetch(`${API_BASE_URL}/config`);
+  return parseJson<ApiConfig>(res);
 }
 
 export async function fetchLessonsByCategory(params: {

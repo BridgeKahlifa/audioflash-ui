@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AuthModeBadge } from "../components/AuthModeBadge";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,6 +25,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const dbEnv = process.env.DB_ENV;
+
   return (
     <html lang="en">
       <head>
@@ -39,6 +42,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background text-foreground font-sans antialiased">
+        <AuthModeBadge authMode={dbEnv} />
         {children}
       </body>
     </html>
