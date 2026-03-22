@@ -47,13 +47,16 @@ export default function FlashcardPractice() {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [canRevealAnswer, setCanRevealAnswer] = useState(false);
   const [results, setResults] = useState<SessionCardResult[]>([]);
   const [selectedConfidence, setSelectedConfidence] = useState<number | null>(null);
   const [audioPlayCount, setAudioPlayCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingResult, setSubmittingResult] = useState<"knew" | "didnt-know" | null>(null);
   const [attemptError, setAttemptError] = useState("");
   const shownAtRef = useRef(Date.now());
   const submitLockRef = useRef(false);
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Swipe animation
   const translateX = useRef(new Animated.Value(0)).current;
@@ -71,10 +74,27 @@ export default function FlashcardPractice() {
     setAudioPlayCount(0);
     setSelectedConfidence(null);
     setAttemptError("");
+    setSubmittingResult(null);
+    setCanRevealAnswer(false);
+
+    if (revealTimerRef.current) {
+      clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
   }, [currentIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (revealTimerRef.current) {
+        clearTimeout(revealTimerRef.current);
+      }
+    };
+  }, []);
 
   const currentCard = cards[currentIndex];
   const progress = cards.length > 0 ? (currentIndex + 1) / cards.length : 0;
+  const shouldShowRevealButton = canRevealAnswer && !showAnswer;
+  const shouldShowAnswerActions = canRevealAnswer && showAnswer;
 
   const panResponder = useRef(
     PanResponder.create({
@@ -132,12 +152,14 @@ export default function FlashcardPractice() {
 
     submitLockRef.current = true;
     setSubmitting(true);
+    setSubmittingResult(knew ? "knew" : "didnt-know");
     setAttemptError("");
     const responseTimeMs = Math.max(0, Date.now() - shownAtRef.current);
 
     if (!lessonSessionId || !currentCard.dbId) {
       setAttemptError("We couldn't save this card result because the lesson session is missing.");
       setSubmitting(false);
+      setSubmittingResult(null);
       submitLockRef.current = false;
       return;
     }
@@ -156,6 +178,7 @@ export default function FlashcardPractice() {
       console.error("Failed to record flashcard attempt", error);
       setAttemptError("We couldn't save that answer. Please check your connection and try again.");
       setSubmitting(false);
+      setSubmittingResult(null);
       submitLockRef.current = false;
       return;
     }
@@ -177,6 +200,7 @@ export default function FlashcardPractice() {
       setCurrentIndex((i) => i + 1);
       setShowAnswer(false);
       setSubmitting(false);
+      setSubmittingResult(null);
       submitLockRef.current = false;
     } else {
       const correct = newResults.filter((r) => r.knew).length;
@@ -185,6 +209,7 @@ export default function FlashcardPractice() {
       if (!profileId || !lessonSessionId) {
         setAttemptError("We couldn't finish this lesson because the lesson session is missing.");
         setSubmitting(false);
+        setSubmittingResult(null);
         submitLockRef.current = false;
         return;
       }
@@ -198,6 +223,7 @@ export default function FlashcardPractice() {
         console.error("Failed to end lesson session", error);
         setAttemptError("We couldn't finish the lesson right now. Please try again.");
         setSubmitting(false);
+        setSubmittingResult(null);
         submitLockRef.current = false;
         return;
       }
@@ -232,6 +258,7 @@ export default function FlashcardPractice() {
       }
 
       setSubmitting(false);
+      setSubmittingResult(null);
       submitLockRef.current = false;
       router.replace("/session-summary");
     }
@@ -304,6 +331,12 @@ export default function FlashcardPractice() {
             <Pressable
               onPress={() => {
                 setAudioPlayCount((count) => count + 1);
+                if (!canRevealAnswer && !revealTimerRef.current) {
+                  revealTimerRef.current = setTimeout(() => {
+                    setCanRevealAnswer(true);
+                    revealTimerRef.current = null;
+                  }, 1000);
+                }
                 speakChinese(currentCard.chinese, profile?.audio_speed ?? 1.0);
               }}
               className="w-20 h-20 bg-primary rounded-full items-center justify-center"
@@ -336,7 +369,7 @@ export default function FlashcardPractice() {
 
         {/* Actions */}
         <View className="px-4 pb-6 gap-3">
-          {!showAnswer ? (
+          {shouldShowRevealButton ? (
             <Pressable
               onPress={() => setShowAnswer(true)}
               className="py-4 bg-secondary rounded-2xl items-center"
@@ -346,7 +379,8 @@ export default function FlashcardPractice() {
                 Reveal Answer
               </Text>
             </Pressable>
-          ) : (
+          ) : null}
+          {shouldShowAnswerActions ? (
             <>
               <View className="items-center gap-3">
                 <Text className="text-sm font-medium text-muted">
@@ -385,7 +419,7 @@ export default function FlashcardPractice() {
                   className="flex-1 py-4 bg-secondary rounded-2xl items-center"
                 >
                   <Text className="text-base font-medium text-foreground">
-                    {submitting ? "Saving..." : "Didn't Know"}
+                    {submittingResult === "didnt-know" ? "Saving..." : "Didn't Know"}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -401,7 +435,7 @@ export default function FlashcardPractice() {
                   }}
                 >
                   <Text className="text-base font-semibold text-primary-foreground">
-                    {submitting ? "Saving..." : "I Knew It"}
+                    {submittingResult === "knew" ? "Saving..." : "I Knew It"}
                   </Text>
                 </Pressable>
               </View>
@@ -411,7 +445,7 @@ export default function FlashcardPractice() {
                 </Text>
               ) : null}
             </>
-          )}
+          ) : null}
           <Text className="text-center text-xs text-muted">
             Swipe left or right to navigate
           </Text>
