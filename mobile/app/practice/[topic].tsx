@@ -5,6 +5,7 @@ import {
   Pressable,
   PanResponder,
   Animated,
+  LayoutChangeEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -51,9 +52,11 @@ export default function FlashcardPractice() {
   const [results, setResults] = useState<SessionCardResult[]>([]);
   const [selectedConfidence, setSelectedConfidence] = useState<number | null>(null);
   const [audioPlayCount, setAudioPlayCount] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [submitting, setSubmitting] = useState(false);
   const [submittingResult, setSubmittingResult] = useState<"knew" | "didnt-know" | null>(null);
   const [attemptError, setAttemptError] = useState("");
+  const [sliderWidth, setSliderWidth] = useState(0);
   const shownAtRef = useRef(Date.now());
   const submitLockRef = useRef(false);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,6 +98,28 @@ export default function FlashcardPractice() {
   const progress = cards.length > 0 ? (currentIndex + 1) / cards.length : 0;
   const shouldShowRevealButton = canRevealAnswer && !showAnswer;
   const shouldShowAnswerActions = canRevealAnswer && showAnswer;
+  const shouldPersistAttempts = Boolean(lessonSessionId && currentCard?.dbId);
+  const minPlaybackSpeed = 0.5;
+  const maxPlaybackSpeed = 1.0;
+  const sliderThumbSize = 28;
+  const sliderTrackHeight = 3;
+  const sliderUsableWidth = Math.max(sliderWidth - sliderThumbSize, 0);
+  const sliderPosition =
+    sliderUsableWidth > 0
+      ? ((playbackSpeed - minPlaybackSpeed) / (maxPlaybackSpeed - minPlaybackSpeed)) * sliderUsableWidth
+      : 0;
+
+  function updatePlaybackSpeedFromPosition(position: number) {
+    if (sliderUsableWidth <= 0) return;
+    const ratio = Math.min(1, Math.max(0, position / sliderUsableWidth));
+    const rawValue = minPlaybackSpeed + ratio * (maxPlaybackSpeed - minPlaybackSpeed);
+    const steppedValue = Math.round(rawValue * 10) / 10;
+    setPlaybackSpeed(Math.min(maxPlaybackSpeed, Math.max(minPlaybackSpeed, steppedValue)));
+  }
+
+  function handleSliderLayout(event: LayoutChangeEvent) {
+    setSliderWidth(event.nativeEvent.layout.width);
+  }
 
   const panResponder = useRef(
     PanResponder.create({
@@ -133,6 +158,17 @@ export default function FlashcardPractice() {
     })
   ).current;
 
+  const sliderPanResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (event) => {
+      updatePlaybackSpeedFromPosition(event.nativeEvent.locationX - sliderThumbSize / 2);
+    },
+    onPanResponderMove: (event) => {
+      updatePlaybackSpeedFromPosition(event.nativeEvent.locationX - sliderThumbSize / 2);
+    },
+  });
+
   function goPrev() {
     if (currentIndex > 0 && !submitting) {
       setCurrentIndex((i) => i - 1);
@@ -156,31 +192,25 @@ export default function FlashcardPractice() {
     setAttemptError("");
     const responseTimeMs = Math.max(0, Date.now() - shownAtRef.current);
 
-    if (!lessonSessionId || !currentCard.dbId) {
-      setAttemptError("We couldn't save this card result because the lesson session is missing.");
-      setSubmitting(false);
-      setSubmittingResult(null);
-      submitLockRef.current = false;
-      return;
-    }
-
-    try {
-      await createFlashcardAttempt(session?.access_token, {
-        session_id: lessonSessionId,
-        flashcard_id: currentCard.dbId,
-        correct: knew,
-        response_time_ms: responseTimeMs,
-        audio_play_count: audioPlayCount,
-        hint_used: false,
-        confidence_rating: selectedConfidence,
-      });
-    } catch (error) {
-      console.error("Failed to record flashcard attempt", error);
-      setAttemptError("We couldn't save that answer. Please check your connection and try again.");
-      setSubmitting(false);
-      setSubmittingResult(null);
-      submitLockRef.current = false;
-      return;
+    if (shouldPersistAttempts) {
+      try {
+        await createFlashcardAttempt(session?.access_token, {
+          session_id: lessonSessionId!,
+          flashcard_id: currentCard.dbId!,
+          correct: knew,
+          response_time_ms: responseTimeMs,
+          audio_play_count: audioPlayCount,
+          hint_used: false,
+          confidence_rating: selectedConfidence,
+        });
+      } catch (error) {
+        console.error("Failed to record flashcard attempt", error);
+        setAttemptError("We couldn't save that answer. Please check your connection and try again.");
+        setSubmitting(false);
+        setSubmittingResult(null);
+        submitLockRef.current = false;
+        return;
+      }
     }
 
     const newResults = [
@@ -205,27 +235,29 @@ export default function FlashcardPractice() {
     } else {
       const correct = newResults.filter((r) => r.knew).length;
 
-      const profileId = profile?.id ?? session?.user?.id;
-      if (!profileId || !lessonSessionId) {
-        setAttemptError("We couldn't finish this lesson because the lesson session is missing.");
-        setSubmitting(false);
-        setSubmittingResult(null);
-        submitLockRef.current = false;
-        return;
-      }
+      if (shouldPersistAttempts) {
+        const profileId = profile?.id ?? session?.user?.id;
+        if (!profileId || !lessonSessionId) {
+          setAttemptError("We couldn't finish this lesson because the lesson session is missing.");
+          setSubmitting(false);
+          setSubmittingResult(null);
+          submitLockRef.current = false;
+          return;
+        }
 
-      try {
-        await endLesson(session?.access_token, {
-          profile_id: profileId,
-          session_id: lessonSessionId,
-        });
-      } catch (error) {
-        console.error("Failed to end lesson session", error);
-        setAttemptError("We couldn't finish the lesson right now. Please try again.");
-        setSubmitting(false);
-        setSubmittingResult(null);
-        submitLockRef.current = false;
-        return;
+        try {
+          await endLesson(session?.access_token, {
+            profile_id: profileId,
+            session_id: lessonSessionId,
+          });
+        } catch (error) {
+          console.error("Failed to end lesson session", error);
+          setAttemptError("We couldn't finish the lesson right now. Please try again.");
+          setSubmitting(false);
+          setSubmittingResult(null);
+          submitLockRef.current = false;
+          return;
+        }
       }
 
       await saveCompletedSession({
@@ -237,7 +269,7 @@ export default function FlashcardPractice() {
       });
 
       // Sync to API in the background — don't block navigation
-      if (session?.access_token) {
+      if (shouldPersistAttempts && session?.access_token) {
         const token = session.access_token;
         Promise.all([
           createSession(token, {
@@ -337,8 +369,9 @@ export default function FlashcardPractice() {
                     revealTimerRef.current = null;
                   }, 1000);
                 }
-                speakChinese(currentCard.chinese, profile?.audio_speed ?? 1.0);
+                speakChinese(currentCard.chinese, playbackSpeed);
               }}
+              hitSlop={10}
               className="w-20 h-20 bg-primary rounded-full items-center justify-center"
               style={{
                 shadowColor: "#FF6B4A",
@@ -350,6 +383,45 @@ export default function FlashcardPractice() {
             >
               <Ionicons name="volume-high" size={36} color="#FFFFFF" />
             </Pressable>
+
+            {!showAnswer ? (
+              <View className="mt-4 w-full px-3">
+                <View className="mb-1 flex-row items-center justify-between">
+                  <Text className="text-sm text-muted">Slow</Text>
+                  <Text className="text-sm font-semibold text-primary">
+                    {playbackSpeed.toFixed(1)}x
+                  </Text>
+                  <Text className="text-sm text-muted">Normal</Text>
+                </View>
+                <View
+                  onLayout={handleSliderLayout}
+                  className="justify-center"
+                  style={{ height: sliderThumbSize }}
+                  {...sliderPanResponder.panHandlers}
+                >
+                  <View
+                    className="rounded-full bg-primary"
+                    style={{
+                      height: sliderTrackHeight,
+                      marginHorizontal: sliderThumbSize / 2,
+                    }}
+                  />
+                  <View
+                    className="absolute rounded-full bg-primary"
+                    style={{
+                      width: sliderThumbSize,
+                      height: sliderThumbSize,
+                      left: sliderPosition,
+                      shadowColor: "#FF6B4A",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 8,
+                      elevation: 4,
+                    }}
+                  />
+                </View>
+              </View>
+            ) : null}
 
             {showAnswer && (
               <View className="mt-8 items-center">
@@ -375,7 +447,7 @@ export default function FlashcardPractice() {
               className="py-4 bg-secondary rounded-2xl items-center"
               disabled={submitting}
             >
-              <Text className="text-base font-medium text-foreground">
+              <Text className="text-base font-medium text-muted">
                 Reveal Answer
               </Text>
             </Pressable>

@@ -82,7 +82,7 @@ export const faqs = [
   {
     question: "Do I need to know how to read the language?",
     answer:
-      "No.AudioFlash is designed for audio-first learning, so you can begin training listening recognition even before you learn to read the writing system.",
+      "No. AudioFlash is designed for audio-first learning, so you can begin training listening recognition even before you learn to read the writing system.",
   },
   {
     question: "How does spaced repetition help language learning?",
