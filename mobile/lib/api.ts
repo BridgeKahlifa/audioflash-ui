@@ -293,6 +293,7 @@ export interface ApiGenerateRequest {
   language_id: string;
   topic: string;
   card_count?: number;
+  difficulty_level?: number;
 }
 
 export interface ApiGeneratedLesson {
@@ -311,6 +312,30 @@ export async function generateLesson(
     body: JSON.stringify(body),
   });
   return parseJson<ApiGeneratedLesson>(res);
+}
+
+export interface ApiReplaceRequest {
+  language_id: string;
+  topic: string;
+  difficulty_level?: number;
+  count: number;
+  exclude_ids: string[];
+}
+
+export interface ApiReplaceResponse {
+  flashcards: ApiLessonCard[];
+}
+
+export async function generateReplacements(
+  token: string | null | undefined,
+  body: ApiReplaceRequest,
+): Promise<ApiReplaceResponse> {
+  const res = await fetch(`${API_BASE_URL}/generate/replace`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiReplaceResponse>(res);
 }
 
 // ── Library ──────────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Flashcard, SessionCardResult } from "../../lib/types";
 import { getCurrentCards } from "../../lib/storage";
 import { saveCompletedSession } from "../../lib/storage";
-import { speakChinese } from "../../lib/audio";
+import { speakText } from "../../lib/audio";
 import { useAuth } from "../../lib/auth-context";
 import {
   createFlashcardAttempt,
@@ -369,7 +369,7 @@ export default function FlashcardPractice() {
                     revealTimerRef.current = null;
                   }, 1000);
                 }
-                speakChinese(currentCard.chinese, playbackSpeed);
+                speakText(currentCard.chinese, language ?? "chinese", playbackSpeed);
               }}
               hitSlop={10}
               className="w-20 h-20 bg-primary rounded-full items-center justify-center"
