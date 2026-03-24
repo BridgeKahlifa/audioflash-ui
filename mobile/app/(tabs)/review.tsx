@@ -2,7 +2,12 @@ import { useCallback, useState } from "react";
 import { ScrollView, View, Text, Pressable, ActivityIndicator } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { fetchFlashcards, fetchReviews, type ApiReview } from "../../lib/api";
+import {
+  fetchFlashcards,
+  fetchReviews,
+  startReviewLifecycle,
+  type ApiReview,
+} from "../../lib/api";
 import { setCurrentCards } from "../../lib/storage";
 import { useAuth } from "../../lib/auth-context";
 
@@ -32,7 +37,7 @@ export default function ReviewQueue() {
 
     try {
       const data = await fetchReviews(session?.access_token);
-      setReviews(data);
+      setReviews(data.filter((review) => !review.ended_at));
     } catch (loadError) {
       console.error("Failed to load reviews", loadError);
       setError("We couldn't load your reviews right now.");
@@ -54,9 +59,19 @@ export default function ReviewQueue() {
     setError("");
 
     try {
+      const startedReview = await startReviewLifecycle(
+        session?.access_token,
+        review.id,
+      );
+      setReviews((currentReviews) =>
+        currentReviews.map((currentReview) =>
+          currentReview.id === startedReview.id ? startedReview : currentReview,
+        ),
+      );
+
       const flashcards = await fetchFlashcards();
       const flashcardsById = new Map(flashcards.map((card) => [String(card.id), card]));
-      const reviewCards = review.flashcard_ids
+      const reviewCards = startedReview.flashcard_ids
         .map((flashcardId, index) => {
           const card = flashcardsById.get(String(flashcardId));
           if (!card) return null;
@@ -83,9 +98,10 @@ export default function ReviewQueue() {
         pathname: "/practice/[topic]",
         params: {
           topic,
-          topicTitle: review.review_name,
+          topicTitle: startedReview.review_name,
           language: "review",
           languageLabel: "Review",
+          reviewId: startedReview.id,
         },
       });
     } catch (startError) {
@@ -157,6 +173,11 @@ export default function ReviewQueue() {
                       <Text className="text-xs text-muted mt-2">
                         Created {formatReviewDate(review.created_at)}
                       </Text>
+                      {review.started_at ? (
+                        <Text className="text-xs text-muted mt-1">
+                          Started {formatReviewDate(review.started_at)}
+                        </Text>
+                      ) : null}
                     </View>
                     {isStarting ? (
                       <ActivityIndicator color="#FF6B4A" />
