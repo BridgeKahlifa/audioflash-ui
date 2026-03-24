@@ -77,6 +77,11 @@ export interface ApiFlashcardAttempt {
   cards_correct: number;
 }
 
+export interface ApiUpdateFlashcardAttempt {
+  correct: boolean;
+  confidence_rating?: number | null;
+}
+
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090/api";
 
@@ -251,6 +256,28 @@ export async function fetchReviews(token?: string | null): Promise<ApiReview[]> 
   return parseJson<ApiReview[]>(res);
 }
 
+export async function startReviewLifecycle(
+  token: string | null | undefined,
+  reviewId: string,
+): Promise<ApiReview> {
+  const res = await fetch(`${API_BASE_URL}/review/${reviewId}/start`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiReview>(res);
+}
+
+export async function completeReviewLifecycle(
+  token: string | null | undefined,
+  reviewId: string,
+): Promise<ApiReview> {
+  const res = await fetch(`${API_BASE_URL}/review/${reviewId}/complete`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiReview>(res);
+}
+
 export async function startLesson(
   token: string | null | undefined,
   body: ApiStartLesson,
@@ -281,6 +308,19 @@ export async function createFlashcardAttempt(
 ): Promise<ApiFlashcardAttempt> {
   const res = await fetch(`${API_BASE_URL}/flashcard/attempt`, {
     method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiFlashcardAttempt>(res);
+}
+
+export async function updateFlashcardAttempt(
+  token: string | null | undefined,
+  attemptId: string,
+  body: ApiUpdateFlashcardAttempt,
+): Promise<ApiFlashcardAttempt> {
+  const res = await fetch(`${API_BASE_URL}/flashcard/attempt/${attemptId}`, {
+    method: "PATCH",
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
