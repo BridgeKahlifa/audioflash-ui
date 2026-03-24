@@ -164,18 +164,17 @@ export default function ReviewQueue() {
           <Pressable
             onPress={startReview}
             disabled={!queue || queue.due_count === 0 || starting || loading}
-            className={`py-4 rounded-2xl items-center ${
-              queue && queue.due_count > 0 && !starting ? "bg-primary" : "bg-secondary"
-            }`}
+            className={`py-4 rounded-2xl items-center ${queue && queue.due_count > 0 && !starting ? "bg-primary" : "bg-secondary"
+              }`}
             style={
               queue && queue.due_count > 0 && !starting
                 ? {
-                    shadowColor: "#FF6B4A",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 8,
-                    elevation: 4,
-                  }
+                  shadowColor: "#FF6B4A",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }
                 : undefined
             }
           >
@@ -183,9 +182,8 @@ export default function ReviewQueue() {
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <Text
-                className={`text-base font-semibold ${
-                  queue && queue.due_count > 0 ? "text-primary-foreground" : "text-muted"
-                }`}
+                className={`text-base font-semibold ${queue && queue.due_count > 0 ? "text-primary-foreground" : "text-muted"
+                  }`}
               >
                 {queue?.due_count === 0 ? "Nothing due right now" : "Start Review Session"}
               </Text>

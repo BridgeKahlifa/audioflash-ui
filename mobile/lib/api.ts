@@ -12,6 +12,22 @@ export type ApiCreateSession = components["schemas"]["CreateSessionRequest"];
 export type ApiSessionStats = components["schemas"]["SessionStatsResponse"];
 export type ApiCreateFlashcard =
   components["schemas"]["CreateFlashcardRequest"];
+export type ApiReview = {
+  id: string;
+  profile_id: string;
+  parent_session_id: string;
+  review_name: string;
+  flashcard_ids: string[];
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string;
+};
+
+export interface ApiConfig {
+  DB_ENV?: string | null;
+  db_env?: string | null;
+  [key: string]: unknown;
+}
 
 export interface ApiStartLesson {
   profile_id: string;
@@ -194,6 +210,11 @@ export async function fetchCategories(): Promise<ApiCategory[]> {
   return parseJson<ApiCategory[]>(res);
 }
 
+export async function fetchConfig(): Promise<ApiConfig> {
+  const res = await fetch(`${API_BASE_URL}/config`);
+  return parseJson<ApiConfig>(res);
+}
+
 export async function fetchLessonsByCategory(params: {
   categoryId: string;
   limit?: number;
@@ -216,6 +237,18 @@ export async function fetchLessonsByCategory(params: {
     query.size > 0 ? `${endpoint}?${query.toString()}` : endpoint,
   );
   return parseJson<ApiLessonCard[]>(res);
+}
+
+export async function fetchFlashcards(): Promise<ApiLessonCard[]> {
+  const res = await fetch(`${API_BASE_URL}/lessons/flashcards`);
+  return parseJson<ApiLessonCard[]>(res);
+}
+
+export async function fetchReviews(token?: string | null): Promise<ApiReview[]> {
+  const res = await fetch(`${API_BASE_URL}/review`, {
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiReview[]>(res);
 }
 
 export async function startLesson(

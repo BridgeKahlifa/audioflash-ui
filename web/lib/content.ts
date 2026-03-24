@@ -5,44 +5,56 @@ export const navLinks = [
 ];
 
 export const heroBullets = [
-  "Practice in five-minute sessions that fit real schedules.",
-  "Train listening and speaking recall without staring at your phone.",
-  "Use spaced repetition to make useful phrases stick longer.",
-];
-
-export const painPoints = [
-  "You studied the words, but real speech still feels too fast.",
-  "You recognize phrases on a screen, then freeze when you need them out loud.",
-  "You do not need perfect study conditions to keep making progress.",
+  "Hear real phrases and recall the meaning quickly.",
+  "Strengthen long-term memory using scientifically proven spaced repetition.",
+  "Quick lessons that train your ear for real conversations.",
 ];
 
 export const steps = [
   {
     number: "01",
-    title: "Choose your language and goal",
-    description: "Start with practical listening and speaking practice built around the situations you actually care about.",
+    title: "Pick a lesson",
+    description:
+      "Pick from one of our curated lessons spanning several categories or generate your own using AI.",
   },
   {
     number: "02",
     title: "Press play and practice anywhere",
-    description: "Hear short, useful phrases while walking, commuting, cooking, or moving through your day.",
+    description: "Hear short, useful phrases. Practice active recall daily.",
   },
   {
     number: "03",
-    title: "Answer, repeat, and review",
-    description: "Use quick recall checks and spaced reviews so phrases come back faster the next time you hear them.",
+    title: "Review and build confidence",
+    description:
+      "Review answers and repeat the process to build your listening skills.",
   },
 ];
 
 export const features = [
-  { icon: "01", title: "Audio-first language practice", description: "Practice without staring at your phone, which makes AudioFlash easier to use during real life moments." },
-  { icon: "02", title: "Spaced repetition that adapts", description: "Review the phrases you are about to forget so progress builds instead of resetting every week." },
-  { icon: "03", title: "Active recall prompts", description: "Train the skill you need in conversation: hearing a phrase, pulling the meaning fast, and answering from memory." },
-  { icon: "04", title: "Listen-repeat confidence", description: "Build speaking comfort with short audio loops that help pronunciation feel more natural and less stressful." },
-  { icon: "05", title: "High-quality phrase audio", description: "Train your ear for natural rhythm and useful everyday language instead of isolated word lists." },
-  { icon: "06", title: "Micro-lessons for busy days", description: "Short sessions make it realistic to keep practicing even when your schedule is crowded." },
-  { icon: "07", title: "Built for listening and recall", description: "AudioFlash focuses on understanding spoken language and answering faster, not just tapping through screens." },
-  { icon: "08", title: "Progress you can feel", description: "Notice faster recognition, smoother recall, and less translation lag when speech starts moving quickly." },
+  {
+    icon: "01",
+    title: "Train Fast Conversation Recall",
+    description:
+      "Hear a phrase, recall the meaning, and respond from memory. This builds the quick thinking needed when native speakers talk at full speed.",
+  },
+  {
+    icon: "02",
+    title: "Spaced Repetition That Adapts",
+    description:
+      "Review phrases right before you forget them. This timing strengthens long-term memory so recognition becomes faster over time.",
+  },
+  {
+    icon: "03",
+    title: "Set Goals And Track Your Progress",
+    description:
+      "Set daily or weekly goals and track your progress. See how your listening skills improve over time.",
+  },
+  {
+    icon: "04",
+    title: "Generate Custom Flashcards With AI",
+    description:
+      "Tailor your learning to your specific needs. Generate custom audio flashcards for any topic like travel, business, dating, interviews, and niche topics most language apps never cover.",
+  },
 ];
 
 export const realLifeMoments = [
@@ -53,27 +65,37 @@ export const realLifeMoments = [
 
 export const faqs = [
   {
-    question: "What are audio flashcards for language learning?",
-    answer: "Audio flashcards train you through sound first. You hear a phrase, recall the meaning or response, and repeat it so listening and speaking get trained together.",
+    question: "How is AudioFlash different from apps like Duolingo?",
+    answer:
+      "AudioFlash focuses on listening comprehension and recall. Providing nothing but audio forces you to actively listen and pull from your memory.",
+  },
+  {
+    question: "What level of language learner is AudioFlash for?",
+    answer:
+      "AudioFlash is designed for learners at all levels, from beginners to advanced speakers. AI-powered customization ensures content matches your current proficiency along with our pre made lessons",
+  },
+  {
+    question: "What does AI-generated practice mean?",
+    answer:
+      "AudioFlash can generate custom flashcard sets for the situations you want to practice. Instead of a fixed curriculum, you can train the conversations you actually want to have.",
+  },
+  {
+    question: "Do I need to know how to read the language?",
+    answer:
+      "No. AudioFlash is designed for audio-first learning, so you can begin training listening recognition even before you learn to read the writing system.",
   },
   {
     question: "How does spaced repetition help language learning?",
-    answer: "Spaced repetition schedules reviews close to the point where you are likely to forget. That timing helps important words and phrases come back faster with less re-learning.",
-  },
-  {
-    question: "Is AudioFlash good for beginners?",
-    answer: "Yes. Beginners can start with short, high-frequency phrases and build listening confidence before moving into faster material.",
+    answer:
+      "Spaced repetition schedules reviews close to the point where you are likely to forget. That timing helps important words and phrases come back faster with less re-learning.",
   },
   {
     question: "Can I use AudioFlash with another language app?",
-    answer: "Yes. AudioFlash complements reading, grammar, and game-style apps by focusing on listening comprehension and speaking recall.",
+    answer:
+      "Yes. AudioFlash complements reading, grammar, and game-style apps by focusing on listening comprehension and speaking recall.",
   },
   {
-    question: "How quickly will I notice progress?",
-    answer: "Most learners notice listening recognition improving first. With short, consistent practice, recall speed and speaking confidence usually follow.",
-  },
-  {
-    question: "Do I need long study sessions for AudioFlash to work?",
-    answer: "No. AudioFlash is built for short, repeatable sessions, which makes five to ten minutes a day much easier to sustain.",
+    question: "Is AudioFlash free?",
+    answer: "Yes, AudioFlash is free to use.",
   },
 ];

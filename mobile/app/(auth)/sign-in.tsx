@@ -1,12 +1,14 @@
 import { useState } from "react";
 import {
-  View, Text, TextInput, Pressable,
+  View, Text, TextInput, Pressable, Image,
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
+
+const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
 
 export default function SignIn() {
   const { sendOtp, passkeySupported, signInWithPasskey } = useAuth();
@@ -49,8 +51,12 @@ export default function SignIn() {
 
           {/* Branding */}
           <View className="flex-1 justify-center">
-            <View className="w-16 h-16 bg-accent rounded-2xl items-center justify-center mb-6">
-              <Ionicons name="headset" size={36} color="#FF6B4A" />
+            <View className="mb-6">
+              <Image
+                source={LOGO_IMAGE}
+                style={{ width: 64, height: 64 }}
+                resizeMode="contain"
+              />
             </View>
             <Text className="text-3xl font-semibold text-foreground tracking-tight mb-2">
               AudioFlash
