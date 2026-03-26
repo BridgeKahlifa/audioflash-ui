@@ -24,6 +24,7 @@ import {
 } from "../lib/api";
 import { setCurrentCards } from "../lib/storage";
 import type { Flashcard } from "../lib/types";
+import { useAnalytics } from "../lib/analytics";
 
 const TOPIC_SUGGESTIONS = [
   "Ordering coffee",
@@ -57,6 +58,7 @@ interface GeneratedResult {
 
 export default function Generate() {
   const { session, profile } = useAuth();
+  const posthog = useAnalytics();
   const [topic, setTopic] = useState("");
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(null);
@@ -101,8 +103,15 @@ export default function Generate() {
     setStatus("generating");
     setErrorMessage("");
 
+    const selectedLang = languages.find((l) => l.id === selectedLanguageId);
+    posthog?.capture("lesson_generate_started", {
+      language: selectedLang?.language,
+      difficulty: DIFFICULTY_OPTIONS.find((d) => d.level === difficultyLevel)?.label,
+      card_count: cardCount,
+      topic: topic.trim(),
+    });
+
     try {
-      const selectedLang = languages.find((l) => l.id === selectedLanguageId);
       const result = await generateLesson(session.access_token, {
         language_id: selectedLanguageId!,
         topic: topic.trim(),
@@ -119,17 +128,31 @@ export default function Generate() {
         cards: result.flashcards,
       });
       setPreviewCards(result.flashcards);
+      posthog?.capture("lesson_generated", {
+        language: selectedLang?.language,
+        difficulty: DIFFICULTY_OPTIONS.find((d) => d.level === difficultyLevel)?.label,
+        card_count: result.flashcards.length,
+        topic: topic.trim(),
+      });
       setStatus("idle");
     } catch (error: any) {
       setStatus("error");
       const msg = error?.message ?? "";
+      let error_type = "unknown";
       if (msg.includes("429") || msg.includes("limit")) {
         setErrorMessage("You've hit the generation limit. Try again in an hour.");
+        error_type = "rate_limit";
       } else if (msg.includes("422") || msg.includes("inappropriate")) {
         setErrorMessage("That topic couldn't be used. Please try a different one.");
+        error_type = "inappropriate_topic";
       } else {
         setErrorMessage("Generation failed. Please check your connection and try again.");
       }
+      posthog?.capture("lesson_generate_failed", {
+        language: selectedLang?.language,
+        topic: topic.trim(),
+        error_type,
+      });
     }
   }
 
@@ -233,6 +256,11 @@ export default function Generate() {
     try {
       await saveLesson(session.access_token, generatedResult.categoryId);
       setIsSaved(true);
+      posthog?.capture("lesson_saved", {
+        language: generatedResult.languageLabel,
+        card_count: previewCards.length,
+        topic: generatedResult.categoryName,
+      });
     } catch {
       // ignore
     } finally {

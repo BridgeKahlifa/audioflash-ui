@@ -25,6 +25,7 @@ import {
   updateFlashcardAttempt,
 } from "../../lib/api";
 import { setCachedSessions, setCachedSessionStats } from "../../lib/storage";
+import { useAnalytics } from "../../lib/analytics";
 
 export default function FlashcardPractice() {
   const {
@@ -49,6 +50,7 @@ export default function FlashcardPractice() {
     reviewId?: string;
   }>();
   const { profile, session } = useAuth();
+  const posthog = useAnalytics();
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -64,6 +66,7 @@ export default function FlashcardPractice() {
   const shownAtRef = useRef(Date.now());
   const submitLockRef = useRef(false);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionStartedAt = useRef(Date.now());
 
   // Swipe animation
   const translateX = useRef(new Animated.Value(0)).current;
@@ -71,7 +74,17 @@ export default function FlashcardPractice() {
   useEffect(() => {
     async function loadCards() {
       const stored = await getCurrentCards(topic);
-      setCards(stored ?? []);
+      if (stored && stored.length > 0) {
+        setCards(stored);
+        posthog?.capture("session_started", {
+          language: languageLabel,
+          card_count: stored.length,
+          topic: topicTitle ?? topic,
+          is_review: Boolean(reviewId),
+        });
+      } else {
+        setCards([]);
+      }
     }
     loadCards();
   }, [topic]);
@@ -248,6 +261,15 @@ export default function FlashcardPractice() {
     newResults[currentIndex] = nextResult;
     setResults(newResults);
 
+    posthog?.capture("card_result_submitted", {
+      knew,
+      confidence_rating: selectedConfidence,
+      response_time_ms: Math.max(0, Date.now() - shownAtRef.current),
+      audio_play_count: audioPlayCount,
+      card_index: currentIndex,
+      language: languageLabel,
+    });
+
     if (currentIndex < cards.length - 1) {
       setCurrentIndex((i) => i + 1);
       setShowAnswer(false);
@@ -326,6 +348,16 @@ export default function FlashcardPractice() {
           // Non-critical — local storage still has the data
         });
       }
+
+      posthog?.capture("session_completed", {
+        language: languageLabel,
+        card_count: completedResults.length,
+        cards_correct: correct,
+        accuracy: completedResults.length > 0 ? Math.round((correct / completedResults.length) * 100) : 0,
+        duration_ms: Date.now() - sessionStartedAt.current,
+        is_review: Boolean(reviewId),
+        topic: topicTitle ?? topic,
+      });
 
       setSubmitting(false);
       setSubmittingResult(null);

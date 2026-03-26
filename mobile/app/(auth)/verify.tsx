@@ -7,10 +7,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
+import { useAnalytics } from "../../lib/analytics";
 
 export default function Verify() {
   const { email } = useLocalSearchParams<{ email: string }>();
   const { verifyOtp, sendOtp } = useAuth();
+  const posthog = useAnalytics();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,9 @@ export default function Verify() {
     if (error) {
       setError("Invalid or expired code. Try again.");
       setCode("");
+      posthog?.capture("auth_otp_verify_failed");
+    } else {
+      posthog?.capture("auth_otp_verified");
     }
     // on success: auth state change → _layout redirects
   }
@@ -36,6 +41,7 @@ export default function Verify() {
   async function handleResend() {
     if (!email) return;
     await sendOtp(email);
+    posthog?.capture("auth_otp_resent");
     setResent(true);
     setCode("");
     setError(null);

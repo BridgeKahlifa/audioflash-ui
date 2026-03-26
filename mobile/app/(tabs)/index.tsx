@@ -5,9 +5,11 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
 import { fetchSRSQueue, type ApiSRSQueue } from "../../lib/api";
+import { useAnalytics } from "../../lib/analytics";
 
 export default function Home() {
   const { session, profile } = useAuth();
+  const posthog = useAnalytics();
   const [srsQueue, setSrsQueue] = useState<ApiSRSQueue | null>(null);
   const [loadingSRS, setLoadingSRS] = useState(true);
 
@@ -63,7 +65,7 @@ export default function Home() {
           {/* SRS due card */}
           {!loadingSRS && srsQueue != null && srsQueue.due_count > 0 && (
             <Pressable
-              onPress={() => router.push("/(tabs)/review")}
+              onPress={() => { posthog?.capture("home_action_tapped", { action: "srs_review", due_count: srsQueue.due_count }); router.push("/(tabs)/review"); }}
               className="mx-6 mb-4 rounded-2xl p-4 flex-row items-center bg-primary"
               style={{
                 shadowColor: "#FF6B4A",
@@ -96,7 +98,7 @@ export default function Home() {
           <View className="px-6 gap-3">
             {/* Generate a Lesson */}
             <Pressable
-              onPress={() => router.push("/generate")}
+              onPress={() => { posthog?.capture("home_action_tapped", { action: "generate_lesson" }); router.push("/generate"); }}
               className="rounded-2xl p-5 bg-card border border-border flex-row items-center"
               style={{
                 shadowColor: "#000",
@@ -120,7 +122,7 @@ export default function Home() {
 
             {/* Browse Categories */}
             <Pressable
-              onPress={() => router.push("/browse-languages")}
+              onPress={() => { posthog?.capture("home_action_tapped", { action: "browse_categories" }); router.push("/browse-languages"); }}
               className="rounded-2xl p-5 bg-card border border-border flex-row items-center"
               style={{
                 shadowColor: "#000",
@@ -144,7 +146,7 @@ export default function Home() {
 
             {/* My Library */}
             <Pressable
-              onPress={() => router.push("/my-library")}
+              onPress={() => { posthog?.capture("home_action_tapped", { action: "my_library" }); router.push("/my-library"); }}
               className="rounded-2xl p-5 bg-card border border-border flex-row items-center"
               style={{
                 shadowColor: "#000",

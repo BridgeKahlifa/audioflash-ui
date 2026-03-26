@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthModeBadge } from "../components/AuthModeBadge";
+import { PostHogProvider } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -52,8 +53,10 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background text-foreground font-sans antialiased">
-        <AuthModeBadge authMode={dbEnv} />
-        {children}
+        <PostHogProvider>
+          <AuthModeBadge authMode={dbEnv} />
+          {children}
+        </PostHogProvider>
       </body>
     </html>
   );

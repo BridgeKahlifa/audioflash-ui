@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
 import { ApiUpdateProfile, ApiLanguage, fetchLanguages } from "../../lib/api";
+import { useAnalytics } from "../../lib/analytics";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -101,6 +102,7 @@ function LanguagePickerModal({
 
 export default function SettingsScreen() {
   const { user, profile, profileLoading, updateProfileData, updateEmail, deleteAccount, signOut, isDevAuth } = useAuth();
+  const posthog = useAnalytics();
 
   const [localSettings, setLocalSettings] = useState<ApiUpdateProfile>({
     cards_per_session: profile?.cards_per_session ?? 20,
@@ -163,7 +165,15 @@ export default function SettingsScreen() {
 
   async function saveSettings() {
     const { error } = await updateProfileData(localSettings);
-    if (!error) { setSaved(true); setTimeout(() => setSaved(false), 1600); }
+    if (!error) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1600);
+      posthog?.capture("settings_practice_saved", {
+        cards_per_session: localSettings.cards_per_session,
+        audio_speed: localSettings.audio_speed,
+        notifications_enabled: localSettings.notifications_enabled,
+      });
+    }
   }
 
   async function saveName() {
@@ -191,19 +201,26 @@ export default function SettingsScreen() {
     if (error) {
       setNativeLanguageId(previousId);
       Alert.alert("Error", error);
+    } else {
+      const lang = languages.find((l) => String(l.id) === id);
+      posthog?.capture("settings_native_language_changed", { language: lang?.language });
     }
   }
 
   async function toggleTargetLanguage(id: string) {
     const previousTargetLanguageIds = targetLanguageIds;
-    const updated = targetLanguageIds.includes(id)
-      ? targetLanguageIds.filter((l) => l !== id)
-      : [...targetLanguageIds, id];
+    const adding = !targetLanguageIds.includes(id);
+    const updated = adding
+      ? [...targetLanguageIds, id]
+      : targetLanguageIds.filter((l) => l !== id);
     setTargetLanguageIds(updated);
     const { error } = await updateProfileData({ target_language_ids: updated });
     if (error) {
       setTargetLanguageIds(previousTargetLanguageIds);
       Alert.alert("Error", error);
+    } else {
+      const lang = languages.find((l) => String(l.id) === id);
+      posthog?.capture("settings_target_language_toggled", { language: lang?.language, action: adding ? "added" : "removed" });
     }
   }
 
@@ -218,7 +235,11 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: async () => {
             const { error } = await deleteAccount();
-            if (error) Alert.alert("Error", error);
+            if (error) {
+              Alert.alert("Error", error);
+            } else {
+              posthog?.capture("account_deleted");
+            }
           },
         },
       ]
@@ -400,7 +421,7 @@ export default function SettingsScreen() {
             ) : (
               <>
                 <Pressable
-                  onPress={signOut}
+                  onPress={() => { posthog?.capture("auth_signed_out"); signOut(); }}
                   className="flex-row items-center gap-2 p-4 border-b border-border"
                 >
                   <Ionicons name="log-out-outline" size={18} color="#6B7280" />
