@@ -108,9 +108,9 @@ export default function LessonReady() {
       const mappedCards: Flashcard[] = lessonCards.map((card, index) => ({
         id: index + 1,
         dbId: String(card.id),
-        chinese: card.source_text,
-        pinyin: card.romanization ?? "",
-        english: card.translation,
+        sourceText: card.source_text,
+        romanization: card.romanization ?? "",
+        translation: card.translation,
       }));
 
       const lessonSession = await startLesson(session?.access_token, {

@@ -30,9 +30,9 @@ export default function SessionSummary() {
       session.topic,
       missed.map((card, index) => ({
         id: index + 1,
-        chinese: card.chinese,
-        pinyin: card.pinyin,
-        english: card.english,
+        sourceText: card.sourceText,
+        romanization: card.romanization,
+        translation: card.translation,
       }))
     );
 
@@ -85,10 +85,10 @@ export default function SessionSummary() {
             ) : (
               <View className="gap-3">
                 {missed.map((card) => (
-                  <View key={`${card.cardId}-${card.chinese}`} className="bg-secondary rounded-xl p-3">
-                    <Text className="text-foreground text-lg">{card.chinese}</Text>
-                    <Text className="text-muted text-sm">{card.pinyin}</Text>
-                    <Text className="text-foreground text-sm mt-1">{card.english}</Text>
+                  <View key={`${card.cardId}-${card.sourceText}`} className="bg-secondary rounded-xl p-3">
+                    <Text className="text-foreground text-lg">{card.sourceText}</Text>
+                    <Text className="text-muted text-sm">{card.romanization}</Text>
+                    <Text className="text-foreground text-sm mt-1">{card.translation}</Text>
                   </View>
                 ))}
               </View>

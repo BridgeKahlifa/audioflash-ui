@@ -91,7 +91,12 @@ export default function FlashcardPractice() {
       clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
     }
-  }, [currentIndex, results]);
+
+    const card = cards[currentIndex];
+    if (card?.sourceText && !existingResult) {
+      speakText(card.sourceText, language ?? "chinese", playbackSpeed);
+    }
+  }, [currentIndex, cards]);
 
   useEffect(() => {
     return () => {
@@ -232,9 +237,9 @@ export default function FlashcardPractice() {
 
     const nextResult: SessionCardResult = {
       cardId: currentCard.id,
-      chinese: currentCard.chinese,
-      pinyin: currentCard.pinyin,
-      english: currentCard.english,
+      sourceText: currentCard.sourceText,
+      romanization: currentCard.romanization,
+      translation: currentCard.translation,
       knew,
       confidenceRating: selectedConfidence,
       attemptId,
@@ -400,13 +405,14 @@ export default function FlashcardPractice() {
           </Pressable>
           <Animated.View
             {...panResponder.panHandlers}
-            className="bg-card rounded-3xl p-8"
+            className="bg-card rounded-3xl"
             style={{
               transform: [{ translateX }],
               flex: 1,
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+              padding: 32,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.08,
@@ -423,7 +429,11 @@ export default function FlashcardPractice() {
                     revealTimerRef.current = null;
                   }, 1000);
                 }
-                speakText(currentCard.chinese, language ?? "chinese", playbackSpeed);
+
+                console.log("Card object keys:", Object.keys(currentCard));
+                console.log("sourceText value:", currentCard.sourceText);
+                console.log("language param:", language);
+                speakText(currentCard.sourceText, language ?? "chinese", playbackSpeed);
               }}
               hitSlop={10}
               className="w-20 h-20 bg-primary rounded-full items-center justify-center"
@@ -478,15 +488,15 @@ export default function FlashcardPractice() {
             ) : null}
 
             {showAnswer && (
-              <View className="mt-8 items-center">
-                <Text className="text-4xl text-foreground text-center mb-3">
-                  {currentCard.chinese}
+              <View className="mt-8 items-center" style={{ alignSelf: "stretch" }}>
+                <Text className="text-4xl text-foreground text-center mb-3" style={{ alignSelf: "stretch" }}>
+                  {currentCard.sourceText}
                 </Text>
-                <Text className="text-xl text-muted text-center mb-6">
-                  {currentCard.pinyin}
+                <Text className="text-xl text-muted text-center mb-6" style={{ alignSelf: "stretch" }}>
+                  {currentCard.romanization}
                 </Text>
-                <Text className="text-xl text-foreground text-center">
-                  {currentCard.english}
+                <Text className="text-xl text-foreground text-center" style={{ alignSelf: "stretch" }}>
+                  {currentCard.translation}
                 </Text>
               </View>
             )}
@@ -519,17 +529,15 @@ export default function FlashcardPractice() {
                       <Pressable
                         key={value}
                         onPress={() => setSelectedConfidence(value)}
-                        className={`w-11 h-11 rounded-full items-center justify-center border ${
-                          selected
+                        className={`w-11 h-11 rounded-full items-center justify-center border ${selected
                             ? "bg-primary border-primary"
                             : "bg-secondary border-border"
-                        }`}
+                          }`}
                         disabled={submitting}
                       >
                         <Text
-                          className={`font-semibold ${
-                            selected ? "text-primary-foreground" : "text-foreground"
-                          }`}
+                          className={`font-semibold ${selected ? "text-primary-foreground" : "text-foreground"
+                            }`}
                         >
                           {value}
                         </Text>

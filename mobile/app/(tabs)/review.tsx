@@ -69,9 +69,9 @@ export default function ReviewQueue() {
       const mappedCards: Flashcard[] = queue.cards.map((card, index) => ({
         id: index + 1,
         dbId: String(card.id),
-        chinese: card.source_text,
-        pinyin: card.romanization ?? "",
-        english: card.translation,
+        sourceText: card.source_text,
+        romanization: card.romanization ?? "",
+        translation: card.translation,
       }));
 
       await setCurrentCards(topicKey, mappedCards);
@@ -122,9 +122,9 @@ export default function ReviewQueue() {
           return {
             id: index + 1,
             dbId: String(card.id),
-            chinese: card.source_text,
-            pinyin: card.romanization ?? "",
-            english: card.translation,
+            sourceText: card.source_text,
+            romanization: card.romanization ?? "",
+            translation: card.translation,
           };
         })
         .filter(Boolean) as Flashcard[];
@@ -227,18 +227,17 @@ export default function ReviewQueue() {
               <Pressable
                 onPress={startSRSReview}
                 disabled={!queue || queue.due_count === 0 || startingSRS}
-                className={`py-4 rounded-2xl items-center mb-8 ${
-                  queue && queue.due_count > 0 && !startingSRS ? "bg-primary" : "bg-secondary"
-                }`}
+                className={`py-4 rounded-2xl items-center mb-8 ${queue && queue.due_count > 0 && !startingSRS ? "bg-primary" : "bg-secondary"
+                  }`}
                 style={
                   queue && queue.due_count > 0 && !startingSRS
                     ? {
-                        shadowColor: "#FF6B4A",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 8,
-                        elevation: 4,
-                      }
+                      shadowColor: "#FF6B4A",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 8,
+                      elevation: 4,
+                    }
                     : undefined
                 }
               >
@@ -246,9 +245,8 @@ export default function ReviewQueue() {
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text
-                    className={`text-base font-semibold ${
-                      queue && queue.due_count > 0 ? "text-primary-foreground" : "text-muted"
-                    }`}
+                    className={`text-base font-semibold ${queue && queue.due_count > 0 ? "text-primary-foreground" : "text-muted"
+                      }`}
                   >
                     {queue?.due_count === 0 ? "Nothing due right now" : "Start SRS Review"}
                   </Text>
