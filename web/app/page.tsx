@@ -104,11 +104,11 @@ export default function HomePage() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
           <a href="#" className="flex shrink-0 items-center gap-2">
             <Image
-              src="/AudioFlashLogo.png"
+              src="/AudioFlashLogo3.png"
               alt="AudioFlash logo"
-              width={32}
-              height={32}
-              className="h-8 w-8 object-contain"
+              width={64}
+              height={64}
+              className="object-contain"
               priority
             />
             <span className="text-lg font-semibold tracking-tight text-foreground">AudioFlash</span>
@@ -285,7 +285,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
           <div className="flex items-center gap-2">
             <Image
-              src="/AudioFlashLogo.png"
+              src="/AudioFlashLogo3.png"
               alt="AudioFlash logo"
               width={24}
               height={24}

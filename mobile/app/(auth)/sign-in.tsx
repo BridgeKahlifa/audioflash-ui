@@ -8,7 +8,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
 
-const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
+const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
 
 export default function SignIn() {
   const { sendOtp, passkeySupported, signInWithPasskey } = useAuth();
