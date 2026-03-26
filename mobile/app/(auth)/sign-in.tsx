@@ -7,11 +7,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
+import { useAnalytics } from "../../lib/analytics";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
 
 export default function SignIn() {
   const { sendOtp, passkeySupported, signInWithPasskey } = useAuth();
+  const posthog = useAnalytics();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,17 +30,23 @@ export default function SignIn() {
     setLoading(false);
     if (error) {
       setError(error);
+      posthog?.capture("auth_otp_request_failed");
       return;
     }
+    posthog?.capture("auth_otp_requested");
     router.push({ pathname: "/(auth)/verify", params: { email: email.trim() } });
   }
 
   async function handlePasskey() {
     setError(null);
     setPasskeyLoading(true);
+    posthog?.capture("auth_passkey_sign_in_started");
     const { error } = await signInWithPasskey();
     setPasskeyLoading(false);
-    if (error) setError(error);
+    if (error) {
+      setError(error);
+      posthog?.capture("auth_passkey_sign_in_failed");
+    }
   }
 
   return (

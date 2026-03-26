@@ -1,8 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { usePostHog } from "posthog-js/react";
 
 export function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
+  const posthog = usePostHog();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -13,6 +15,7 @@ export function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
 
     setStatus("loading");
     setErrorMessage("");
+    posthog?.capture("waitlist_form_submitted", { variant });
 
     try {
       const res = await fetch("/api/waitlist", {
@@ -24,14 +27,17 @@ export function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
       if (res.ok) {
         setStatus("success");
         setEmail("");
+        posthog?.capture("waitlist_signup_success", { variant });
       } else {
         const data = await res.json();
         setErrorMessage(data.error || "Something went wrong. Try again.");
         setStatus("error");
+        posthog?.capture("waitlist_signup_error", { variant, error: data.error });
       }
     } catch {
       setErrorMessage("Something went wrong. Try again.");
       setStatus("error");
+      posthog?.capture("waitlist_signup_error", { variant, error: "network_error" });
     }
   };
 
