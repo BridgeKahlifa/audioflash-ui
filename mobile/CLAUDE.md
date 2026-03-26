@@ -1,6 +1,6 @@
 # AudioFlash Mobile
 
-Expo / React Native app using Expo Router for file-based navigation.
+Audio-first language learning app built with Expo / React Native. Users generate AI flashcard lessons for any language and topic, practice with spaced repetition, and track progress over time.
 
 ## Running
 
@@ -15,7 +15,14 @@ npm run android     # Android emulator
 - **Expo Router** — file-based routing under `app/`. Route groups: `(auth)` and `(tabs)`
 - **NativeWind** — Tailwind CSS for React Native. Use `className` props, not `StyleSheet`
 - **Supabase** — auth + database client in `lib/supabase.ts`
-- **expo-speech** — audio playback for flashcards
+- **expo-speech** — TTS audio playback for flashcards; language is passed as a BCP-47 code via `lib/audio.ts`
+
+## Flashcard data model
+
+Flashcard fields are language-agnostic — do not use language-specific names:
+- `sourceText` — the phrase in the target language (Chinese, Spanish, Japanese, etc.)
+- `romanization` — pronunciation guide where applicable (pinyin, romaji, etc.); empty string if not used
+- `translation` — English translation
 
 ## Conventions
 

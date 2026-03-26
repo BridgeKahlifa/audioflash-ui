@@ -266,8 +266,8 @@ async function setLastSession(session: SessionHistoryItem): Promise<void> {
   }
 }
 
-function reviewKey(language: string, chinese: string): string {
-  return `${language}:${chinese}`;
+function reviewKey(language: string, sourceText: string): string {
+  return `${language}:${sourceText}`;
 }
 
 export async function getReviewQueue(): Promise<ReviewCard[]> {
@@ -301,10 +301,10 @@ async function applyReviewSessionResults(
   cards: SessionCardResult[]
 ): Promise<void> {
   const queue = await getReviewQueue();
-  const byKey = new Map(queue.map((item) => [reviewKey(item.language, item.chinese), item]));
+  const byKey = new Map(queue.map((item) => [reviewKey(item.language, item.sourceText), item]));
 
   cards.forEach((card) => {
-    const key = reviewKey(language, card.chinese);
+    const key = reviewKey(language, card.sourceText);
     const existing = byKey.get(key);
 
     if (!card.knew) {
@@ -314,9 +314,9 @@ async function applyReviewSessionResults(
         topicTitle,
         language,
         languageLabel,
-        chinese: card.chinese,
-        pinyin: card.pinyin,
-        english: card.english,
+        sourceText: card.sourceText,
+        romanization: card.romanization,
+        translation: card.translation,
         dueDate: todayStr(),
         intervalDays: 1,
         incorrectCount: (existing?.incorrectCount ?? 0) + 1,

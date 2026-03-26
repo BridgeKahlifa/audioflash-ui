@@ -1,9 +1,9 @@
 export interface Flashcard {
   id: string | number;
   dbId?: string;
-  chinese: string;
-  pinyin: string;
-  english: string;
+  sourceText: string;
+  romanization: string;
+  translation: string;
 }
 
 export interface DailySession {
@@ -22,9 +22,9 @@ export interface ProgressData {
 
 export interface SessionCardResult {
   cardId: string | number;
-  chinese: string;
-  pinyin: string;
-  english: string;
+  sourceText: string;
+  romanization: string;
+  translation: string;
   knew: boolean;
   confidenceRating?: number | null;
   attemptId?: string;
@@ -48,9 +48,9 @@ export interface ReviewCard {
   topicTitle: string;
   language: string;
   languageLabel: string;
-  chinese: string;
-  pinyin: string;
-  english: string;
+  sourceText: string;
+  romanization: string;
+  translation: string;
   dueDate: string;
   intervalDays: number;
   incorrectCount: number;
