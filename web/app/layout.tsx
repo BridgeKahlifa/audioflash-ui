@@ -6,6 +6,16 @@ export const metadata: Metadata = {
   title: "Audio Flashcards for Language Learning | AudioFlash",
   description:
     "Learn a language with audio flashcards built on spaced repetition. Train listening and speaking recall in minutes a day with AudioFlash.",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    shortcut: ["/favicon.ico"],
+  },
   openGraph: {
     title: "Audio Flashcards for Language Learning | AudioFlash",
     description:
