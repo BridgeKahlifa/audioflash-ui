@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { setCurrentCards, getSettings } from "../../lib/storage";
 import { Flashcard } from "../../lib/types";
-import { fetchLessonsByCategory, startLesson } from "../../lib/api";
+import { fetchLessonsByCategory, startLesson, saveLesson, unsaveLesson } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 
 export default function LessonReady() {
@@ -25,6 +25,8 @@ export default function LessonReady() {
   const [status, setStatus] = useState<"ready" | "empty" | "error">("ready");
   const [starting, setStarting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const startLockRef = useRef(false);
   const availableDifficulties = (supportedDifficulties ?? "")
     .split(",")
@@ -54,6 +56,24 @@ export default function LessonReady() {
     setStatus("ready");
     setErrorMessage("");
   }, [apiCategoryId, supportedDifficulties]);
+
+  async function handleToggleSave() {
+    if (!session?.access_token || !apiCategoryId || saving) return;
+    setSaving(true);
+    try {
+      if (saved) {
+        await unsaveLesson(session.access_token, apiCategoryId);
+        setSaved(false);
+      } else {
+        await saveLesson(session.access_token, apiCategoryId);
+        setSaved(true);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const handleStart = async () => {
     if (!apiCategoryId || selectedDifficulty === null || starting || startLockRef.current) {
@@ -127,7 +147,7 @@ export default function LessonReady() {
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
-      <View className="px-6 pt-4 pb-2 max-w-md w-full mx-auto">
+      <View className="px-6 pt-4 pb-2 max-w-md w-full mx-auto flex-row items-center justify-between">
         <Pressable
           onPress={() =>
             router.replace({
@@ -145,6 +165,23 @@ export default function LessonReady() {
         >
           <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
         </Pressable>
+        {apiCategoryId ? (
+          <Pressable
+            onPress={handleToggleSave}
+            disabled={saving}
+            className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#FF6B4A" />
+            ) : (
+              <Ionicons
+                name={saved ? "bookmark" : "bookmark-outline"}
+                size={20}
+                color={saved ? "#FF6B4A" : "#1A1A1A"}
+              />
+            )}
+          </Pressable>
+        ) : null}
       </View>
 
       <View className="flex-1 items-center justify-center p-6">

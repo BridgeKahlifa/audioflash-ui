@@ -17,6 +17,7 @@ import {
   fetchLanguages,
   generateLesson,
   generateReplacements,
+  saveLesson,
   startLesson,
   type ApiLanguage,
   type ApiLessonCard,
@@ -69,6 +70,8 @@ export default function Generate() {
   const [previewCards, setPreviewCards] = useState<ApiLessonCard[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [replacingIds, setReplacingIds] = useState<Set<string>>(new Set());
+  const [isSaved, setIsSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchLanguages()
@@ -224,11 +227,25 @@ export default function Generate() {
     }
   }
 
+  async function handleSave() {
+    if (!generatedResult || !session?.access_token || saving) return;
+    setSaving(true);
+    try {
+      await saveLesson(session.access_token, generatedResult.categoryId);
+      setIsSaved(true);
+    } catch {
+      // ignore
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function handleBackToForm() {
     setGeneratedResult(null);
     setPreviewCards([]);
     setSelectedIds(new Set());
     setReplacingIds(new Set());
+    setIsSaved(false);
     setStatus("idle");
     setErrorMessage("");
   }
@@ -258,6 +275,21 @@ export default function Generate() {
                   : `${previewCards.length} card${previewCards.length !== 1 ? "s" : ""} · ${generatedResult.languageLabel} · ${diffLabel} · tap to select`}
               </Text>
             </View>
+            <Pressable
+              onPress={handleSave}
+              disabled={saving || isSaved}
+              className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#FF6B4A" />
+              ) : (
+                <Ionicons
+                  name={isSaved ? "bookmark" : "bookmark-outline"}
+                  size={20}
+                  color={isSaved ? "#FF6B4A" : "#1A1A1A"}
+                />
+              )}
+            </Pressable>
           </View>
 
           <ScrollView
