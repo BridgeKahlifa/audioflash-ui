@@ -4,15 +4,29 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
-import { fetchSRSQueue, startLesson, type ApiSRSQueue } from "../../lib/api";
+import {
+  fetchSRSQueue,
+  fetchFlashcards,
+  fetchReviews,
+  startLesson,
+  startReviewLifecycle,
+  type ApiSRSQueue,
+  type ApiReview,
+} from "../../lib/api";
 import { setCurrentCards } from "../../lib/storage";
 import type { Flashcard } from "../../lib/types";
+
+function formatReviewDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 export default function ReviewQueue() {
   const { session, profile } = useAuth();
   const [queue, setQueue] = useState<ApiSRSQueue | null>(null);
+  const [reviews, setReviews] = useState<ApiReview[]>([]);
   const [loading, setLoading] = useState(true);
-  const [starting, setStarting] = useState(false);
+  const [startingSRS, setStartingSRS] = useState(false);
+  const [startingReviewId, setStartingReviewId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useFocusEffect(
@@ -25,10 +39,14 @@ export default function ReviewQueue() {
         setLoading(true);
         setError("");
         try {
-          const data = await fetchSRSQueue(session.access_token);
-          setQueue(data);
+          const [queueData, reviewsData] = await Promise.all([
+            fetchSRSQueue(session.access_token),
+            fetchReviews(session.access_token),
+          ]);
+          setQueue(queueData);
+          setReviews(reviewsData.filter((r) => !r.ended_at));
         } catch {
-          setError("Couldn't load your review queue. Check your connection.");
+          setError("Couldn't load your review data. Check your connection.");
         } finally {
           setLoading(false);
         }
@@ -37,13 +55,13 @@ export default function ReviewQueue() {
     }, [session?.access_token]),
   );
 
-  async function startReview() {
+  async function startSRSReview() {
     if (!queue || queue.cards.length === 0 || !session?.access_token) return;
 
     const profileId = profile?.id ?? session.user?.id;
     if (!profileId) return;
 
-    setStarting(true);
+    setStartingSRS(true);
     setError("");
 
     try {
@@ -58,7 +76,6 @@ export default function ReviewQueue() {
 
       await setCurrentCards(topicKey, mappedCards);
 
-      // Use the first card's category_id for the session
       const categoryId = String(queue.cards[0].category_id);
       const lessonSession = await startLesson(session.access_token, {
         profile_id: profileId,
@@ -80,7 +97,55 @@ export default function ReviewQueue() {
     } catch {
       setError("Couldn't start review session. Please try again.");
     } finally {
-      setStarting(false);
+      setStartingSRS(false);
+    }
+  }
+
+  async function startNamedReview(review: ApiReview) {
+    if (!session?.access_token) return;
+
+    setStartingReviewId(review.id);
+    setError("");
+
+    try {
+      const startedReview = await startReviewLifecycle(session.access_token, review.id);
+      setReviews((current) =>
+        current.map((r) => (r.id === startedReview.id ? startedReview : r)),
+      );
+
+      const flashcards = await fetchFlashcards();
+      const flashcardsById = new Map(flashcards.map((card) => [String(card.id), card]));
+      const reviewCards: Flashcard[] = startedReview.flashcard_ids
+        .map((flashcardId, index) => {
+          const card = flashcardsById.get(String(flashcardId));
+          if (!card) return null;
+          return {
+            id: index + 1,
+            dbId: String(card.id),
+            chinese: card.source_text,
+            pinyin: card.romanization ?? "",
+            english: card.translation,
+          };
+        })
+        .filter(Boolean) as Flashcard[];
+
+      const topicKey = `review-${review.id}`;
+      await setCurrentCards(topicKey, reviewCards);
+
+      router.push({
+        pathname: "/practice/[topic]",
+        params: {
+          topic: topicKey,
+          topicTitle: startedReview.review_name,
+          language: "review",
+          languageLabel: "Review",
+          reviewId: startedReview.id,
+        },
+      });
+    } catch {
+      setError("Couldn't start review session. Please try again.");
+    } finally {
+      setStartingReviewId(null);
     }
   }
 
@@ -89,7 +154,7 @@ export default function ReviewQueue() {
       <View className="flex-1 max-w-md w-full mx-auto">
         <View className="px-6 pt-8 pb-4">
           <Text className="text-3xl font-semibold text-foreground tracking-tight">Review</Text>
-          <Text className="text-muted mt-1">Cards due for spaced repetition</Text>
+          <Text className="text-muted mt-1">Spaced repetition &amp; saved reviews</Text>
         </View>
 
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 24 }}>
@@ -97,13 +162,17 @@ export default function ReviewQueue() {
             <View className="items-center py-16">
               <ActivityIndicator size="large" color="#FF6B4A" />
             </View>
-          ) : error ? (
-            <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
-              <Text className="text-red-600 text-sm">{error}</Text>
-            </View>
           ) : (
             <>
-              {/* Due count card */}
+              {error ? (
+                <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+                  <Text className="text-red-600 text-sm">{error}</Text>
+                </View>
+              ) : null}
+
+              {/* ── SRS Queue ─────────────────────────────────── */}
+              <Text className="text-sm font-semibold text-muted mb-3">Spaced Repetition</Text>
+
               <View
                 className="bg-card border border-border rounded-2xl p-5 mb-4"
                 style={{
@@ -128,7 +197,6 @@ export default function ReviewQueue() {
                 </Text>
               </View>
 
-              {/* Info */}
               <View className="bg-accent border border-primary/10 rounded-2xl p-4 mb-4">
                 <Text className="text-foreground text-sm leading-relaxed">
                   Spaced repetition schedules reviews right before you'd forget a card. Answer cards
@@ -136,7 +204,6 @@ export default function ReviewQueue() {
                 </Text>
               </View>
 
-              {/* Due cards preview */}
               {queue && queue.cards.length > 0 && (
                 <View className="gap-3 mb-4">
                   <Text className="text-sm font-semibold text-muted">Due cards</Text>
@@ -156,40 +223,94 @@ export default function ReviewQueue() {
                   )}
                 </View>
               )}
+
+              <Pressable
+                onPress={startSRSReview}
+                disabled={!queue || queue.due_count === 0 || startingSRS}
+                className={`py-4 rounded-2xl items-center mb-8 ${
+                  queue && queue.due_count > 0 && !startingSRS ? "bg-primary" : "bg-secondary"
+                }`}
+                style={
+                  queue && queue.due_count > 0 && !startingSRS
+                    ? {
+                        shadowColor: "#FF6B4A",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 8,
+                        elevation: 4,
+                      }
+                    : undefined
+                }
+              >
+                {startingSRS ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text
+                    className={`text-base font-semibold ${
+                      queue && queue.due_count > 0 ? "text-primary-foreground" : "text-muted"
+                    }`}
+                  >
+                    {queue?.due_count === 0 ? "Nothing due right now" : "Start SRS Review"}
+                  </Text>
+                )}
+              </Pressable>
+
+              {/* ── Named Reviews ─────────────────────────────── */}
+              <Text className="text-sm font-semibold text-muted mb-3">Saved Reviews</Text>
+
+              {reviews.length === 0 ? (
+                <View className="bg-card border border-border rounded-2xl p-4 mb-4">
+                  <Text className="text-muted text-sm">No saved reviews available.</Text>
+                </View>
+              ) : (
+                <View className="gap-3">
+                  {reviews.map((review) => {
+                    const isStarting = startingReviewId === review.id;
+                    return (
+                      <Pressable
+                        key={review.id}
+                        onPress={() => void startNamedReview(review)}
+                        disabled={isStarting}
+                        className="bg-card border border-border rounded-2xl p-4"
+                        style={{
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.05,
+                          shadowRadius: 3,
+                          elevation: 2,
+                        }}
+                      >
+                        <View className="flex-row items-start justify-between gap-3">
+                          <View className="flex-1">
+                            <Text className="text-base font-semibold text-foreground">
+                              {review.review_name}
+                            </Text>
+                            <Text className="text-sm text-muted mt-1">
+                              {review.flashcard_ids.length} cards
+                            </Text>
+                            <Text className="text-xs text-muted mt-2">
+                              Created {formatReviewDate(review.created_at)}
+                            </Text>
+                            {review.started_at ? (
+                              <Text className="text-xs text-muted mt-1">
+                                Started {formatReviewDate(review.started_at)}
+                              </Text>
+                            ) : null}
+                          </View>
+                          {isStarting ? (
+                            <ActivityIndicator color="#FF6B4A" />
+                          ) : (
+                            <Text className="text-primary font-semibold">Open</Text>
+                          )}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
             </>
           )}
         </ScrollView>
-
-        <View className="px-6 pb-6 pt-2">
-          <Pressable
-            onPress={startReview}
-            disabled={!queue || queue.due_count === 0 || starting || loading}
-            className={`py-4 rounded-2xl items-center ${queue && queue.due_count > 0 && !starting ? "bg-primary" : "bg-secondary"
-              }`}
-            style={
-              queue && queue.due_count > 0 && !starting
-                ? {
-                  shadowColor: "#FF6B4A",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }
-                : undefined
-            }
-          >
-            {starting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text
-                className={`text-base font-semibold ${queue && queue.due_count > 0 ? "text-primary-foreground" : "text-muted"
-                  }`}
-              >
-                {queue?.due_count === 0 ? "Nothing due right now" : "Start Review Session"}
-              </Text>
-            )}
-          </Pressable>
-        </View>
       </View>
     </SafeAreaView>
   );

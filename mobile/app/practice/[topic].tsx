@@ -16,11 +16,13 @@ import { saveCompletedSession } from "../../lib/storage";
 import { speakText } from "../../lib/audio";
 import { useAuth } from "../../lib/auth-context";
 import {
+  completeReviewLifecycle,
   createFlashcardAttempt,
   createSession,
   endLesson,
   fetchSessions,
   fetchSessionStats,
+  updateFlashcardAttempt,
 } from "../../lib/api";
 import { setCachedSessions, setCachedSessionStats } from "../../lib/storage";
 
@@ -34,6 +36,7 @@ export default function FlashcardPractice() {
     apiCategoryId,
     apiLoaded,
     lessonSessionId,
+    reviewId,
   } = useLocalSearchParams<{
     topic: string;
     topicTitle?: string;
@@ -43,6 +46,7 @@ export default function FlashcardPractice() {
     apiCategoryId?: string;
     apiLoaded?: string;
     lessonSessionId?: string;
+    reviewId?: string;
   }>();
   const { profile, session } = useAuth();
   const [cards, setCards] = useState<Flashcard[]>([]);
@@ -75,16 +79,19 @@ export default function FlashcardPractice() {
   useEffect(() => {
     shownAtRef.current = Date.now();
     setAudioPlayCount(0);
-    setSelectedConfidence(null);
     setAttemptError("");
     setSubmittingResult(null);
-    setCanRevealAnswer(false);
+
+    const existingResult = results[currentIndex];
+    setSelectedConfidence(existingResult?.confidenceRating ?? null);
+    setCanRevealAnswer(Boolean(existingResult));
+    setShowAnswer(Boolean(existingResult));
 
     if (revealTimerRef.current) {
       clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
     }
-  }, [currentIndex]);
+  }, [currentIndex, results]);
 
   useEffect(() => {
     return () => {
@@ -191,18 +198,28 @@ export default function FlashcardPractice() {
     setSubmittingResult(knew ? "knew" : "didnt-know");
     setAttemptError("");
     const responseTimeMs = Math.max(0, Date.now() - shownAtRef.current);
+    const existingResult = results[currentIndex];
+    let attemptId = existingResult?.attemptId;
 
     if (shouldPersistAttempts) {
       try {
-        await createFlashcardAttempt(session?.access_token, {
-          session_id: lessonSessionId!,
-          flashcard_id: currentCard.dbId!,
-          correct: knew,
-          response_time_ms: responseTimeMs,
-          audio_play_count: audioPlayCount,
-          hint_used: false,
-          confidence_rating: selectedConfidence,
-        });
+        if (attemptId) {
+          await updateFlashcardAttempt(session?.access_token, attemptId, {
+            correct: knew,
+            confidence_rating: selectedConfidence,
+          });
+        } else {
+          const attempt = await createFlashcardAttempt(session?.access_token, {
+            session_id: lessonSessionId!,
+            flashcard_id: currentCard.dbId!,
+            correct: knew,
+            response_time_ms: responseTimeMs,
+            audio_play_count: audioPlayCount,
+            hint_used: false,
+            confidence_rating: selectedConfidence,
+          });
+          attemptId = attempt.attempt_id;
+        }
       } catch (error) {
         console.error("Failed to record flashcard attempt", error);
         setAttemptError("We couldn't save that answer. Please check your connection and try again.");
@@ -213,17 +230,17 @@ export default function FlashcardPractice() {
       }
     }
 
-    const newResults = [
-      ...results,
-      {
-        cardId: currentCard.id,
-        chinese: currentCard.chinese,
-        pinyin: currentCard.pinyin,
-        english: currentCard.english,
-        knew,
-        confidenceRating: selectedConfidence,
-      },
-    ];
+    const nextResult: SessionCardResult = {
+      cardId: currentCard.id,
+      chinese: currentCard.chinese,
+      pinyin: currentCard.pinyin,
+      english: currentCard.english,
+      knew,
+      confidenceRating: selectedConfidence,
+      attemptId,
+    };
+    const newResults = [...results];
+    newResults[currentIndex] = nextResult;
     setResults(newResults);
 
     if (currentIndex < cards.length - 1) {
@@ -233,7 +250,10 @@ export default function FlashcardPractice() {
       setSubmittingResult(null);
       submitLockRef.current = false;
     } else {
-      const correct = newResults.filter((r) => r.knew).length;
+      const completedResults = newResults.filter(
+        (result): result is SessionCardResult => Boolean(result),
+      );
+      const correct = completedResults.filter((r) => r.knew).length;
 
       if (shouldPersistAttempts) {
         const profileId = profile?.id ?? session?.user?.id;
@@ -260,12 +280,25 @@ export default function FlashcardPractice() {
         }
       }
 
+      if (reviewId) {
+        try {
+          await completeReviewLifecycle(session?.access_token, reviewId);
+        } catch (error) {
+          console.error("Failed to complete review", error);
+          setAttemptError("We couldn't finish the review right now. Please try again.");
+          setSubmitting(false);
+          setSubmittingResult(null);
+          submitLockRef.current = false;
+          return;
+        }
+      }
+
       await saveCompletedSession({
         topic,
         topicTitle: topicTitle ?? topic,
         language: language ?? "",
         languageLabel: languageLabel ?? "",
-        cards: newResults,
+        cards: completedResults,
       });
 
       // Sync to API in the background — don't block navigation
@@ -275,7 +308,7 @@ export default function FlashcardPractice() {
           createSession(token, {
             topic_title: topicTitle ?? topic,
             language_label: languageLabel,
-            cards_attempted: newResults.length,
+            cards_attempted: completedResults.length,
             cards_correct: correct,
             completed_at: new Date().toISOString(),
           }),
@@ -344,6 +377,27 @@ export default function FlashcardPractice() {
 
         {/* Card */}
         <View className="flex-1 px-4 pb-4">
+          <Pressable
+            onPress={goPrev}
+            disabled={currentIndex === 0 || submitting}
+            className="absolute left-4 top-4 z-10 w-11 h-11 items-center justify-center rounded-full"
+            style={{
+              backgroundColor:
+                currentIndex === 0 || submitting ? "#F5F5F5" : "#FFFFFF",
+              opacity: currentIndex === 0 || submitting ? 0.9 : 1,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: currentIndex === 0 || submitting ? 0.04 : 0.08,
+              shadowRadius: 8,
+              elevation: 3,
+            }}
+          >
+            <Ionicons
+              name="arrow-back"
+              size={22}
+              color={currentIndex === 0 || submitting ? "#B8B8B8" : "#1A1A1A"}
+            />
+          </Pressable>
           <Animated.View
             {...panResponder.panHandlers}
             className="bg-card rounded-3xl p-8"
