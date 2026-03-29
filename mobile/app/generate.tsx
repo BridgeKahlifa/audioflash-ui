@@ -14,11 +14,11 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../lib/auth-context";
 import {
+  createLessonSession,
   fetchLanguages,
   generateLesson,
   generateReplacements,
   saveLesson,
-  startLesson,
   type ApiLanguage,
   type ApiLessonCard,
 } from "../lib/api";
@@ -175,10 +175,14 @@ export default function Generate() {
       }));
       await setCurrentCards(topicKey, mappedCards);
 
-      const lessonSession = await startLesson(session.access_token, {
+      const lessonSession = await createLessonSession(session.access_token, {
         profile_id: profileId,
         category_id: generatedResult.categoryId,
         started_at: new Date().toISOString(),
+        card_ids: previewCards.map((card) => String(card.id)),
+        current_index: 0,
+        status: "in_progress",
+        completed: false,
       });
 
       router.replace({

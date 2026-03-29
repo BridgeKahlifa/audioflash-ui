@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { setCurrentCards, getSettings } from "../../lib/storage";
 import { Flashcard } from "../../lib/types";
-import { fetchLessonsByCategory, startLesson, saveLesson, unsaveLesson } from "../../lib/api";
+import { createLessonSession, fetchLessonsByCategory, saveLesson, unsaveLesson } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 
 export default function LessonReady() {
@@ -113,10 +113,14 @@ export default function LessonReady() {
         translation: card.translation,
       }));
 
-      const lessonSession = await startLesson(session?.access_token, {
+      const lessonSession = await createLessonSession(session?.access_token, {
         profile_id: profileId,
         category_id: apiCategoryId,
         started_at: new Date().toISOString(),
+        card_ids: lessonCards.map((card) => String(card.id)),
+        current_index: 0,
+        status: "in_progress",
+        completed: false,
       });
 
       await setCurrentCards(topic, mappedCards);

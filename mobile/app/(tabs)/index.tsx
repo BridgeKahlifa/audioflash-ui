@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, Image } from "react-native";
+import { useCallback, useState } from "react";
+import { View, Text, Pressable, ScrollView, Image, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
-import { fetchSRSQueue, type ApiSRSQueue } from "../../lib/api";
+import {
+  fetchCategories,
+  fetchInProgressLesson,
+  fetchLanguages,
+  fetchSRSQueue,
+  type ApiLessonSession,
+  type ApiSRSQueue,
+} from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
@@ -14,26 +21,55 @@ export default function Home() {
   const { session, profile } = useAuth();
   const posthog = useAnalytics();
   const [srsQueue, setSrsQueue] = useState<ApiSRSQueue | null>(null);
+  const [inProgressLesson, setInProgressLesson] = useState<ApiLessonSession | null>(null);
+  const [inProgressLessonName, setInProgressLessonName] = useState<string | null>(null);
   const [loadingSRS, setLoadingSRS] = useState(true);
-  useEffect(() => {
-    async function loadSRS() {
-      if (!session?.access_token) return;
-      try {
-        const queue = await fetchSRSQueue(session.access_token);
-        setSrsQueue(queue);
-      } catch {
-        // non-critical
-      } finally {
-        setLoadingSRS(false);
-      }
-    }
-    loadSRS();
-  }, [session?.access_token]);
+  const [startingBrowseCategories, setStartingBrowseCategories] = useState(false);
+  const [continuingLesson, setContinuingLesson] = useState(false);
 
-  function handleBrowseCategories() {
-    posthog?.capture("home_action_tapped", { action: "browse_categories" });
-    router.push("/(tabs)/categories");
-  }
+  useFocusEffect(
+    useCallback(() => {
+      async function loadHomeData() {
+        if (!session?.access_token) {
+          setSrsQueue(null);
+          setInProgressLesson(null);
+          setInProgressLessonName(null);
+          setLoadingSRS(false);
+          return;
+        }
+
+        setLoadingSRS(true);
+
+        try {
+          const [queueResult, lessonResult, categoriesResult] = await Promise.allSettled([
+            fetchSRSQueue(session.access_token),
+            fetchInProgressLesson(session.access_token),
+            fetchCategories(),
+          ]);
+
+          const queue = queueResult.status === "fulfilled" ? queueResult.value : null;
+          const lesson = lessonResult.status === "fulfilled" ? lessonResult.value : null;
+          const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
+
+          setSrsQueue(queue);
+          setInProgressLesson(lesson);
+          setInProgressLessonName(
+            lesson
+              ? categories.find((category) => String(category.id) === String(lesson.category_id))?.name ?? null
+              : null,
+          );
+        } catch {
+          setSrsQueue(null);
+          setInProgressLesson(null);
+          setInProgressLessonName(null);
+        } finally {
+          setLoadingSRS(false);
+        }
+      }
+
+      void loadHomeData();
+    }, [session?.access_token]),
+  );
 
   const greeting = (() => {
     const hour = new Date().getHours();
@@ -43,6 +79,75 @@ export default function Home() {
   })();
 
   const firstName = profile?.name?.split(" ")[0] ?? null;
+  const preferredLanguageId = profile?.target_language_ids?.[0] ?? null;
+
+  async function handleContinueLesson() {
+    if (!inProgressLesson || continuingLesson) return;
+
+    posthog?.capture("home_action_tapped", {
+      action: "continue_lesson",
+      category_id: inProgressLesson.category_id,
+      lesson_session_id: inProgressLesson.session_id,
+    });
+
+    setContinuingLesson(true);
+    try {
+      router.push({
+        pathname: "/practice/[topic]",
+        params: {
+          topic: `session-${inProgressLesson.session_id}`,
+          topicTitle: inProgressLessonName ?? "Current Lesson",
+          resumeSession: "true",
+          initialCurrentIndex: String(inProgressLesson.current_index),
+          lessonStatus: inProgressLesson.status,
+          apiCategoryId: inProgressLesson.category_id,
+          apiLoaded: "true",
+          lessonSessionId: inProgressLesson.session_id,
+        },
+      });
+    } finally {
+      setContinuingLesson(false);
+    }
+  }
+
+  async function handleBrowseCategories() {
+    posthog?.capture("home_action_tapped", {
+      action: "browse_categories",
+      has_preferred_language: Boolean(preferredLanguageId),
+    });
+
+    if (!preferredLanguageId) {
+      router.push("/browse-languages");
+      return;
+    }
+
+    try {
+      setStartingBrowseCategories(true);
+      const languages = await fetchLanguages();
+      const preferredLanguage = languages.find(
+        (language) => String(language.id) === String(preferredLanguageId),
+      );
+
+      if (!preferredLanguage) {
+        router.push("/browse-languages");
+        return;
+      }
+
+      router.push({
+        pathname: "/categories",
+        params: {
+          language: languageKey(preferredLanguage.language),
+          languageLabel: preferredLanguage.language,
+          apiLanguageId: String(preferredLanguage.id),
+          apiLoaded: "true",
+        },
+      });
+    } catch {
+      router.push("/browse-languages");
+    } finally {
+      setStartingBrowseCategories(false);
+    }
+  }
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
@@ -108,6 +213,36 @@ export default function Home() {
           </View>
 
           <View className="px-6 gap-3">
+            {inProgressLesson ? (
+              <Pressable
+                onPress={() => void handleContinueLesson()}
+                disabled={continuingLesson}
+                className="rounded-2xl p-5 bg-primary flex-row items-center"
+                style={{
+                  shadowColor: "#FF6B4A",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+              >
+                <View className="w-12 h-12 rounded-xl bg-white/20 items-center justify-center mr-4">
+                  {continuingLesson ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="play-circle" size={24} color="#FFFFFF" />
+                  )}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white font-semibold text-base">Continue Lesson</Text>
+                  <Text className="text-white/75 text-sm mt-0.5">
+                    {inProgressLessonName ?? "Resume where you left off"}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+              </Pressable>
+            ) : null}
+
             {/* Generate a Lesson */}
             <Pressable
               onPress={() => { posthog?.capture("home_action_tapped", { action: "generate_lesson" }); router.push("/generate"); }}

@@ -21,6 +21,8 @@ import {
   createFlashcardAttempt,
   createSession,
   endLesson,
+  fetchLessonSession,
+  fetchLessonSessionFlashcards,
   fetchSessions,
   fetchSessionStats,
   updateFlashcardAttempt,
@@ -39,6 +41,9 @@ export default function FlashcardPractice() {
     apiLoaded,
     lessonSessionId,
     reviewId,
+    resumeSession,
+    initialCurrentIndex,
+    lessonStatus,
   } = useLocalSearchParams<{
     topic: string;
     topicTitle?: string;
@@ -49,6 +54,9 @@ export default function FlashcardPractice() {
     apiLoaded?: string;
     lessonSessionId?: string;
     reviewId?: string;
+    resumeSession?: string;
+    initialCurrentIndex?: string;
+    lessonStatus?: string;
   }>();
   const { profile, session } = useAuth();
   const posthog = useAnalytics();
@@ -68,15 +76,64 @@ export default function FlashcardPractice() {
   const submitLockRef = useRef(false);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionStartedAt = useRef(Date.now());
+  const isResumeSession = resumeSession === "true";
+  const initialResumeIndex = Number(initialCurrentIndex ?? 0);
 
   // Swipe animation
   const translateX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     async function loadCards() {
+      if (isResumeSession && lessonSessionId && session?.access_token) {
+        try {
+          const [lessonSession, sessionFlashcards] = await Promise.all([
+            fetchLessonSession(session.access_token, lessonSessionId),
+            fetchLessonSessionFlashcards(session.access_token, lessonSessionId),
+          ]);
+          const flashcardsById = new Map(
+            sessionFlashcards.map((card) => [String(card.id), card]),
+          );
+          const orderedSessionFlashcards = lessonSession.card_ids
+            .map((cardId) => flashcardsById.get(String(cardId)))
+            .filter((card): card is (typeof sessionFlashcards)[number] => Boolean(card));
+          const mappedCards: Flashcard[] = orderedSessionFlashcards.map((card, index) => ({
+            id: index + 1,
+            dbId: String(card.id),
+            sourceText: card.source_text,
+            romanization: card.romanization ?? "",
+            translation: card.translation,
+          }));
+
+          setCards(mappedCards);
+          setCurrentIndex(
+            Math.max(
+              0,
+              Math.min(
+                lessonSession.current_index ?? initialResumeIndex,
+                Math.max(mappedCards.length - 1, 0),
+              ),
+            ),
+          );
+          posthog?.capture("session_started", {
+            language: languageLabel,
+            card_count: mappedCards.length,
+            topic: topicTitle ?? topic,
+            is_review: Boolean(reviewId),
+            resumed: true,
+            lesson_status: lessonSession.status ?? lessonStatus,
+            current_index: lessonSession.current_index ?? initialResumeIndex,
+          });
+          return;
+        } catch {
+          setCards([]);
+          return;
+        }
+      }
+
       const stored = await getCurrentCards(topic);
       if (stored && stored.length > 0) {
         setCards(stored);
+        setCurrentIndex(0);
         posthog?.capture("session_started", {
           language: languageLabel,
           card_count: stored.length,
@@ -87,8 +144,18 @@ export default function FlashcardPractice() {
         setCards([]);
       }
     }
-    loadCards();
-  }, [topic]);
+    void loadCards();
+  }, [
+    initialResumeIndex,
+    isResumeSession,
+    languageLabel,
+    lessonSessionId,
+    lessonStatus,
+    reviewId,
+    session?.access_token,
+    topic,
+    topicTitle,
+  ]);
 
   useEffect(() => {
     shownAtRef.current = Date.now();
@@ -223,14 +290,16 @@ export default function FlashcardPractice() {
     const responseTimeMs = Math.max(0, Date.now() - shownAtRef.current);
     const existingResult = results[currentIndex];
     let attemptId = existingResult?.attemptId;
+    let nextIndexFromServer: number | null = null;
 
     if (shouldPersistAttempts) {
       try {
         if (attemptId) {
-          await updateFlashcardAttempt(session?.access_token, attemptId, {
+          const updatedAttempt = await updateFlashcardAttempt(session?.access_token, attemptId, {
             correct: knew,
             confidence_rating: selectedConfidence,
           });
+          nextIndexFromServer = updatedAttempt.current_index;
         } else {
           const attempt = await createFlashcardAttempt(session?.access_token, {
             session_id: lessonSessionId!,
@@ -242,6 +311,7 @@ export default function FlashcardPractice() {
             confidence_rating: selectedConfidence,
           });
           attemptId = attempt.attempt_id;
+          nextIndexFromServer = attempt.current_index;
         }
       } catch (error) {
         console.error("Failed to record flashcard attempt", error);
@@ -275,8 +345,12 @@ export default function FlashcardPractice() {
       language: languageLabel,
     });
 
-    if (currentIndex < cards.length - 1) {
-      setCurrentIndex((i) => i + 1);
+    const nextIndex = isResumeSession && nextIndexFromServer != null
+      ? nextIndexFromServer
+      : currentIndex + 1;
+
+    if (nextIndex < cards.length) {
+      setCurrentIndex(nextIndex);
       setShowAnswer(false);
       setSubmitting(false);
       setSubmittingResult(null);
