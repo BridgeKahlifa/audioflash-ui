@@ -108,6 +108,10 @@ export default function FlashcardPractice() {
 
     const card = cards[currentIndex];
     if (card?.sourceText && !existingResult) {
+      revealTimerRef.current = setTimeout(() => {
+        setCanRevealAnswer(true);
+        revealTimerRef.current = null;
+      }, 1500);
       speakText(card.sourceText, language ?? "chinese", playbackSpeed);
     }
   }, [currentIndex, cards]);
@@ -482,12 +486,6 @@ export default function FlashcardPractice() {
             <Pressable
               onPress={() => {
                 setAudioPlayCount((count) => count + 1);
-                if (!canRevealAnswer && !revealTimerRef.current) {
-                  revealTimerRef.current = setTimeout(() => {
-                    setCanRevealAnswer(true);
-                    revealTimerRef.current = null;
-                  }, 1000);
-                }
 
                 console.log("Card object keys:", Object.keys(currentCard));
                 console.log("sourceText value:", currentCard.sourceText);

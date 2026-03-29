@@ -6,9 +6,9 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: "home",
+  categories: "grid",
   review: "refresh-circle",
   progress: "stats-chart",
-  goals: "flag",
   settings: "settings",
 };
 
@@ -92,11 +92,11 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, animation: "none" }}
     >
       <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="categories" options={{ title: "Categories" }} />
       <Tabs.Screen name="review" options={{ title: "Review" }} />
       <Tabs.Screen name="progress" options={{ title: "Progress" }} />
-      <Tabs.Screen name="goals" options={{ title: "Goals" }} />
+      <Tabs.Screen name="goals" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ title: "Settings" }} />
-      <Tabs.Screen name="categories" options={{ href: null }} />
     </Tabs>
   );
 }
