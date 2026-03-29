@@ -17,6 +17,7 @@ import { speakText } from "../../lib/audio";
 import { useAuth } from "../../lib/auth-context";
 import {
   completeReviewLifecycle,
+  createReview,
   createFlashcardAttempt,
   createSession,
   endLesson,
@@ -249,7 +250,7 @@ export default function FlashcardPractice() {
     }
 
     const nextResult: SessionCardResult = {
-      cardId: currentCard.id,
+      cardId: currentCard.dbId ?? currentCard.id,
       sourceText: currentCard.sourceText,
       romanization: currentCard.romanization,
       translation: currentCard.translation,
@@ -281,6 +282,8 @@ export default function FlashcardPractice() {
         (result): result is SessionCardResult => Boolean(result),
       );
       const correct = completedResults.filter((r) => r.knew).length;
+      let createdReviewId: string | undefined;
+      let createdReviewName: string | undefined;
 
       if (shouldPersistAttempts) {
         const profileId = profile?.id ?? session?.user?.id;
@@ -297,8 +300,30 @@ export default function FlashcardPractice() {
             profile_id: profileId,
             session_id: lessonSessionId,
           });
+
+          if (!reviewId) {
+            const missedFlashcardIds = completedResults
+              .filter((result) => !result.knew)
+              .map((result) =>
+                cards.find(
+                  (card) => card.dbId === result.cardId || card.id === result.cardId,
+                )?.dbId,
+              )
+              .filter((dbId): dbId is string => Boolean(dbId));
+
+            if (missedFlashcardIds.length > 0) {
+              const createdReview = await createReview(session?.access_token, {
+                profile_id: profileId,
+                parent_session_id: lessonSessionId,
+                review_name: `${topicTitle ?? topic} Missed Cards`,
+                flashcard_ids: missedFlashcardIds,
+              });
+              createdReviewId = createdReview.id;
+              createdReviewName = createdReview.review_name;
+            }
+          }
         } catch (error) {
-          console.error("Failed to end lesson session", error);
+          console.error("Failed to finish lesson session", error);
           setAttemptError("We couldn't finish the lesson right now. Please try again.");
           setSubmitting(false);
           setSubmittingResult(null);
@@ -326,6 +351,8 @@ export default function FlashcardPractice() {
         language: language ?? "",
         languageLabel: languageLabel ?? "",
         cards: completedResults,
+        reviewId: createdReviewId,
+        reviewName: createdReviewName,
       });
 
       // Sync to API in the background — don't block navigation

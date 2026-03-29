@@ -40,6 +40,8 @@ export interface SessionHistoryItem {
   correct: number;
   total: number;
   cards: SessionCardResult[];
+  reviewId?: string;
+  reviewName?: string;
 }
 
 export interface ReviewCard {

@@ -23,6 +23,13 @@ export type ApiReview = {
   created_at: string;
 };
 
+export interface ApiCreateReview {
+  profile_id: string;
+  parent_session_id: string;
+  review_name: string;
+  flashcard_ids: string[];
+}
+
 export interface ApiConfig {
   DB_ENV?: string | null;
   db_env?: string | null;
@@ -254,6 +261,18 @@ export async function fetchReviews(token?: string | null): Promise<ApiReview[]> 
     headers: authHeaders(token),
   });
   return parseJson<ApiReview[]>(res);
+}
+
+export async function createReview(
+  token: string | null | undefined,
+  body: ApiCreateReview,
+): Promise<ApiReview> {
+  const res = await fetch(`${API_BASE_URL}/review`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiReview>(res);
 }
 
 export async function startReviewLifecycle(

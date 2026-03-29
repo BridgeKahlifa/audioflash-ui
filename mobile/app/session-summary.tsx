@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, View, Text, Pressable } from "react-native";
+import { ScrollView, View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { SessionHistoryItem } from "../lib/types";
 import { getLastSession, setCurrentCards } from "../lib/storage";
+import { useAuth } from "../lib/auth-context";
+import { startReviewLifecycle } from "../lib/api";
 
 export default function SessionSummary() {
+  const { session: authSession } = useAuth();
   const [session, setSession] = useState<SessionHistoryItem | null>(null);
+  const [startingReview, setStartingReview] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     getLastSession().then(setSession);
@@ -26,20 +30,56 @@ export default function SessionSummary() {
   async function retryMissed() {
     if (!session || missed.length === 0) return;
 
+    setError("");
+    const topicKey = session.reviewId ? `review-${session.reviewId}` : session.topic;
+
     await setCurrentCards(
-      session.topic,
+      topicKey,
       missed.map((card, index) => ({
         id: index + 1,
+        dbId: typeof card.cardId === "string" ? card.cardId : undefined,
         sourceText: card.sourceText,
         romanization: card.romanization,
         translation: card.translation,
       }))
     );
 
+    if (session.reviewId) {
+      if (!authSession?.access_token) {
+        setError("Sign in again to start this review.");
+        return;
+      }
+
+      try {
+        setStartingReview(true);
+        const startedReview = await startReviewLifecycle(
+          authSession.access_token,
+          session.reviewId,
+        );
+
+        router.replace({
+          pathname: "/practice/[topic]",
+          params: {
+            topic: topicKey,
+            topicTitle: startedReview.review_name,
+            language: "review",
+            languageLabel: "Review",
+            reviewId: startedReview.id,
+          },
+        });
+        return;
+      } catch {
+        setError("Couldn't start the missed-cards review. Please try again.");
+        return;
+      } finally {
+        setStartingReview(false);
+      }
+    }
+
     router.replace({
       pathname: "/practice/[topic]",
       params: {
-        topic: session.topic,
+        topic: topicKey,
         topicTitle: `${session.topicTitle} (Retry)`,
         language: session.language,
         languageLabel: session.languageLabel,
@@ -71,6 +111,12 @@ export default function SessionSummary() {
         </View>
 
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 24 }}>
+          {error ? (
+            <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+              <Text className="text-red-600 text-sm">{error}</Text>
+            </View>
+          ) : null}
+
           <View className="bg-card border border-border rounded-2xl p-5 mb-4">
             <Text className="text-muted text-xs mb-2">{session.languageLabel} · {session.topicTitle}</Text>
             <Text className="text-3xl font-semibold text-foreground">{session.correct}/{session.total}</Text>
@@ -98,12 +144,16 @@ export default function SessionSummary() {
           <View className="gap-3">
             <Pressable
               onPress={retryMissed}
-              disabled={missed.length === 0}
-              className={`py-4 rounded-2xl items-center ${missed.length > 0 ? "bg-primary" : "bg-secondary"}`}
+              disabled={missed.length === 0 || startingReview}
+              className={`py-4 rounded-2xl items-center ${missed.length > 0 && !startingReview ? "bg-primary" : "bg-secondary"}`}
             >
-              <Text className={`font-semibold ${missed.length > 0 ? "text-primary-foreground" : "text-muted"}`}>
-                Retry Missed Cards
-              </Text>
+              {startingReview ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text className={`font-semibold ${missed.length > 0 ? "text-primary-foreground" : "text-muted"}`}>
+                  {session.reviewId ? "Review Missed Cards" : "Retry Missed Cards"}
+                </Text>
+              )}
             </Pressable>
 
             <Pressable
