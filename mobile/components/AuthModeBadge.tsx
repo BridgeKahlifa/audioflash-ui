@@ -13,11 +13,9 @@ export function AuthModeBadge() {
       pointerEvents="none"
       style={{
         position: "absolute",
-        top: Platform.OS === "ios" ? 52 : 20,
-        left: 0,
-        right: 0,
+        top: Platform.OS === "ios" ? 56 : 18,
+        right: 16,
         zIndex: 1000,
-        alignItems: "center",
       }}
     >
       <View
@@ -26,8 +24,8 @@ export function AuthModeBadge() {
           borderWidth: 1,
           borderColor: "#FED7AA",
           backgroundColor: "#FFF7ED",
-          paddingHorizontal: 12,
-          paddingVertical: 5,
+          paddingHorizontal: 10,
+          paddingVertical: 4,
           shadowColor: "#000000",
           shadowOpacity: 0.08,
           shadowRadius: 8,
@@ -38,9 +36,9 @@ export function AuthModeBadge() {
         <Text
           style={{
             color: "#C2410C",
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: "700",
-            letterSpacing: 1.2,
+            letterSpacing: 0.9,
             textTransform: "uppercase",
           }}
         >

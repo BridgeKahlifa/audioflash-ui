@@ -42,6 +42,20 @@ export interface ApiStartLesson {
   started_at?: string | null;
 }
 
+export interface ApiCreateLessonSession {
+  profile_id: string;
+  category_id: string;
+  started_at?: string | null;
+  ended_at?: string | null;
+  grade_percent?: number | null;
+  cards_seen?: number;
+  cards_correct?: number;
+  card_ids: string[];
+  current_index?: number;
+  status?: "in_progress" | "completed" | "abandoned";
+  completed?: boolean;
+}
+
 export interface ApiEndLesson {
   profile_id: string;
   session_id: string;
@@ -57,9 +71,41 @@ export interface ApiLessonSession {
   grade_percent: number | null;
   cards_seen: number;
   cards_correct: number;
+  card_ids: string[];
+  current_index: number;
+  status: "in_progress" | "completed" | "abandoned";
   completed: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export async function fetchInProgressLesson(
+  token: string | null | undefined,
+): Promise<ApiLessonSession | null> {
+  const res = await fetch(`${API_BASE_URL}/lessons/in-progress`, {
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiLessonSession | null>(res);
+}
+
+export async function fetchLessonSession(
+  token: string | null | undefined,
+  sessionId: string,
+): Promise<ApiLessonSession> {
+  const res = await fetch(`${API_BASE_URL}/lessons/sessions/${sessionId}`, {
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiLessonSession>(res);
+}
+
+export async function fetchLessonSessionFlashcards(
+  token: string | null | undefined,
+  sessionId: string,
+): Promise<ApiLessonCard[]> {
+  const res = await fetch(`${API_BASE_URL}/lessons/sessions/${sessionId}/flashcards`, {
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiLessonCard[]>(res);
 }
 
 export interface ApiCreateFlashcardAttempt {
@@ -82,6 +128,8 @@ export interface ApiFlashcardAttempt {
   time_to_answer_ms: number;
   cards_seen: number;
   cards_correct: number;
+  confidence_rating?: number | null;
+  current_index: number;
 }
 
 export interface ApiUpdateFlashcardAttempt {
@@ -199,6 +247,18 @@ export async function createSession(
     body: JSON.stringify(body),
   });
   return parseJson<ApiSession>(res);
+}
+
+export async function createLessonSession(
+  token: string | null | undefined,
+  body: ApiCreateLessonSession,
+): Promise<ApiLessonSession> {
+  const res = await fetch(`${API_BASE_URL}/lessons/sessions`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiLessonSession>(res);
 }
 
 export async function bulkCreateFlashcards(
