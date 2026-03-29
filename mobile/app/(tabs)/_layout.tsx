@@ -92,7 +92,7 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, animation: "none" }}
     >
       <Tabs.Screen name="index" options={{ title: "Home" }} />
-      <Tabs.Screen name="categories" options={{ title: "Categories" }} />
+      <Tabs.Screen name="categories" options={{ title: "Browse" }} />
       <Tabs.Screen name="review" options={{ title: "Review" }} />
       <Tabs.Screen name="progress" options={{ title: "Progress" }} />
       <Tabs.Screen name="goals" options={{ href: null }} />
