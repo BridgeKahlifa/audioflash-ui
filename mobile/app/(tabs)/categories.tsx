@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { fetchCategories } from "../../lib/api";
+import { fetchCategories, fetchLanguages } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 
 interface Topic {
@@ -21,9 +21,124 @@ interface Topic {
   supportedDifficulties: number[];
 }
 
+function languageFlagCode(name: string): "cn" | "es" | "jp" | "fr" | "kr" | "globe" {
+  const lower = name.toLowerCase();
+  if (lower.includes("mandarin") || lower.includes("chinese")) return "cn";
+  if (lower.includes("spanish")) return "es";
+  if (lower.includes("japanese")) return "jp";
+  if (lower.includes("french")) return "fr";
+  if (lower.includes("korean")) return "kr";
+  return "globe";
+}
+
+function LanguageFlag({ languageName }: { languageName: string }) {
+  const code = languageFlagCode(languageName);
+
+  if (code === "cn") {
+    return (
+      <View
+        style={{
+          width: 18,
+          height: 12,
+          borderRadius: 3,
+          backgroundColor: "#DE2910",
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: 6,
+        }}
+      >
+        <Text style={{ color: "#FFDE00", fontSize: 8, lineHeight: 9 }}>★</Text>
+      </View>
+    );
+  }
+
+  if (code === "jp") {
+    return (
+      <View
+        style={{
+          width: 18,
+          height: 12,
+          borderRadius: 3,
+          backgroundColor: "#FFFFFF",
+          borderWidth: 1,
+          borderColor: "#E5E7EB",
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: 6,
+        }}
+      >
+        <View
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            backgroundColor: "#BC002D",
+          }}
+        />
+      </View>
+    );
+  }
+
+  if (code === "fr") {
+    return (
+      <View style={{ width: 18, height: 12, borderRadius: 3, overflow: "hidden", flexDirection: "row", marginRight: 6 }}>
+        <View style={{ flex: 1, backgroundColor: "#0055A4" }} />
+        <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />
+        <View style={{ flex: 1, backgroundColor: "#EF4135" }} />
+      </View>
+    );
+  }
+
+  if (code === "es") {
+    return (
+      <View style={{ width: 18, height: 12, borderRadius: 3, overflow: "hidden", marginRight: 6 }}>
+        <View style={{ flex: 1, backgroundColor: "#AA151B" }} />
+        <View style={{ flex: 2, backgroundColor: "#F1BF00" }} />
+        <View style={{ flex: 1, backgroundColor: "#AA151B" }} />
+      </View>
+    );
+  }
+
+  if (code === "kr") {
+    return (
+      <View
+        style={{
+          width: 18,
+          height: 12,
+          borderRadius: 3,
+          backgroundColor: "#FFFFFF",
+          borderWidth: 1,
+          borderColor: "#E5E7EB",
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: 6,
+        }}
+      >
+        <View style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: "#CD2E3A" }} />
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={{
+        width: 18,
+        height: 12,
+        borderRadius: 3,
+        backgroundColor: "#E5E7EB",
+        alignItems: "center",
+        justifyContent: "center",
+        marginRight: 6,
+      }}
+    >
+      <Ionicons name="globe-outline" size={9} color="#6B7280" />
+    </View>
+  );
+}
+
 
 export default function Categories() {
-  const { profileError } = useAuth();
+  const { profile, profileError } = useAuth();
   const { language, languageLabel, apiLanguageId, apiLoaded } = useLocalSearchParams<{
     language?: string;
     languageLabel?: string;
@@ -34,6 +149,44 @@ export default function Categories() {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [isLoading, setIsLoading] = useState(apiLoaded === "true");
+
+  useEffect(() => {
+    async function resolveLanguage() {
+      if (apiLoaded === "true") return;
+
+      const preferredLanguageId = profile?.target_language_ids?.[0];
+      if (!preferredLanguageId) {
+        router.replace("/browse-languages");
+        return;
+      }
+
+      try {
+        const languages = await fetchLanguages();
+        const preferredLanguage = languages.find(
+          (item) => String(item.id) === String(preferredLanguageId),
+        );
+
+        if (!preferredLanguage) {
+          router.replace("/browse-languages");
+          return;
+        }
+
+        router.replace({
+          pathname: "/categories",
+          params: {
+            language: preferredLanguage.language.toLowerCase().replace(/\s+/g, "-"),
+            languageLabel: preferredLanguage.language,
+            apiLanguageId: String(preferredLanguage.id),
+            apiLoaded: "true",
+          },
+        });
+      } catch {
+        router.replace("/browse-languages");
+      }
+    }
+
+    resolveLanguage();
+  }, [apiLoaded, profile?.target_language_ids]);
 
   useEffect(() => {
     async function loadCategories() {
@@ -103,9 +256,13 @@ export default function Categories() {
           <Text className="text-3xl font-semibold text-foreground tracking-tight">
             Choose Category
           </Text>
-          <Text className="text-muted mt-1">
-            Language: <Text className="text-foreground font-medium">{languageLabel}</Text>
-          </Text>
+          <View className="flex-row items-center mt-1">
+            <Text className="text-muted">Language: </Text>
+            <Text className="text-foreground font-medium">{languageLabel}</Text>
+            <View style={{ marginLeft: 6 }}>
+              <LanguageFlag languageName={languageLabel ?? ""} />
+            </View>
+          </View>
           {profileError ? (
             <View className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
               <Text className="text-sm text-red-600">
@@ -197,7 +354,7 @@ export default function Categories() {
                 selectedTopic ? "text-primary-foreground" : "text-muted"
               }`}
             >
-              Generate Lesson
+              Start Lesson
             </Text>
           </Pressable>
         </View>

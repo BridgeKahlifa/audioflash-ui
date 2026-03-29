@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { useAuth } from "../../lib/auth-context";
 import { ApiUpdateProfile, ApiLanguage, fetchLanguages } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
@@ -103,6 +104,7 @@ function LanguagePickerModal({
 export default function SettingsScreen() {
   const { user, profile, profileLoading, updateProfileData, updateEmail, deleteAccount, signOut, isDevAuth } = useAuth();
   const posthog = useAnalytics();
+  const navigation = useNavigation();
 
   const [localSettings, setLocalSettings] = useState<ApiUpdateProfile>({
     cards_per_session: profile?.cards_per_session ?? 20,
@@ -123,6 +125,19 @@ export default function SettingsScreen() {
   const [showNativePicker, setShowNativePicker] = useState(false);
   const [showTargetPicker, setShowTargetPicker] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const normalizedProfileName = profile?.name ?? "";
+  const normalizedProfileEmail = user?.email ?? "";
+  const normalizedProfileCards = profile?.cards_per_session ?? 20;
+  const normalizedProfileAudioSpeed = profile?.audio_speed ?? 1.0;
+  const normalizedProfileNotifications = profile?.notifications_enabled ?? false;
+
+  const hasUnsavedChanges =
+    name !== normalizedProfileName ||
+    email !== normalizedProfileEmail ||
+    (localSettings.cards_per_session ?? 20) !== normalizedProfileCards ||
+    (localSettings.audio_speed ?? 1.0) !== normalizedProfileAudioSpeed ||
+    (localSettings.notifications_enabled ?? false) !== normalizedProfileNotifications;
 
   useEffect(() => {
     fetchLanguages().then(setLanguages).catch(() => { });
@@ -194,6 +209,52 @@ export default function SettingsScreen() {
     }
   }
 
+  async function saveAllPendingChanges(): Promise<boolean> {
+    if (name !== normalizedProfileName) {
+      setNameStatus("saving");
+      const { error } = await updateProfileData({ name });
+      if (error) {
+        setNameStatus("error");
+        Alert.alert("Error", error);
+        return false;
+      }
+      setNameStatus("saved");
+      setTimeout(() => setNameStatus("idle"), 2000);
+    }
+
+    if (email !== normalizedProfileEmail) {
+      setEmailStatus("saving");
+      const { error } = await updateEmail(email);
+      if (error) {
+        setEmailStatus("error");
+        Alert.alert("Error", error);
+        return false;
+      }
+      setEmailStatus("sent");
+    }
+
+    if (
+      (localSettings.cards_per_session ?? 20) !== normalizedProfileCards ||
+      (localSettings.audio_speed ?? 1.0) !== normalizedProfileAudioSpeed ||
+      (localSettings.notifications_enabled ?? false) !== normalizedProfileNotifications
+    ) {
+      const { error } = await updateProfileData(localSettings);
+      if (error) {
+        Alert.alert("Error", error);
+        return false;
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1600);
+      posthog?.capture("settings_practice_saved", {
+        cards_per_session: localSettings.cards_per_session,
+        audio_speed: localSettings.audio_speed,
+        notifications_enabled: localSettings.notifications_enabled,
+      });
+    }
+
+    return true;
+  }
+
   async function saveNativeLanguage(id: string) {
     const previousId = nativeLanguageId;
     setNativeLanguageId(id);
@@ -256,6 +317,73 @@ export default function SettingsScreen() {
       .map((id) => languages.find((l) => String(l.id) === id)?.language)
       .filter(Boolean)
       .join(", ");
+
+  usePreventRemove(hasUnsavedChanges, (event) => {
+    event.preventDefault();
+
+    Alert.alert(
+      "Save changes?",
+      "You have unsaved profile changes. Do you want to save them before leaving?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => navigation.dispatch(event.data.action),
+        },
+        {
+          text: "Save",
+          onPress: async () => {
+            const didSave = await saveAllPendingChanges();
+            if (didSave) {
+              navigation.dispatch(event.data.action);
+            }
+          },
+        },
+      ],
+    );
+  });
+
+  useEffect(() => {
+    const parent = navigation.getParent();
+    if (!parent) return;
+
+    const unsubscribe = parent.addListener("tabPress", (event) => {
+      if (!hasUnsavedChanges) return;
+
+      const targetRoute = parent
+        .getState()
+        .routes.find((route) => route.key === event.target);
+
+      if (!targetRoute || targetRoute.name === "settings") return;
+
+      event.preventDefault();
+
+      Alert.alert(
+        "Save changes?",
+        "You have unsaved profile changes. Do you want to save them before leaving?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => parent.navigate(targetRoute.name),
+          },
+          {
+            text: "Save",
+            onPress: async () => {
+              const didSave = await saveAllPendingChanges();
+              if (didSave) {
+                parent.navigate(targetRoute.name);
+              }
+            },
+          },
+        ],
+      );
+    });
+
+    return unsubscribe;
+  }, [hasUnsavedChanges, navigation, name, email, localSettings, profile, user]);
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
@@ -386,18 +514,19 @@ export default function SettingsScreen() {
                 </Pressable>
               </View>
             </View>
+          </View>
 
-            <View className="border-t border-border pt-4">
-              <Text className="text-foreground font-medium mb-3">Reminders</Text>
-              <Pressable
-                onPress={() => setLocalSettings((p) => ({ ...p, notifications_enabled: !p.notifications_enabled }))}
-                className={`py-3 rounded-xl items-center ${localSettings.notifications_enabled ? "bg-primary" : "bg-secondary"}`}
-              >
-                <Text className={localSettings.notifications_enabled ? "text-primary-foreground font-semibold" : "text-foreground font-medium"}>
-                  {localSettings.notifications_enabled ? "Enabled" : "Disabled"}
-                </Text>
-              </Pressable>
-            </View>
+          <SectionLabel>Reminders</SectionLabel>
+          <View className="bg-card border border-border rounded-2xl p-5">
+            <Text className="text-foreground font-medium mb-3">Practice Reminders</Text>
+            <Pressable
+              onPress={() => setLocalSettings((p) => ({ ...p, notifications_enabled: !p.notifications_enabled }))}
+              className={`py-3 rounded-xl items-center ${localSettings.notifications_enabled ? "bg-primary" : "bg-secondary"}`}
+            >
+              <Text className={localSettings.notifications_enabled ? "text-primary-foreground font-semibold" : "text-foreground font-medium"}>
+                {localSettings.notifications_enabled ? "Enabled" : "Disabled"}
+              </Text>
+            </Pressable>
           </View>
 
           <Pressable onPress={saveSettings} className="py-4 rounded-2xl items-center bg-primary mt-3">

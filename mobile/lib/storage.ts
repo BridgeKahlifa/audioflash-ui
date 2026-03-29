@@ -346,6 +346,8 @@ export async function saveCompletedSession(input: {
   language: string;
   languageLabel: string;
   cards: SessionCardResult[];
+  reviewId?: string;
+  reviewName?: string;
 }): Promise<SessionHistoryItem> {
   const total = input.cards.length;
   const correct = input.cards.filter((card) => card.knew).length;
@@ -362,6 +364,8 @@ export async function saveCompletedSession(input: {
     correct,
     total,
     cards: input.cards,
+    reviewId: input.reviewId,
+    reviewName: input.reviewName,
   };
 
   const history = await getSessionHistory();

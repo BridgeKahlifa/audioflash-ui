@@ -9,15 +9,15 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "#FF6B4A",
+        primary: "#E86A4A",
         "primary-foreground": "#FFFFFF",
-        background: "#FAFAFA",
-        card: "#FFFFFF",
-        secondary: "#F5F5F5",
-        muted: "#737373",
-        accent: "#FFF0ED",
-        border: "#E5E5E5",
-        foreground: "#1A1A1A",
+        background: "#FFF7F2",
+        card: "#FFFDFC",
+        secondary: "#FBE7DE",
+        muted: "#8B6E66",
+        accent: "#FFD9CA",
+        border: "#F2CBBE",
+        foreground: "#2F1E19",
       },
     },
   },
