@@ -306,6 +306,8 @@ export interface components {
             notification_time: string;
             /** Streak Count */
             streak_count: number;
+            /** Onboarding Completed */
+            onboarding_completed: boolean;
         };
         /** SessionResponse */
         SessionResponse: {
@@ -352,6 +354,8 @@ export interface components {
             notifications_enabled?: boolean | null;
             /** Notification Time */
             notification_time?: string | null;
+            /** Onboarding Completed */
+            onboarding_completed?: boolean | null;
         };
         /** ValidationError */
         ValidationError: {

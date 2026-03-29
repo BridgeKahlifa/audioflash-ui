@@ -116,13 +116,9 @@ export default function SettingsScreen() {
   const [email, setEmail] = useState(user?.email ?? "");
   const [emailStatus, setEmailStatus] = useState<"idle" | "saving" | "sent" | "error">("idle");
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
-  const [nativeLanguageId, setNativeLanguageId] = useState<string | null>(
-    profile?.native_language_id ? String(profile.native_language_id) : null
-  );
   const [targetLanguageIds, setTargetLanguageIds] = useState<string[]>(
     profile?.target_language_ids?.map(String) ?? []
   );
-  const [showNativePicker, setShowNativePicker] = useState(false);
   const [showTargetPicker, setShowTargetPicker] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -151,7 +147,6 @@ export default function SettingsScreen() {
       notifications_enabled: profile.notifications_enabled,
     });
     setName(profile.name ?? "");
-    setNativeLanguageId(profile.native_language_id ? String(profile.native_language_id) : null);
     setTargetLanguageIds(profile.target_language_ids?.map(String) ?? []);
   }, [profile]);
 
@@ -255,19 +250,6 @@ export default function SettingsScreen() {
     return true;
   }
 
-  async function saveNativeLanguage(id: string) {
-    const previousId = nativeLanguageId;
-    setNativeLanguageId(id);
-    const { error } = await updateProfileData({ native_language_id: id });
-    if (error) {
-      setNativeLanguageId(previousId);
-      Alert.alert("Error", error);
-    } else {
-      const lang = languages.find((l) => String(l.id) === id);
-      posthog?.capture("settings_native_language_changed", { language: lang?.language });
-    }
-  }
-
   async function toggleTargetLanguage(id: string) {
     const previousTargetLanguageIds = targetLanguageIds;
     const adding = !targetLanguageIds.includes(id);
@@ -307,10 +289,6 @@ export default function SettingsScreen() {
     );
   }
 
-  const nativeLanguageName = nativeLanguageId
-    ? (languages.find((l) => String(l.id) === nativeLanguageId)?.language ?? "Select...")
-    : "Select...";
-
   const targetLanguagesLabel = targetLanguageIds.length === 0
     ? "Select..."
     : targetLanguageIds
@@ -319,6 +297,7 @@ export default function SettingsScreen() {
       .join(", ");
 
   usePreventRemove(hasUnsavedChanges, (event) => {
+    if (typeof event.preventDefault !== "function") return;
     event.preventDefault();
 
     Alert.alert(
@@ -453,16 +432,6 @@ export default function SettingsScreen() {
           <SectionLabel>Languages</SectionLabel>
           <View className="bg-card border border-border rounded-2xl overflow-hidden">
             <Pressable
-              onPress={() => setShowNativePicker(true)}
-              className="flex-row items-center justify-between p-4 border-b border-border"
-            >
-              <View className="flex-1 mr-3">
-                <Text className="text-xs text-muted mb-0.5">Native Language</Text>
-                <Text className="text-foreground font-medium">{nativeLanguageName}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-            </Pressable>
-            <Pressable
               onPress={() => setShowTargetPicker(true)}
               className="flex-row items-center justify-between p-4"
             >
@@ -567,13 +536,6 @@ export default function SettingsScreen() {
         </ScrollView>
       </View>
 
-      <LanguagePickerModal
-        visible={showNativePicker}
-        languages={languages}
-        selectedIds={nativeLanguageId ? [nativeLanguageId] : []}
-        onToggle={saveNativeLanguage}
-        onClose={() => setShowNativePicker(false)}
-      />
       <LanguagePickerModal
         visible={showTargetPicker}
         languages={languages}

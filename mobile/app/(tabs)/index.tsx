@@ -1,25 +1,20 @@
 import { useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, Image, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ScrollView, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
-import { fetchLanguages, fetchSRSQueue, type ApiSRSQueue } from "../../lib/api";
+import { fetchSRSQueue, type ApiSRSQueue } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
 
-function languageKey(label: string): string {
-  return label.toLowerCase().replace(/\s+/g, "-");
-}
 
 export default function Home() {
   const { session, profile } = useAuth();
   const posthog = useAnalytics();
   const [srsQueue, setSrsQueue] = useState<ApiSRSQueue | null>(null);
   const [loadingSRS, setLoadingSRS] = useState(true);
-  const [startingBrowseCategories, setStartingBrowseCategories] = useState(false);
-
   useEffect(() => {
     async function loadSRS() {
       if (!session?.access_token) return;
@@ -35,6 +30,11 @@ export default function Home() {
     loadSRS();
   }, [session?.access_token]);
 
+  function handleBrowseCategories() {
+    posthog?.capture("home_action_tapped", { action: "browse_categories" });
+    router.push("/(tabs)/categories");
+  }
+
   const greeting = (() => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -43,46 +43,6 @@ export default function Home() {
   })();
 
   const firstName = profile?.name?.split(" ")[0] ?? null;
-  const preferredLanguageId = profile?.target_language_ids?.[0] ?? null;
-
-  async function handleBrowseCategories() {
-    posthog?.capture("home_action_tapped", {
-      action: "browse_categories",
-      has_preferred_language: Boolean(preferredLanguageId),
-    });
-
-    if (!preferredLanguageId) {
-      router.push("/browse-languages");
-      return;
-    }
-
-    try {
-      setStartingBrowseCategories(true);
-      const languages = await fetchLanguages();
-      const preferredLanguage = languages.find(
-        (language) => String(language.id) === String(preferredLanguageId),
-      );
-
-      if (!preferredLanguage) {
-        router.push("/browse-languages");
-        return;
-      }
-
-      router.push({
-        pathname: "/categories",
-        params: {
-          language: languageKey(preferredLanguage.language),
-          languageLabel: preferredLanguage.language,
-          apiLanguageId: String(preferredLanguage.id),
-          apiLoaded: "true",
-        },
-      });
-    } catch {
-      router.push("/browse-languages");
-    } finally {
-      setStartingBrowseCategories(false);
-    }
-  }
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
@@ -174,8 +134,7 @@ export default function Home() {
 
             {/* Browse Categories */}
             <Pressable
-              onPress={() => void handleBrowseCategories()}
-              disabled={startingBrowseCategories}
+              onPress={handleBrowseCategories}
               className="rounded-2xl p-5 bg-card border border-border flex-row items-center"
               style={{
                 shadowColor: "#000",
@@ -186,19 +145,11 @@ export default function Home() {
               }}
             >
               <View className="w-12 h-12 rounded-xl bg-secondary items-center justify-center mr-4">
-                {startingBrowseCategories ? (
-                  <ActivityIndicator color="#2F1E19" />
-                ) : (
-                  <Ionicons name="grid" size={24} color="#1A1A1A" />
-                )}
+                <Ionicons name="grid" size={24} color="#1A1A1A" />
               </View>
               <View className="flex-1">
                 <Text className="text-foreground font-semibold text-base">Browse Categories</Text>
-                <Text className="text-muted text-sm mt-0.5">
-                  {preferredLanguageId
-                    ? "Jump into your saved learning language"
-                    : "Pick a language and topic to practice"}
-                </Text>
+                <Text className="text-muted text-sm mt-0.5">Pick a language and topic to practice</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
             </Pressable>
