@@ -72,7 +72,7 @@ export const faqs = [
   {
     question: "What level of language learner is AudioFlash for?",
     answer:
-      "AudioFlash is designed for learners at all levels, from beginners to advanced speakers. AI-powered customization ensures content matches your current proficiency along with our pre made lessons",
+      "AudioFlash is designed for learners at all levels, from beginners to advanced speakers. AI-powered customization ensures content matches your current proficiency along with our pre-made lessons.",
   },
   {
     question: "What does AI-generated practice mean?",

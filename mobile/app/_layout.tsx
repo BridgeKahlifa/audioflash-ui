@@ -11,7 +11,7 @@ import { ConfigProvider } from "../lib/config-context";
 import { POSTHOG_KEY, POSTHOG_HOST } from "../lib/analytics";
 
 function RootNavigator() {
-  const { session, loading, isDevAuth, profile } = useAuth();
+  const { session, loading, isDevAuth, profile, profileLoading, profileError } = useAuth();
   const segments = useSegments();
   const posthog = usePostHog();
   const hasTrackedOpen = useRef(false);
@@ -48,19 +48,30 @@ function RootNavigator() {
     prevSessionId.current = session?.user?.id ?? null;
   }, [loading, session?.user?.id]);
 
+  const isAuthenticated = !!(session || isDevAuth);
+  // Block until we know the user's onboarding status. If profile fails to load,
+  // profileError lets us stop spinning rather than hanging forever.
+  const profilePending = isAuthenticated && profile === null && !profileError;
+
   useEffect(() => {
-    if (loading) return;
+    if (loading || profilePending) return;
 
     const inAuthGroup = segments[0] === "(auth)";
+    const inOnboardingGroup = segments[0] === "(onboarding)";
+    const needsOnboarding = profile != null && !profile.onboarding_completed;
 
-    if (!session && !inAuthGroup) {
+    if (!isAuthenticated && !inAuthGroup) {
       router.replace("/(auth)/sign-in");
-    } else if ((session || isDevAuth) && inAuthGroup) {
+    } else if (isAuthenticated && inAuthGroup) {
+      router.replace(needsOnboarding ? "/(onboarding)" : "/(tabs)");
+    } else if (isAuthenticated && needsOnboarding && !inOnboardingGroup) {
+      router.replace("/(onboarding)");
+    } else if (isAuthenticated && !needsOnboarding && inOnboardingGroup) {
       router.replace("/(tabs)");
     }
-  }, [isDevAuth, session, loading, segments]);
+  }, [isAuthenticated, loading, profilePending, segments, profile?.onboarding_completed]);
 
-  if (loading) {
+  if (loading || profilePending) {
     return (
       <View style={{ flex: 1, backgroundColor: "#FAFAF8", alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator size="large" color="#FF6B4A" />
@@ -69,13 +80,17 @@ function RootNavigator() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
+    <Stack screenOptions={{ headerShown: false, animation: "none" }}>
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
-      <Stack.Screen name="lesson-ready/[topic]" options={{ animation: "slide_from_right" }} />
-      <Stack.Screen name="practice/[topic]" options={{ animation: "slide_from_right" }} />
-      <Stack.Screen name="session-summary" options={{ animation: "slide_from_right" }} />
-      <Stack.Screen name="history" options={{ animation: "fade" }} />
+      <Stack.Screen name="generate" options={{ animation: "none" }} />
+      <Stack.Screen name="lesson-ready/[topic]" options={{ animation: "none" }} />
+      <Stack.Screen name="practice/[topic]" options={{ animation: "none" }} />
+      <Stack.Screen name="session-summary" options={{ animation: "none" }} />
+      <Stack.Screen name="history" options={{ animation: "none" }} />
+      <Stack.Screen name="browse-languages" options={{ animation: "none" }} />
+      <Stack.Screen name="my-library" options={{ animation: "none" }} />
     </Stack>
   );
 }
