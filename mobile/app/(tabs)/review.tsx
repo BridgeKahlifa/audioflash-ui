@@ -92,6 +92,7 @@ export default function ReviewQueue() {
           languageLabel: "Review",
           apiLoaded: "true",
           lessonSessionId: lessonSession.session_id,
+          activityId: lessonSession.activity_id ?? lessonSession.session_id,
         },
       });
     } catch {
@@ -109,6 +110,10 @@ export default function ReviewQueue() {
 
     try {
       const startedReview = await startReviewLifecycle(session.access_token, review.id);
+      if (!startedReview.activity_id) {
+        setError("Couldn't start review session because the review activity is missing.");
+        return;
+      }
       setReviews((current) =>
         current.map((r) => (r.id === startedReview.id ? startedReview : r)),
       );
@@ -140,6 +145,7 @@ export default function ReviewQueue() {
           language: "review",
           languageLabel: "Review",
           reviewId: startedReview.id,
+          activityId: startedReview.activity_id,
         },
       });
     } catch {

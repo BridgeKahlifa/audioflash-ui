@@ -40,6 +40,7 @@ export default function FlashcardPractice() {
     apiCategoryId,
     apiLoaded,
     lessonSessionId,
+    activityId,
     reviewId,
     resumeSession,
     initialCurrentIndex,
@@ -53,6 +54,7 @@ export default function FlashcardPractice() {
     apiCategoryId?: string;
     apiLoaded?: string;
     lessonSessionId?: string;
+    activityId?: string;
     reviewId?: string;
     resumeSession?: string;
     initialCurrentIndex?: string;
@@ -72,6 +74,7 @@ export default function FlashcardPractice() {
   const [submittingResult, setSubmittingResult] = useState<"knew" | "didnt-know" | null>(null);
   const [attemptError, setAttemptError] = useState("");
   const [sliderWidth, setSliderWidth] = useState(0);
+  const [resolvedActivityId, setResolvedActivityId] = useState<string | null>(activityId ?? null);
   const shownAtRef = useRef(Date.now());
   const submitLockRef = useRef(false);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -105,6 +108,7 @@ export default function FlashcardPractice() {
           }));
 
           setCards(mappedCards);
+          setResolvedActivityId(lessonSession.activity_id ?? lessonSession.session_id);
           setCurrentIndex(
             Math.max(
               0,
@@ -133,6 +137,7 @@ export default function FlashcardPractice() {
       const stored = await getCurrentCards(topic);
       if (stored && stored.length > 0) {
         setCards(stored);
+        setResolvedActivityId(activityId ?? null);
         setCurrentIndex(0);
         posthog?.capture("session_started", {
           language: languageLabel,
@@ -146,6 +151,7 @@ export default function FlashcardPractice() {
     }
     void loadCards();
   }, [
+    activityId,
     initialResumeIndex,
     isResumeSession,
     languageLabel,
@@ -195,7 +201,7 @@ export default function FlashcardPractice() {
   const progress = cards.length > 0 ? (currentIndex + 1) / cards.length : 0;
   const shouldShowRevealButton = canRevealAnswer && !showAnswer;
   const shouldShowAnswerActions = canRevealAnswer && showAnswer;
-  const shouldPersistAttempts = Boolean(lessonSessionId && currentCard?.dbId);
+  const shouldPersistAttempts = Boolean(resolvedActivityId && currentCard?.dbId);
   const minPlaybackSpeed = 0.5;
   const maxPlaybackSpeed = 1.0;
   const sliderThumbSize = 28;
@@ -302,7 +308,7 @@ export default function FlashcardPractice() {
           nextIndexFromServer = updatedAttempt.current_index;
         } else {
           const attempt = await createFlashcardAttempt(session?.access_token, {
-            session_id: lessonSessionId!,
+            activity_id: resolvedActivityId!,
             flashcard_id: currentCard.dbId!,
             correct: knew,
             response_time_ms: responseTimeMs,
@@ -365,8 +371,8 @@ export default function FlashcardPractice() {
 
       if (shouldPersistAttempts) {
         const profileId = profile?.id ?? session?.user?.id;
-        if (!profileId || !lessonSessionId) {
-          setAttemptError("We couldn't finish this lesson because the lesson session is missing.");
+        if (!profileId) {
+          setAttemptError("We couldn't finish this session because your learner profile is missing.");
           setSubmitting(false);
           setSubmittingResult(null);
           submitLockRef.current = false;
@@ -374,12 +380,20 @@ export default function FlashcardPractice() {
         }
 
         try {
-          await endLesson(session?.access_token, {
-            profile_id: profileId,
-            session_id: lessonSessionId,
-          });
+          if (lessonSessionId) {
+            await endLesson(session?.access_token, {
+              profile_id: profileId,
+              session_id: lessonSessionId,
+            });
+          } else if (!reviewId) {
+            setAttemptError("We couldn't finish this lesson because the lesson session is missing.");
+            setSubmitting(false);
+            setSubmittingResult(null);
+            submitLockRef.current = false;
+            return;
+          }
 
-          if (!reviewId) {
+          if (!reviewId && lessonSessionId) {
             const missedFlashcardIds = completedResults
               .filter((result) => !result.knew)
               .map((result) =>

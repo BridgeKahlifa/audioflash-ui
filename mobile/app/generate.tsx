@@ -196,6 +196,7 @@ export default function Generate() {
           apiCategoryId: generatedResult.categoryId,
           apiLoaded: "true",
           lessonSessionId: lessonSession.session_id,
+          activityId: lessonSession.activity_id ?? lessonSession.session_id,
         },
       });
     } catch {
