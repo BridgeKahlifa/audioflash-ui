@@ -16,6 +16,7 @@ export type ApiReview = {
   id: string;
   profile_id: string;
   parent_session_id: string;
+  activity_id?: string;
   review_name: string;
   flashcard_ids: string[];
   started_at: string | null;
@@ -63,6 +64,7 @@ export interface ApiEndLesson {
 
 export interface ApiLessonSession {
   session_id: string;
+  activity_id?: string;
   profile_id: string;
   category_id: string;
   started_at: string;
@@ -109,7 +111,7 @@ export async function fetchLessonSessionFlashcards(
 }
 
 export interface ApiCreateFlashcardAttempt {
-  session_id: string;
+  activity_id: string;
   flashcard_id: string;
   correct: boolean;
   response_time_ms: number;
@@ -120,7 +122,7 @@ export interface ApiCreateFlashcardAttempt {
 
 export interface ApiFlashcardAttempt {
   attempt_id: string;
-  session_id: string;
+  activity_id: string;
   flashcard_id: string;
   correct: boolean;
   shown_at: string;

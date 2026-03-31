@@ -56,6 +56,10 @@ export default function SessionSummary() {
           authSession.access_token,
           session.reviewId,
         );
+        if (!startedReview.activity_id) {
+          setError("Couldn't start the missed-cards review because the review activity is missing.");
+          return;
+        }
 
         router.replace({
           pathname: "/practice/[topic]",
@@ -65,6 +69,7 @@ export default function SessionSummary() {
             language: "review",
             languageLabel: "Review",
             reviewId: startedReview.id,
+            activityId: startedReview.activity_id,
           },
         });
         return;

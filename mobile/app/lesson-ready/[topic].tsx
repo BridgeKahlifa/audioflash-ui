@@ -137,6 +137,7 @@ export default function LessonReady() {
           apiCategoryId: apiCategoryId ?? "",
           difficulty: String(selectedDifficulty),
           lessonSessionId: lessonSession.session_id,
+          activityId: lessonSession.activity_id ?? lessonSession.session_id,
         },
       });
     } catch (error) {

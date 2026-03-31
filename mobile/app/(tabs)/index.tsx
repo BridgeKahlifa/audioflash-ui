@@ -103,6 +103,7 @@ export default function Home() {
           apiCategoryId: inProgressLesson.category_id,
           apiLoaded: "true",
           lessonSessionId: inProgressLesson.session_id,
+          activityId: inProgressLesson.activity_id ?? inProgressLesson.session_id,
         },
       });
     } finally {
