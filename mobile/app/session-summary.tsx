@@ -5,17 +5,122 @@ import { router } from "expo-router";
 import { SessionHistoryItem } from "../lib/types";
 import { getLastSession, setCurrentCards } from "../lib/storage";
 import { useAuth } from "../lib/auth-context";
-import { startReviewLifecycle } from "../lib/api";
+import { fetchCategoryGradeChart, startReviewLifecycle } from "../lib/api";
+
+interface GradeHistoryPoint {
+  endedAt: string;
+  grade: number;
+}
+
+function formatChartDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
+  const max = Math.max(...points.map((point) => point.grade), 100);
+
+  return (
+    <View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View className="flex-row items-end" style={{ height: 148, gap: 10, minWidth: "100%" }}>
+          {points.map((point) => (
+            <View key={`${point.endedAt}-${point.grade}`} className="items-center" style={{ gap: 6, width: 28 }}>
+              <Text
+                style={{
+                  fontSize: 10,
+                  color: "#FF6B4A",
+                  fontWeight: "600",
+                }}
+              >
+                {point.grade}
+              </Text>
+              <View
+                style={{
+                  width: 18,
+                  height: Math.max((point.grade / max) * 92, 4),
+                  backgroundColor: "#FF6B4A",
+                  borderRadius: 999,
+                }}
+              />
+              <Text
+                className="text-muted text-center"
+                style={{ fontSize: 10, width: 34 }}
+                numberOfLines={2}
+              >
+                {formatChartDate(point.endedAt)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+      <View className="flex-row justify-between mt-3">
+        <Text className="text-xs text-muted">Grade</Text>
+        <Text className="text-xs text-muted">Recent sessions</Text>
+      </View>
+    </View>
+  );
+}
 
 export default function SessionSummary() {
   const { session: authSession } = useAuth();
   const [session, setSession] = useState<SessionHistoryItem | null>(null);
   const [startingReview, setStartingReview] = useState(false);
+  const [gradeHistory, setGradeHistory] = useState<GradeHistoryPoint[]>([]);
+  const [loadingGradeHistory, setLoadingGradeHistory] = useState(false);
+  const [gradeHistoryError, setGradeHistoryError] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     getLastSession().then(setSession);
   }, []);
+
+  useEffect(() => {
+    if (
+      !authSession?.access_token ||
+      !session?.categoryId ||
+      typeof session.difficulty !== "number" ||
+      session.reviewId
+    ) {
+      setGradeHistory([]);
+      setLoadingGradeHistory(false);
+      setGradeHistoryError("");
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingGradeHistory(true);
+    setGradeHistoryError("");
+
+    fetchCategoryGradeChart(
+      authSession.access_token,
+      session.categoryId,
+      session.difficulty,
+    )
+      .then((response) => {
+        if (cancelled) return;
+        setGradeHistory(
+          response.points.map((point) => ({
+            endedAt: point.ended_at,
+            grade: point.grade,
+          })),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setGradeHistoryError("Couldn't load grade history right now.");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingGradeHistory(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authSession?.access_token, session?.categoryId, session?.difficulty, session?.reviewId]);
 
   const missed = useMemo(
     () => session?.cards.filter((card) => !card.knew) ?? [],
@@ -145,6 +250,26 @@ export default function SessionSummary() {
               </View>
             )}
           </View>
+
+          {!session.reviewId && session.categoryId && typeof session.difficulty === "number" ? (
+            <View className="bg-card border border-border rounded-2xl p-5 mb-4">
+              <Text className="text-base font-medium text-foreground mb-1">Grade History</Text>
+              <Text className="text-sm text-muted mb-4">
+                Recent grades for this lesson and difficulty
+              </Text>
+              {loadingGradeHistory ? (
+                <View className="py-8 items-center">
+                  <ActivityIndicator size="small" color="#FF6B4A" />
+                </View>
+              ) : gradeHistoryError ? (
+                <Text className="text-sm text-muted">{gradeHistoryError}</Text>
+              ) : gradeHistory.length === 0 ? (
+                <Text className="text-sm text-muted">No grade history yet.</Text>
+              ) : (
+                <SimpleGradeHistoryChart points={gradeHistory} />
+              )}
+            </View>
+          ) : null}
 
           <View className="gap-3">
             <Pressable

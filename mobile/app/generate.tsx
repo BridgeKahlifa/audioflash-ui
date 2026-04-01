@@ -178,6 +178,7 @@ export default function Generate() {
       const lessonSession = await createLessonSession(session.access_token, {
         profile_id: profileId,
         category_id: generatedResult.categoryId,
+        difficulty: difficultyLevel,
         started_at: new Date().toISOString(),
         card_ids: previewCards.map((card) => String(card.id)),
         current_index: 0,
@@ -194,6 +195,7 @@ export default function Generate() {
           languageLabel: generatedResult.languageLabel,
           apiLanguageId: generatedResult.languageId,
           apiCategoryId: generatedResult.categoryId,
+          difficulty: String(difficultyLevel),
           apiLoaded: "true",
           lessonSessionId: lessonSession.session_id,
           activityId: lessonSession.activity_id ?? lessonSession.session_id,

@@ -116,6 +116,7 @@ export default function LessonReady() {
       const lessonSession = await createLessonSession(session?.access_token, {
         profile_id: profileId,
         category_id: apiCategoryId,
+        difficulty: selectedDifficulty,
         started_at: new Date().toISOString(),
         card_ids: lessonCards.map((card) => String(card.id)),
         current_index: 0,
