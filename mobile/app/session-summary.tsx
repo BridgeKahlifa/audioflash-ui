@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ScrollView, View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import Svg, { Circle, Line, Polyline } from "react-native-svg";
 import { SessionHistoryItem } from "../lib/types";
 import { getLastSession, setCurrentCards } from "../lib/storage";
 import { useAuth } from "../lib/auth-context";
@@ -12,53 +13,174 @@ interface GradeHistoryPoint {
   grade: number;
 }
 
-function formatChartDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
+function formatChartTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 
 function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
-  const max = Math.max(...points.map((point) => point.grade), 100);
+  const chartHeight = 160;
+  const yMin = 0;
+  const yMax = 100;
+  const yTicks = [100, 50, 0];
+  const sortedPoints = [...points].sort(
+    (a, b) => new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime(),
+  );
+  const times = sortedPoints.map((point) => new Date(point.endedAt).getTime());
+  const minTime = Math.min(...times);
+  const maxTime = Math.max(...times);
+  const timeRange = Math.max(maxTime - minTime, 1);
+  const chartWidth = Math.max(points.length * 84, 320);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const lineColor = "#F26B4A";
+  const gridColor = "#E7DDD6";
+
+  const normalizedPoints = sortedPoints.map((point, index) => {
+    const timestamp = new Date(point.endedAt).getTime();
+    const x = 16 + ((timestamp - minTime) / timeRange) * (chartWidth - 32);
+    const y =
+      chartHeight - ((point.grade - yMin) / Math.max(yMax - yMin, 1)) * (chartHeight - 24) - 12;
+    return { ...point, x, y, index };
+  });
+  const activePoint = activeIndex == null ? null : normalizedPoints[activeIndex];
+  const polylinePoints = normalizedPoints.map((point) => `${point.x},${point.y}`).join(" ");
 
   return (
     <View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View className="flex-row items-end" style={{ height: 148, gap: 10, minWidth: "100%" }}>
-          {points.map((point) => (
-            <View key={`${point.endedAt}-${point.grade}`} className="items-center" style={{ gap: 6, width: 28 }}>
+        <View style={{ minWidth: "100%" }}>
+          <View className="flex-row" style={{ gap: 8, alignItems: "center" }}>
+            <View
+              style={{
+                width: 20,
+                height: chartHeight,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Text
+                className="text-xs text-muted"
                 style={{
-                  fontSize: 10,
-                  color: "#FF6B4A",
-                  fontWeight: "600",
+                  transform: [{ rotate: "-90deg" }],
+                  width: 80,
+                  textAlign: "center",
                 }}
               >
-                {point.grade}
-              </Text>
-              <View
-                style={{
-                  width: 18,
-                  height: Math.max((point.grade / max) * 92, 4),
-                  backgroundColor: "#FF6B4A",
-                  borderRadius: 999,
-                }}
-              />
-              <Text
-                className="text-muted text-center"
-                style={{ fontSize: 10, width: 34 }}
-                numberOfLines={2}
-              >
-                {formatChartDate(point.endedAt)}
+                Grade
               </Text>
             </View>
-          ))}
+            <View style={{ width: 28, height: chartHeight, justifyContent: "space-between", paddingVertical: 4 }}>
+              {yTicks.map((tick) => (
+                <Text key={tick} className="text-muted text-right" style={{ fontSize: 10 }}>
+                  {tick}
+                </Text>
+              ))}
+            </View>
+            <View style={{ width: chartWidth + 24 }}>
+              <View style={{ height: chartHeight, position: "relative" }}>
+                <Svg width={chartWidth + 24} height={chartHeight} style={{ position: "absolute", left: 0, top: 0 }}>
+                  {yTicks.map((tick) => {
+                    const y =
+                      chartHeight - ((tick - yMin) / Math.max(yMax - yMin, 1)) * (chartHeight - 24) - 12;
+                    return (
+                      <Line
+                        key={tick}
+                        x1="0"
+                        y1={y}
+                        x2={chartWidth + 24}
+                        y2={y}
+                        stroke={gridColor}
+                        strokeWidth="1"
+                      />
+                    );
+                  })}
+                  {normalizedPoints.length > 1 ? (
+                    <Polyline
+                      points={polylinePoints}
+                      fill="none"
+                      stroke={lineColor}
+                      strokeWidth="3"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  ) : null}
+                  {normalizedPoints.map((point) => (
+                    <Circle
+                      key={`${point.endedAt}-${point.grade}-${point.index}-dot`}
+                      cx={point.x}
+                      cy={point.y}
+                      r="6"
+                      fill={lineColor}
+                      stroke="#FFF8F2"
+                      strokeWidth="2"
+                    />
+                  ))}
+                </Svg>
+                {activePoint ? (
+                  <View
+                    style={{
+                      position: "absolute",
+                      left: Math.max(8, Math.min(activePoint.x - 52, chartWidth - 96)),
+                      top: Math.max(0, activePoint.y - 76),
+                      width: 116,
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: 12,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.12,
+                      shadowRadius: 12,
+                      elevation: 4,
+                    }}
+                  >
+                    <Text className="text-foreground" style={{ fontSize: 10, fontWeight: "700" }}>
+                      Grade: {activePoint.grade}
+                    </Text>
+                    <Text className="text-foreground mt-1" style={{ fontSize: 10 }}>
+                      Time: {formatChartTime(activePoint.endedAt)}
+                    </Text>
+                  </View>
+                ) : null}
+                {normalizedPoints.map((point) => (
+                  <Pressable
+                    key={`${point.endedAt}-${point.grade}-${point.index}`}
+                    onHoverIn={() => setActiveIndex(point.index)}
+                    onHoverOut={() => setActiveIndex((current) => (current === point.index ? null : current))}
+                    onPress={() => setActiveIndex((current) => (current === point.index ? null : point.index))}
+                    style={{
+                      position: "absolute",
+                      left: point.x - 18,
+                      top: point.y - 18,
+                      width: 36,
+                      height: 36,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  />
+                ))}
+              </View>
+              <View className="flex-row justify-between mt-3">
+                {normalizedPoints.map((point) => (
+                  <Text
+                    key={`${point.endedAt}-label`}
+                    className="text-muted text-center"
+                    style={{ fontSize: 10, width: 52 }}
+                    numberOfLines={2}
+                  >
+                    {formatChartTime(point.endedAt)}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          </View>
         </View>
       </ScrollView>
       <View className="flex-row justify-between mt-3">
-        <Text className="text-xs text-muted">Grade</Text>
-        <Text className="text-xs text-muted">Recent sessions</Text>
+        <Text className="text-xs text-muted" />
+        <Text className="text-xs text-muted">Time</Text>
       </View>
     </View>
   );
@@ -81,8 +203,7 @@ export default function SessionSummary() {
     if (
       !authSession?.access_token ||
       !session?.categoryId ||
-      typeof session.difficulty !== "number" ||
-      session.reviewId
+      typeof session.difficulty !== "number"
     ) {
       setGradeHistory([]);
       setLoadingGradeHistory(false);
@@ -120,7 +241,7 @@ export default function SessionSummary() {
     return () => {
       cancelled = true;
     };
-  }, [authSession?.access_token, session?.categoryId, session?.difficulty, session?.reviewId]);
+  }, [authSession?.access_token, session?.categoryId, session?.difficulty]);
 
   const missed = useMemo(
     () => session?.cards.filter((card) => !card.knew) ?? [],
@@ -251,25 +372,25 @@ export default function SessionSummary() {
             )}
           </View>
 
-          {!session.reviewId && session.categoryId && typeof session.difficulty === "number" ? (
-            <View className="bg-card border border-border rounded-2xl p-5 mb-4">
-              <Text className="text-base font-medium text-foreground mb-1">Grade History</Text>
-              <Text className="text-sm text-muted mb-4">
-                Recent grades for this lesson and difficulty
+          <View className="bg-card border border-border rounded-2xl p-5 mb-4">
+            <Text className="text-base font-medium text-foreground mb-1">Session Chart</Text>
+            <Text className="text-sm text-muted mb-4">
+              This shows how your session grades changed over time. Higher points mean stronger performance, and sessions completed on the same day share the same time position.
+            </Text>
+            {loadingGradeHistory ? (
+              <View className="py-8 items-center">
+                <ActivityIndicator size="small" color="#FF6B4A" />
+              </View>
+            ) : gradeHistoryError ? (
+              <Text className="text-sm text-muted">{gradeHistoryError}</Text>
+            ) : gradeHistory.length === 0 ? (
+              <Text className="text-sm text-muted">
+                No grade history is available for this session yet.
               </Text>
-              {loadingGradeHistory ? (
-                <View className="py-8 items-center">
-                  <ActivityIndicator size="small" color="#FF6B4A" />
-                </View>
-              ) : gradeHistoryError ? (
-                <Text className="text-sm text-muted">{gradeHistoryError}</Text>
-              ) : gradeHistory.length === 0 ? (
-                <Text className="text-sm text-muted">No grade history yet.</Text>
-              ) : (
-                <SimpleGradeHistoryChart points={gradeHistory} />
-              )}
-            </View>
-          ) : null}
+            ) : (
+              <SimpleGradeHistoryChart points={gradeHistory} />
+            )}
+          </View>
 
           <View className="gap-3">
             <Pressable
