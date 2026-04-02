@@ -223,6 +223,9 @@ export function FlashcardMockup() {
                       >
                         {currentCard.phrase}
                       </p>
+                      {currentCard.romanization && (
+                        <p className="text-muted text-xs mb-1">{currentCard.romanization}</p>
+                      )}
                       <p className="text-primary text-sm font-medium">{currentCard.meaning}</p>
                     </div>
                   ) : (
@@ -352,6 +355,9 @@ export function FlashcardMockup() {
                       {missed.map((card, i) => (
                         <div key={i} className="bg-secondary rounded-xl px-2.5 py-1.5">
                           <p className="text-foreground font-medium" style={{ fontSize: 11 }}>{card.phrase}</p>
+                          {card.romanization && (
+                            <p className="text-muted" style={{ fontSize: 9 }}>{card.romanization}</p>
+                          )}
                           <p className="text-muted" style={{ fontSize: 10 }}>{card.meaning}</p>
                         </div>
                       ))}

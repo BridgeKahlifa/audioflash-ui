@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -521,6 +522,21 @@ export default function SettingsScreen() {
                 >
                   <Ionicons name="log-out-outline" size={18} color="#6B7280" />
                   <Text className="text-foreground font-medium">Sign Out</Text>
+                </Pressable>
+                <Pressable
+                  onPress={async () => {
+                    const url = "mailto:support@audioflash.ai";
+                    const canOpen = await Linking.canOpenURL(url);
+                    if (canOpen) {
+                      Linking.openURL(url);
+                    } else {
+                      Alert.alert("Contact Support", "Email us at support@audioflash.ai");
+                    }
+                  }}
+                  className="flex-row items-center gap-2 p-4 border-b border-border"
+                >
+                  <Ionicons name="mail-outline" size={18} color="#6B7280" />
+                  <Text className="text-foreground font-medium">Contact Support</Text>
                 </Pressable>
                 <Pressable onPress={confirmDelete} className="flex-row items-center gap-2 p-4">
                   <Ionicons name="trash-outline" size={18} color="#EF4444" />
