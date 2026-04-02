@@ -11,6 +11,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { fetchCategories, fetchLanguages, ApiLanguage } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
+import { LanguageFlag } from "../../components/LanguageFlag";
 
 interface Topic {
   id: string;
@@ -20,63 +21,6 @@ interface Topic {
   supportedDifficulties: number[];
 }
 
-function LanguageFlag({ name }: { name: string }) {
-  const lower = name.toLowerCase();
-  if (lower.includes("mandarin") || lower.includes("chinese")) {
-    return (
-      <View style={{ width: 18, height: 12, borderRadius: 3, backgroundColor: "#DE2910", alignItems: "center", justifyContent: "center", marginRight: 6 }}>
-        <Text style={{ color: "#FFDE00", fontSize: 8, lineHeight: 9 }}>★</Text>
-      </View>
-    );
-  }
-  if (lower.includes("japanese")) {
-    return (
-      <View style={{ width: 18, height: 12, borderRadius: 3, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center", marginRight: 6 }}>
-        <View style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: "#BC002D" }} />
-      </View>
-    );
-  }
-  if (lower.includes("french")) {
-    return (
-      <View style={{ width: 18, height: 12, borderRadius: 3, overflow: "hidden", flexDirection: "row", marginRight: 6 }}>
-        <View style={{ flex: 1, backgroundColor: "#0055A4" }} />
-        <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />
-        <View style={{ flex: 1, backgroundColor: "#EF4135" }} />
-      </View>
-    );
-  }
-  if (lower.includes("spanish")) {
-    return (
-      <View style={{ width: 18, height: 12, borderRadius: 3, overflow: "hidden", marginRight: 6 }}>
-        <View style={{ flex: 1, backgroundColor: "#AA151B" }} />
-        <View style={{ flex: 2, backgroundColor: "#F1BF00" }} />
-        <View style={{ flex: 1, backgroundColor: "#AA151B" }} />
-      </View>
-    );
-  }
-  if (lower.includes("korean")) {
-    return (
-      <View style={{ width: 18, height: 12, borderRadius: 3, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center", marginRight: 6 }}>
-        <View style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: "#CD2E3A" }} />
-      </View>
-    );
-  }
-  return (
-    <View style={{ width: 18, height: 12, borderRadius: 3, backgroundColor: "#E5E7EB", alignItems: "center", justifyContent: "center", marginRight: 6 }}>
-      <Ionicons name="globe-outline" size={9} color="#6B7280" />
-    </View>
-  );
-}
-
-function languageEmoji(name: string): string {
-  const lower = name.toLowerCase();
-  if (lower.includes("mandarin") || lower.includes("chinese")) return "🇨🇳";
-  if (lower.includes("spanish")) return "🇪🇸";
-  if (lower.includes("japanese")) return "🇯🇵";
-  if (lower.includes("french")) return "🇫🇷";
-  if (lower.includes("korean")) return "🇰🇷";
-  return "🌐";
-}
 
 const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
   "airplane", "car", "restaurant", "heart",
@@ -245,7 +189,7 @@ export default function Categories() {
                       }}
                     >
                       <View className="w-12 h-12 rounded-xl items-center justify-center mr-4 bg-secondary">
-                        <Text style={{ fontSize: 28 }}>{languageEmoji(lang.language)}</Text>
+                        <LanguageFlag name={lang.language} size="lg" />
                       </View>
                       <View className="flex-1">
                         <Text className="text-foreground font-medium">{lang.language}</Text>
@@ -285,9 +229,11 @@ export default function Categories() {
               // The profile still has the language — this is just a local UI switch.
               setLanguages([]);
             }} className="flex-row items-center mt-1">
+              <View style={{ marginRight: 4 }}>
+                <LanguageFlag name={resolvedLanguage.language} size="sm" />
+              </View>
               <Text className="text-muted">Language: </Text>
               <Text className="text-foreground font-medium">{resolvedLanguage.language}</Text>
-              <LanguageFlag name={resolvedLanguage.language} />
               <Ionicons name="chevron-down" size={14} color="#A0A0A0" style={{ marginLeft: 2 }} />
             </Pressable>
           ) : null}
