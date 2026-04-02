@@ -1,4 +1,6 @@
-export function FAQItem({ question, answer }: { question: string; answer: string }) {
+import { ReactNode } from "react";
+
+export function FAQItem({ question, answer }: { question: string; answer: ReactNode }) {
   return (
     <details className="group rounded-2xl border border-border bg-white p-5">
       <summary className="cursor-pointer list-none font-semibold text-foreground pr-8 relative">

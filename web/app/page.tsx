@@ -253,6 +253,22 @@ export default function HomePage() {
             {faqs.map((faq) => (
               <FAQItem key={faq.question} question={faq.question} answer={faq.answer} />
             ))}
+            <FAQItem
+              question="How do I get in touch with you?"
+              answer={
+                <>
+                  We&apos;d love to hear from you — whether it&apos;s a bug, a feature idea, or just
+                  to say hi. Reach us anytime at{" "}
+                  <a
+                    href="mailto:support@audioflash.ai" target="_blank" rel="noreferrer"
+                    className="text-primary font-medium hover:underline"
+                  >
+                    support@audioflash.ai
+                  </a>{" "}
+                  and we&apos;ll get back to you as soon as we can.
+                </>
+              }
+            />
           </div>
         </div>
       </section>
@@ -296,6 +312,16 @@ export default function HomePage() {
           <p className="text-xs text-muted">
             Audio flashcards for language learning, built for listening and speaking recall.
           </p>
+          <a
+            href="mailto:support@audioflash.ai" target="_blank" rel="noreferrer"
+            className="flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="20" height="16" x="2" y="4" rx="2" />
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+            </svg>
+            Contact
+          </a>
         </div>
       </footer>
     </div>
