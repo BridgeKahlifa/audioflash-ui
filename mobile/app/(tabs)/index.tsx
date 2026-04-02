@@ -4,71 +4,23 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
-import {
-  fetchCategories,
-  fetchInProgressLesson,
-  fetchLanguages,
-  fetchSRSQueue,
-  type ApiLessonSession,
-  type ApiSRSQueue,
-} from "../../lib/api";
+import { useAppData } from "../../lib/app-data-context";
 import { useAnalytics } from "../../lib/analytics";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
 
 
 export default function Home() {
-  const { session, profile } = useAuth();
+  const { profile } = useAuth();
   const posthog = useAnalytics();
-  const [srsQueue, setSrsQueue] = useState<ApiSRSQueue | null>(null);
-  const [inProgressLesson, setInProgressLesson] = useState<ApiLessonSession | null>(null);
-  const [inProgressLessonName, setInProgressLessonName] = useState<string | null>(null);
-  const [loadingSRS, setLoadingSRS] = useState(true);
-  const [startingBrowseCategories, setStartingBrowseCategories] = useState(false);
+  const { srsQueue, inProgressLesson, inProgressLessonName, refresh } = useAppData();
   const [continuingLesson, setContinuingLesson] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      async function loadHomeData() {
-        if (!session?.access_token) {
-          setSrsQueue(null);
-          setInProgressLesson(null);
-          setInProgressLessonName(null);
-          setLoadingSRS(false);
-          return;
-        }
-
-        setLoadingSRS(true);
-
-        try {
-          const [queueResult, lessonResult, categoriesResult] = await Promise.allSettled([
-            fetchSRSQueue(session.access_token),
-            fetchInProgressLesson(session.access_token),
-            fetchCategories(),
-          ]);
-
-          const queue = queueResult.status === "fulfilled" ? queueResult.value : null;
-          const lesson = lessonResult.status === "fulfilled" ? lessonResult.value : null;
-          const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
-
-          setSrsQueue(queue);
-          setInProgressLesson(lesson);
-          setInProgressLessonName(
-            lesson
-              ? categories.find((category) => String(category.id) === String(lesson.category_id))?.name ?? null
-              : null,
-          );
-        } catch {
-          setSrsQueue(null);
-          setInProgressLesson(null);
-          setInProgressLessonName(null);
-        } finally {
-          setLoadingSRS(false);
-        }
-      }
-
-      void loadHomeData();
-    }, [session?.access_token]),
+      refresh("srsQueue");
+      refresh("inProgressLesson");
+    }, [refresh]),
   );
 
   const greeting = (() => {
@@ -111,43 +63,12 @@ export default function Home() {
     }
   }
 
-  async function handleBrowseCategories() {
+  function handleBrowseCategories() {
     posthog?.capture("home_action_tapped", {
       action: "browse_categories",
       has_preferred_language: Boolean(preferredLanguageId),
     });
-
-    if (!preferredLanguageId) {
-      router.push("/browse-languages");
-      return;
-    }
-
-    try {
-      setStartingBrowseCategories(true);
-      const languages = await fetchLanguages();
-      const preferredLanguage = languages.find(
-        (language) => String(language.id) === String(preferredLanguageId),
-      );
-
-      if (!preferredLanguage) {
-        router.push("/browse-languages");
-        return;
-      }
-
-      router.push({
-        pathname: "/categories",
-        params: {
-          language: languageKey(preferredLanguage.language),
-          languageLabel: preferredLanguage.language,
-          apiLanguageId: String(preferredLanguage.id),
-          apiLoaded: "true",
-        },
-      });
-    } catch {
-      router.push("/browse-languages");
-    } finally {
-      setStartingBrowseCategories(false);
-    }
+    router.push("/(tabs)/categories");
   }
 
   return (
@@ -181,7 +102,7 @@ export default function Home() {
           </View>
 
           {/* SRS due card */}
-          {!loadingSRS && srsQueue != null && srsQueue.due_count > 0 && (
+          {srsQueue != null && srsQueue.due_count > 0 && (
             <Pressable
               onPress={() => { posthog?.capture("home_action_tapped", { action: "srs_review", due_count: srsQueue.due_count }); router.push("/(tabs)/review"); }}
               className="mx-6 mb-4 rounded-2xl p-4 flex-row items-center bg-primary"

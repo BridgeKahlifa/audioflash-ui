@@ -29,6 +29,7 @@ import {
 } from "../../lib/api";
 import { setCachedSessions, setCachedSessionStats } from "../../lib/storage";
 import { useAnalytics } from "../../lib/analytics";
+import { useAppData } from "../../lib/app-data-context";
 
 export default function FlashcardPractice() {
   const {
@@ -61,6 +62,7 @@ export default function FlashcardPractice() {
     lessonStatus?: string;
   }>();
   const { profile, session } = useAuth();
+  const { invalidate } = useAppData();
   const posthog = useAnalytics();
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -481,6 +483,7 @@ export default function FlashcardPractice() {
       setSubmitting(false);
       setSubmittingResult(null);
       submitLockRef.current = false;
+      invalidate("srsQueue", "inProgressLesson", "sessions", "sessionStats", "savedReviews");
       router.replace("/session-summary");
     }
   }

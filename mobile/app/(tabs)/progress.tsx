@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "../../lib/auth-context";
-import { fetchSessions, fetchSessionStats, ApiSession, ApiSessionStats } from "../../lib/api";
-import { getCachedSessions, getCachedSessionStats, setCachedSessions, setCachedSessionStats } from "../../lib/storage";
+import { useFocusEffect } from "expo-router";
+import { useAppData } from "../../lib/app-data-context";
 
 function last7Days(): { day: string; date: string }[] {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -44,31 +43,14 @@ function SimpleBarChart({ data }: { data: { day: string; cards: number }[] }) {
 }
 
 export default function ProgressDashboard() {
-  const { session } = useAuth();
-  const [sessions, setSessions] = useState<ApiSession[]>([]);
-  const [stats, setStats] = useState<ApiSessionStats | null>(null);
+  const { sessions, sessionStats: stats, refresh } = useAppData();
 
-  useEffect(() => {
-    if (!session?.access_token) return;
-    const token = session.access_token;
-
-    // Load cache immediately, then revalidate in background
-    Promise.all([getCachedSessions(), getCachedSessionStats()]).then(([cachedSessions, cachedStats]) => {
-      if (cachedSessions) setSessions(cachedSessions);
-      if (cachedStats) setStats(cachedStats);
-    });
-
-    Promise.all([fetchSessions(token), fetchSessionStats(token)])
-      .then(([freshSessions, freshStats]) => {
-        setSessions(freshSessions);
-        setStats(freshStats);
-        setCachedSessions(freshSessions);
-        setCachedSessionStats(freshStats);
-      })
-      .catch(() => {
-        // Keep showing cached data
-      });
-  }, [session?.user?.id]);
+  useFocusEffect(
+    useCallback(() => {
+      refresh("sessions");
+      refresh("sessionStats");
+    }, [refresh]),
+  );
 
   const days = last7Days();
   const weeklyData = days.map(({ day, date }) => ({

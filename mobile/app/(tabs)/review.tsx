@@ -4,13 +4,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
+import { useAppData } from "../../lib/app-data-context";
 import {
-  fetchSRSQueue,
   fetchFlashcards,
-  fetchReviews,
   startLesson,
   startReviewLifecycle,
-  type ApiSRSQueue,
   type ApiReview,
 } from "../../lib/api";
 import { setCurrentCards } from "../../lib/storage";
@@ -22,37 +20,16 @@ function formatReviewDate(dateStr: string): string {
 
 export default function ReviewQueue() {
   const { session, profile } = useAuth();
-  const [queue, setQueue] = useState<ApiSRSQueue | null>(null);
-  const [reviews, setReviews] = useState<ApiReview[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { srsQueue: queue, savedReviews: reviews, refresh } = useAppData();
   const [startingSRS, setStartingSRS] = useState(false);
   const [startingReviewId, setStartingReviewId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useFocusEffect(
     useCallback(() => {
-      async function load() {
-        if (!session?.access_token) {
-          setLoading(false);
-          return;
-        }
-        setLoading(true);
-        setError("");
-        try {
-          const [queueData, reviewsData] = await Promise.all([
-            fetchSRSQueue(session.access_token),
-            fetchReviews(session.access_token),
-          ]);
-          setQueue(queueData);
-          setReviews(reviewsData.filter((r) => !r.ended_at));
-        } catch {
-          setError("Couldn't load your review data. Check your connection.");
-        } finally {
-          setLoading(false);
-        }
-      }
-      load();
-    }, [session?.access_token]),
+      refresh("srsQueue");
+      refresh("savedReviews");
+    }, [refresh]),
   );
 
   async function startSRSReview() {
@@ -114,9 +91,6 @@ export default function ReviewQueue() {
         setError("Couldn't start review session because the review activity is missing.");
         return;
       }
-      setReviews((current) =>
-        current.map((r) => (r.id === startedReview.id ? startedReview : r)),
-      );
 
       const flashcards = await fetchFlashcards();
       const flashcardsById = new Map(flashcards.map((card) => [String(card.id), card]));
@@ -164,17 +138,12 @@ export default function ReviewQueue() {
         </View>
 
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 24 }}>
-          {loading ? (
-            <View className="items-center py-16">
-              <ActivityIndicator size="large" color="#FF6B4A" />
-            </View>
-          ) : (
-            <>
-              {error ? (
-                <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
-                  <Text className="text-red-600 text-sm">{error}</Text>
-                </View>
-              ) : null}
+          <>
+            {error ? (
+              <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+                <Text className="text-red-600 text-sm">{error}</Text>
+              </View>
+            ) : null}
 
               {/* ── SRS Queue ─────────────────────────────────── */}
               <Text className="text-sm font-semibold text-muted mb-3">Spaced Repetition</Text>
@@ -312,8 +281,7 @@ export default function ReviewQueue() {
                   })}
                 </View>
               )}
-            </>
-          )}
+          </>
         </ScrollView>
       </View>
     </SafeAreaView>

@@ -1,6 +1,6 @@
 import "../global.css";
-import { useEffect, useRef } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { View } from "react-native";
 import { Stack, router, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
@@ -8,14 +8,18 @@ import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { AuthProvider, useAuth } from "../lib/auth-context";
 import { AuthModeBadge } from "../components/AuthModeBadge";
 import { ConfigProvider } from "../lib/config-context";
+import { AppDataProvider, useAppData } from "../lib/app-data-context";
+import { SplashScreen } from "../components/SplashScreen";
 import { POSTHOG_KEY, POSTHOG_HOST } from "../lib/analytics";
 
 function RootNavigator() {
   const { session, loading, isDevAuth, profile, profileLoading, profileError } = useAuth();
+  const { ready: appDataReady } = useAppData();
   const segments = useSegments();
   const posthog = usePostHog();
   const hasTrackedOpen = useRef(false);
   const prevSessionId = useRef<string | null>(null);
+  const [splashMounted, setSplashMounted] = useState(true);
 
   // Identify user in PostHog when they sign in; reset when signed out
   useEffect(() => {
@@ -49,9 +53,13 @@ function RootNavigator() {
   }, [loading, session?.user?.id]);
 
   const isAuthenticated = !!(session || isDevAuth);
-  // Block until we know the user's onboarding status. If profile fails to load,
-  // profileError lets us stop spinning rather than hanging forever.
   const profilePending = isAuthenticated && profile === null && !profileError;
+  const showSplash = loading || profilePending || (isAuthenticated && !appDataReady);
+
+  // Re-mount splash when a new user signs in
+  useEffect(() => {
+    if (showSplash) setSplashMounted(true);
+  }, [showSplash]);
 
   useEffect(() => {
     if (loading || profilePending) return;
@@ -71,27 +79,24 @@ function RootNavigator() {
     }
   }, [isAuthenticated, loading, profilePending, segments, profile?.onboarding_completed]);
 
-  if (loading || profilePending) {
-    return (
-      <View style={{ flex: 1, backgroundColor: "#FAFAF8", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" color="#FF6B4A" />
-      </View>
-    );
-  }
-
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "none" }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(onboarding)" />
-      <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
-      <Stack.Screen name="generate" options={{ animation: "none" }} />
-      <Stack.Screen name="lesson-ready/[topic]" options={{ animation: "none" }} />
-      <Stack.Screen name="practice/[topic]" options={{ animation: "none" }} />
-      <Stack.Screen name="session-summary" options={{ animation: "none" }} />
-      <Stack.Screen name="history" options={{ animation: "none" }} />
-      <Stack.Screen name="browse-languages" options={{ animation: "none" }} />
-      <Stack.Screen name="my-library" options={{ animation: "none" }} />
-    </Stack>
+    <View style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false, animation: "none" }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(onboarding)" />
+        <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
+        <Stack.Screen name="generate" options={{ animation: "none" }} />
+        <Stack.Screen name="lesson-ready/[topic]" options={{ animation: "none" }} />
+        <Stack.Screen name="practice/[topic]" options={{ animation: "none" }} />
+        <Stack.Screen name="session-summary" options={{ animation: "none" }} />
+        <Stack.Screen name="history" options={{ animation: "none" }} />
+        <Stack.Screen name="browse-languages" options={{ animation: "none" }} />
+        <Stack.Screen name="my-library" options={{ animation: "none" }} />
+      </Stack>
+      {splashMounted && (
+        <SplashScreen visible={showSplash} onHidden={() => setSplashMounted(false)} />
+      )}
+    </View>
   );
 }
 
@@ -102,8 +107,10 @@ export default function RootLayout() {
       <PostHogProvider apiKey={POSTHOG_KEY} options={{ host: POSTHOG_HOST, disabled: !POSTHOG_KEY }}>
         <ConfigProvider>
           <AuthProvider>
-            <AuthModeBadge />
-            <RootNavigator />
+            <AppDataProvider>
+              <AuthModeBadge />
+              <RootNavigator />
+            </AppDataProvider>
           </AuthProvider>
         </ConfigProvider>
       </PostHogProvider>

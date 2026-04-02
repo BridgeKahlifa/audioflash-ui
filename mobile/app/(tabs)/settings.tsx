@@ -15,8 +15,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { useAuth } from "../../lib/auth-context";
-import { ApiUpdateProfile, ApiLanguage, fetchLanguages } from "../../lib/api";
+import { ApiUpdateProfile, ApiLanguage } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
+import { useAppData } from "../../lib/app-data-context";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -104,6 +105,7 @@ function LanguagePickerModal({
 
 export default function SettingsScreen() {
   const { user, profile, profileLoading, updateProfileData, updateEmail, deleteAccount, signOut, isDevAuth } = useAuth();
+  const { languages } = useAppData();
   const posthog = useAnalytics();
   const navigation = useNavigation();
 
@@ -116,7 +118,6 @@ export default function SettingsScreen() {
   const [nameStatus, setNameStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [email, setEmail] = useState(user?.email ?? "");
   const [emailStatus, setEmailStatus] = useState<"idle" | "saving" | "sent" | "error">("idle");
-  const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [targetLanguageIds, setTargetLanguageIds] = useState<string[]>(
     profile?.target_language_ids?.map(String) ?? []
   );
@@ -135,10 +136,6 @@ export default function SettingsScreen() {
     (localSettings.cards_per_session ?? 20) !== normalizedProfileCards ||
     (localSettings.audio_speed ?? 1.0) !== normalizedProfileAudioSpeed ||
     (localSettings.notifications_enabled ?? false) !== normalizedProfileNotifications;
-
-  useEffect(() => {
-    fetchLanguages().then(setLanguages).catch(() => { });
-  }, []);
 
   useEffect(() => {
     if (!profile) return;
