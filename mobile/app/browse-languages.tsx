@@ -4,16 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ApiLanguage, fetchLanguages } from "../lib/api";
+import { LanguageFlag } from "../components/LanguageFlag";
 
-function languageFlag(name: string): string {
-  const lower = name.toLowerCase();
-  if (lower.includes("mandarin") || lower.includes("chinese")) return "🇨🇳";
-  if (lower.includes("spanish")) return "🇪🇸";
-  if (lower.includes("japanese")) return "🇯🇵";
-  if (lower.includes("french")) return "🇫🇷";
-  if (lower.includes("korean")) return "🇰🇷";
-  return "🌐";
-}
 
 function languageKey(label: string): string {
   return label.toLowerCase().replace(/\s+/g, "-");
@@ -98,7 +90,7 @@ export default function BrowseLanguages() {
                     }}
                   >
                     <View className="w-12 h-12 rounded-xl items-center justify-center mr-4 bg-secondary">
-                      <Text style={{ fontSize: 28 }}>{languageFlag(language.language)}</Text>
+                      <LanguageFlag name={language.language} size="lg" />
                     </View>
                     <View className="flex-1">
                       <Text className="text-foreground font-medium">{language.language}</Text>

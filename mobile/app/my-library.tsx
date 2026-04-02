@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../lib/auth-context";
+import { LanguageFlag } from "../components/LanguageFlag";
 import {
   fetchSavedLessons,
   unsaveLesson,
@@ -46,15 +47,6 @@ export default function MyLibrary() {
     }, [session?.access_token]),
   );
 
-  function languageFlag(name: string): string {
-    const lower = (name ?? "").toLowerCase();
-    if (lower.includes("mandarin") || lower.includes("chinese")) return "🇨🇳";
-    if (lower.includes("spanish")) return "🇪🇸";
-    if (lower.includes("japanese")) return "🇯🇵";
-    if (lower.includes("french")) return "🇫🇷";
-    if (lower.includes("korean")) return "🇰🇷";
-    return "🌐";
-  }
 
   async function handleRemove(categoryId: string) {
     if (!session?.access_token || removingId) return;
@@ -150,9 +142,7 @@ export default function MyLibrary() {
                   >
                     <View className="flex-row items-start gap-3">
                       <View className="w-11 h-11 rounded-xl bg-secondary items-center justify-center flex-shrink-0">
-                        <Text style={{ fontSize: 22 }}>
-                          {langName ? languageFlag(langName) : "📚"}
-                        </Text>
+                        <LanguageFlag name={langName ?? ""} size="lg" />
                       </View>
                       <View className="flex-1">
                         <Text className="text-foreground font-semibold">{lesson.category_name}</Text>
