@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ApiLanguage, fetchLanguages } from "../lib/api";
+import { useAuth } from "../lib/auth-context";
 
 function languageFlag(name: string): string {
   const lower = name.toLowerCase();
@@ -20,16 +21,38 @@ function languageKey(label: string): string {
 }
 
 export default function BrowseLanguages() {
+  const { profile } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchLanguages()
-      .then(setLanguages)
+      .then((loadedLanguages) => {
+        setLanguages(loadedLanguages);
+
+        const preferredLanguageId = profile?.target_language_ids?.[0];
+        if (!preferredLanguageId) return;
+
+        const preferredLanguage = loadedLanguages.find(
+          (language) => String(language.id) === String(preferredLanguageId),
+        );
+
+        if (!preferredLanguage) return;
+
+        router.replace({
+          pathname: "/categories",
+          params: {
+            language: languageKey(preferredLanguage.language),
+            languageLabel: preferredLanguage.language,
+            apiLanguageId: String(preferredLanguage.id),
+            apiLoaded: "true",
+          },
+        });
+      })
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [profile?.target_language_ids]);
 
   const selected = useMemo(
     () => languages.find((l) => l.id === selectedLanguage),

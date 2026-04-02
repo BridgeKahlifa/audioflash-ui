@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, View, Text, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import Svg, { Circle, Line, Polyline } from "react-native-svg";
@@ -13,8 +13,26 @@ interface GradeHistoryPoint {
   grade: number;
 }
 
-function formatChartTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString(undefined, {
+function formatChartTime(dateInput: string | number): string {
+  return new Date(dateInput).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function formatChartDate(dateInput: string | number): string {
+  return new Date(dateInput).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatChartDateTime(dateInput: string | number): string {
+  return new Date(dateInput).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
   });
@@ -22,9 +40,11 @@ function formatChartTime(dateStr: string): string {
 
 function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
   const chartHeight = 160;
+  const labelWidth = 52;
   const yMin = 0;
   const yMax = 100;
   const yTicks = [100, 50, 0];
+  const [chartAreaWidth, setChartAreaWidth] = useState(240);
   const sortedPoints = [...points].sort(
     (a, b) => new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime(),
   );
@@ -32,7 +52,7 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
   const minTime = Math.min(...times);
   const maxTime = Math.max(...times);
   const timeRange = Math.max(maxTime - minTime, 1);
-  const chartWidth = Math.max(points.length * 84, 320);
+  const chartWidth = Math.max(chartAreaWidth, 240);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const lineColor = "#F26B4A";
   const gridColor = "#E7DDD6";
@@ -46,10 +66,27 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
   });
   const activePoint = activeIndex == null ? null : normalizedPoints[activeIndex];
   const polylinePoints = normalizedPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const tickCount = Math.min(6, Math.max(4, normalizedPoints.length > 1 ? 5 : 1));
+  const spansMultipleDays =
+    new Date(minTime).toDateString() !== new Date(maxTime).toDateString();
+  const timeTicks = Array.from({ length: tickCount }, (_, index) => {
+    const ratio = tickCount === 1 ? 0 : index / (tickCount - 1);
+    const tickTime = minTime + timeRange * ratio;
+    const x = 16 + ((tickTime - minTime) / timeRange) * (chartWidth - 32);
+    return { tickTime, x, label: spansMultipleDays ? formatChartDate(tickTime) : formatChartTime(tickTime) };
+  });
 
   return (
-    <View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+    <Pressable onPress={() => setActiveIndex(null)}>
+      <View
+        style={{ width: "100%" }}
+        onLayout={(event) => {
+          const nextWidth = Math.floor(event.nativeEvent.layout.width - 56);
+          if (nextWidth > 0 && nextWidth !== chartAreaWidth) {
+            setChartAreaWidth(nextWidth);
+          }
+        }}
+      >
         <View style={{ minWidth: "100%" }}>
           <View className="flex-row" style={{ gap: 8, alignItems: "center" }}>
             <View
@@ -101,7 +138,8 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
                       points={polylinePoints}
                       fill="none"
                       stroke={lineColor}
-                      strokeWidth="3"
+                      strokeWidth="2"
+                      strokeOpacity="0.45"
                       strokeLinejoin="round"
                       strokeLinecap="round"
                     />
@@ -140,7 +178,7 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
                       Grade: {activePoint.grade}
                     </Text>
                     <Text className="text-foreground mt-1" style={{ fontSize: 10 }}>
-                      Time: {formatChartTime(activePoint.endedAt)}
+                      {formatChartDateTime(activePoint.endedAt)}
                     </Text>
                   </View>
                 ) : null}
@@ -162,27 +200,33 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
                   />
                 ))}
               </View>
-              <View className="flex-row justify-between mt-3">
-                {normalizedPoints.map((point) => (
+              <View style={{ height: 28, marginTop: 12, position: "relative" }}>
+                {timeTicks.map((tick, index) => (
                   <Text
-                    key={`${point.endedAt}-label`}
+                    key={`${tick.tickTime}-${index}`}
                     className="text-muted text-center"
-                    style={{ fontSize: 10, width: 52 }}
+                    style={{
+                      position: "absolute",
+                      left: tick.x - labelWidth / 2,
+                      width: labelWidth,
+                      fontSize: 10,
+                    }}
                     numberOfLines={2}
                   >
-                    {formatChartTime(point.endedAt)}
+                    {tick.label}
                   </Text>
                 ))}
               </View>
             </View>
           </View>
         </View>
-      </ScrollView>
-      <View className="flex-row justify-between mt-3">
-        <Text className="text-xs text-muted" />
-        <Text className="text-xs text-muted">Time</Text>
       </View>
-    </View>
+      <View className="flex-row mt-3" style={{ paddingLeft: 56 }}>
+        <Text className="text-xs text-muted" style={{ width: chartWidth + 24, textAlign: "center" }}>
+          Time
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -373,9 +417,9 @@ export default function SessionSummary() {
           </View>
 
           <View className="bg-card border border-border rounded-2xl p-5 mb-4">
-            <Text className="text-base font-medium text-foreground mb-1">Session Chart</Text>
+            <Text className="text-base font-medium text-foreground mb-1">Score History</Text>
             <Text className="text-sm text-muted mb-4">
-              This shows how your session grades changed over time. Higher points mean stronger performance, and sessions completed on the same day share the same time position.
+              This shows how your lesson scores changed over time.
             </Text>
             {loadingGradeHistory ? (
               <View className="py-8 items-center">

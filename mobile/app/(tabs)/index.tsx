@@ -7,7 +7,6 @@ import { useAuth } from "../../lib/auth-context";
 import {
   fetchCategories,
   fetchInProgressLesson,
-  fetchLanguages,
   fetchSRSQueue,
   type ApiLessonSession,
   type ApiSRSQueue,
@@ -79,8 +78,6 @@ export default function Home() {
   })();
 
   const firstName = profile?.name?.split(" ")[0] ?? null;
-  const preferredLanguageId = profile?.target_language_ids?.[0] ?? null;
-
   async function handleContinueLesson() {
     if (!inProgressLesson || continuingLesson) return;
 
@@ -114,40 +111,11 @@ export default function Home() {
   async function handleBrowseCategories() {
     posthog?.capture("home_action_tapped", {
       action: "browse_categories",
-      has_preferred_language: Boolean(preferredLanguageId),
+      has_preferred_language: Boolean(profile?.target_language_ids?.[0]),
     });
-
-    if (!preferredLanguageId) {
-      router.push("/browse-languages");
-      return;
-    }
-
-    try {
-      setStartingBrowseCategories(true);
-      const languages = await fetchLanguages();
-      const preferredLanguage = languages.find(
-        (language) => String(language.id) === String(preferredLanguageId),
-      );
-
-      if (!preferredLanguage) {
-        router.push("/browse-languages");
-        return;
-      }
-
-      router.push({
-        pathname: "/categories",
-        params: {
-          language: languageKey(preferredLanguage.language),
-          languageLabel: preferredLanguage.language,
-          apiLanguageId: String(preferredLanguage.id),
-          apiLoaded: "true",
-        },
-      });
-    } catch {
-      router.push("/browse-languages");
-    } finally {
-      setStartingBrowseCategories(false);
-    }
+    setStartingBrowseCategories(true);
+    router.push("/categories");
+    setStartingBrowseCategories(false);
   }
 
   return (
