@@ -1,5 +1,15 @@
-import { spawn } from "node:child_process";
-import { existsSync, readdirSync, statSync, unwatchFile, watchFile } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  unwatchFile,
+  watchFile,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 
 const WATCH_EXTENSIONS = new Set([
@@ -25,6 +35,40 @@ const watchedFiles = new Set();
 let child = null;
 let restartTimer = null;
 let childStopping = false;
+
+const APP_ROOT = "/app/mobile";
+const PACKAGE_LOCK_PATH = path.join(APP_ROOT, "package-lock.json");
+const NODE_MODULES_PATH = path.join(APP_ROOT, "node_modules");
+const DEP_HASH_PATH = path.join(NODE_MODULES_PATH, ".package-lock.hash");
+
+function fileHash(filePath) {
+  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+}
+
+function ensureDependencies() {
+  const currentHash = fileHash(PACKAGE_LOCK_PATH);
+  const savedHash = existsSync(DEP_HASH_PATH)
+    ? readFileSync(DEP_HASH_PATH, "utf8").trim()
+    : null;
+
+  if (savedHash === currentHash && existsSync(path.join(NODE_MODULES_PATH, "expo"))) {
+    return;
+  }
+
+  console.log("[dev-web] package-lock changed or dependencies missing, running npm ci");
+  mkdirSync(NODE_MODULES_PATH, { recursive: true });
+  const result = spawnSync("npm", ["ci"], {
+    cwd: APP_ROOT,
+    stdio: "inherit",
+    shell: false,
+  });
+
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
+
+  writeFileSync(DEP_HASH_PATH, `${currentHash}\n`);
+}
 
 function listFiles(targetPath) {
   if (!existsSync(targetPath)) {
@@ -132,6 +176,7 @@ function cleanupAndExit(signal) {
   child.kill("SIGTERM");
 }
 
+ensureDependencies();
 syncWatchers();
 setInterval(syncWatchers, 2000);
 startExpo();
