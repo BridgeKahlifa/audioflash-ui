@@ -1,21 +1,291 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, View, Text, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import Svg, { Circle, Line, Polyline } from "react-native-svg";
 import { SessionHistoryItem } from "../lib/types";
 import { getLastSession, setCurrentCards } from "../lib/storage";
 import { useAuth } from "../lib/auth-context";
-import { startReviewLifecycle } from "../lib/api";
+import { fetchCategoryGradeChart, startReviewLifecycle } from "../lib/api";
+
+interface GradeHistoryPoint {
+  endedAt: string;
+  grade: number;
+}
+
+function formatChartTime(dateInput: string | number): string {
+  return new Date(dateInput).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function formatChartDate(dateInput: string | number): string {
+  return new Date(dateInput).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatChartDateTime(dateInput: string | number): string {
+  return new Date(dateInput).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
+  const chartHeight = 160;
+  const labelWidth = 52;
+  const yMin = 0;
+  const yMax = 100;
+  const yTicks = [100, 50, 0];
+  const [chartAreaWidth, setChartAreaWidth] = useState(240);
+  const sortedPoints = [...points].sort(
+    (a, b) => new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime(),
+  );
+  const times = sortedPoints.map((point) => new Date(point.endedAt).getTime());
+  const minTime = Math.min(...times);
+  const maxTime = Math.max(...times);
+  const timeRange = Math.max(maxTime - minTime, 1);
+  const chartWidth = Math.max(chartAreaWidth, 240);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const lineColor = "#F26B4A";
+  const gridColor = "#E7DDD6";
+
+  const normalizedPoints = sortedPoints.map((point, index) => {
+    const timestamp = new Date(point.endedAt).getTime();
+    const x = 16 + ((timestamp - minTime) / timeRange) * (chartWidth - 32);
+    const y =
+      chartHeight - ((point.grade - yMin) / Math.max(yMax - yMin, 1)) * (chartHeight - 24) - 12;
+    return { ...point, x, y, index };
+  });
+  const activePoint = activeIndex == null ? null : normalizedPoints[activeIndex];
+  const polylinePoints = normalizedPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const tickCount = Math.min(6, Math.max(4, normalizedPoints.length > 1 ? 5 : 1));
+  const spansMultipleDays =
+    new Date(minTime).toDateString() !== new Date(maxTime).toDateString();
+  const timeTicks = Array.from({ length: tickCount }, (_, index) => {
+    const ratio = tickCount === 1 ? 0 : index / (tickCount - 1);
+    const tickTime = minTime + timeRange * ratio;
+    const x = 16 + ((tickTime - minTime) / timeRange) * (chartWidth - 32);
+    return { tickTime, x, label: spansMultipleDays ? formatChartDate(tickTime) : formatChartTime(tickTime) };
+  });
+
+  return (
+    <Pressable onPress={() => setActiveIndex(null)}>
+      <View
+        style={{ width: "100%" }}
+        onLayout={(event) => {
+          const nextWidth = Math.floor(event.nativeEvent.layout.width - 56);
+          if (nextWidth > 0 && nextWidth !== chartAreaWidth) {
+            setChartAreaWidth(nextWidth);
+          }
+        }}
+      >
+        <View style={{ minWidth: "100%" }}>
+          <View className="flex-row" style={{ gap: 8, alignItems: "center" }}>
+            <View
+              style={{
+                width: 20,
+                height: chartHeight,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text
+                className="text-xs text-muted"
+                style={{
+                  transform: [{ rotate: "-90deg" }],
+                  width: 80,
+                  textAlign: "center",
+                }}
+              >
+                Grade
+              </Text>
+            </View>
+            <View style={{ width: 28, height: chartHeight, justifyContent: "space-between", paddingVertical: 4 }}>
+              {yTicks.map((tick) => (
+                <Text key={tick} className="text-muted text-right" style={{ fontSize: 10 }}>
+                  {tick}
+                </Text>
+              ))}
+            </View>
+            <View style={{ width: chartWidth + 24 }}>
+              <View style={{ height: chartHeight, position: "relative" }}>
+                <Svg width={chartWidth + 24} height={chartHeight} style={{ position: "absolute", left: 0, top: 0 }}>
+                  {yTicks.map((tick) => {
+                    const y =
+                      chartHeight - ((tick - yMin) / Math.max(yMax - yMin, 1)) * (chartHeight - 24) - 12;
+                    return (
+                      <Line
+                        key={tick}
+                        x1="0"
+                        y1={y}
+                        x2={chartWidth + 24}
+                        y2={y}
+                        stroke={gridColor}
+                        strokeWidth="1"
+                      />
+                    );
+                  })}
+                  {normalizedPoints.length > 1 ? (
+                    <Polyline
+                      points={polylinePoints}
+                      fill="none"
+                      stroke={lineColor}
+                      strokeWidth="2"
+                      strokeOpacity="0.45"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  ) : null}
+                  {normalizedPoints.map((point) => (
+                    <Circle
+                      key={`${point.endedAt}-${point.grade}-${point.index}-dot`}
+                      cx={point.x}
+                      cy={point.y}
+                      r="6"
+                      fill={lineColor}
+                      stroke="#FFF8F2"
+                      strokeWidth="2"
+                    />
+                  ))}
+                </Svg>
+                {activePoint ? (
+                  <View
+                    style={{
+                      position: "absolute",
+                      left: Math.max(8, Math.min(activePoint.x - 52, chartWidth - 96)),
+                      top: Math.max(0, activePoint.y - 76),
+                      width: 116,
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: 12,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.12,
+                      shadowRadius: 12,
+                      elevation: 4,
+                    }}
+                  >
+                    <Text className="text-foreground" style={{ fontSize: 10, fontWeight: "700" }}>
+                      Grade: {activePoint.grade}
+                    </Text>
+                    <Text className="text-foreground mt-1" style={{ fontSize: 10 }}>
+                      {formatChartDateTime(activePoint.endedAt)}
+                    </Text>
+                  </View>
+                ) : null}
+                {normalizedPoints.map((point) => (
+                  <Pressable
+                    key={`${point.endedAt}-${point.grade}-${point.index}`}
+                    onHoverIn={() => setActiveIndex(point.index)}
+                    onHoverOut={() => setActiveIndex((current) => (current === point.index ? null : current))}
+                    onPress={() => setActiveIndex((current) => (current === point.index ? null : point.index))}
+                    style={{
+                      position: "absolute",
+                      left: point.x - 18,
+                      top: point.y - 18,
+                      width: 36,
+                      height: 36,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  />
+                ))}
+              </View>
+              <View style={{ height: 28, marginTop: 12, position: "relative" }}>
+                {timeTicks.map((tick, index) => (
+                  <Text
+                    key={`${tick.tickTime}-${index}`}
+                    className="text-muted text-center"
+                    style={{
+                      position: "absolute",
+                      left: tick.x - labelWidth / 2,
+                      width: labelWidth,
+                      fontSize: 10,
+                    }}
+                    numberOfLines={2}
+                  >
+                    {tick.label}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+      <View className="flex-row mt-3" style={{ paddingLeft: 56 }}>
+        <Text className="text-xs text-muted" style={{ width: chartWidth + 24, textAlign: "center" }}>
+          Time
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
 
 export default function SessionSummary() {
   const { session: authSession } = useAuth();
   const [session, setSession] = useState<SessionHistoryItem | null>(null);
   const [startingReview, setStartingReview] = useState(false);
+  const [gradeHistory, setGradeHistory] = useState<GradeHistoryPoint[]>([]);
+  const [loadingGradeHistory, setLoadingGradeHistory] = useState(false);
+  const [gradeHistoryError, setGradeHistoryError] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     getLastSession().then(setSession);
   }, []);
+
+  useEffect(() => {
+    if (
+      !authSession?.access_token ||
+      !session?.categoryId ||
+      typeof session.difficulty !== "number"
+    ) {
+      setGradeHistory([]);
+      setLoadingGradeHistory(false);
+      setGradeHistoryError("");
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingGradeHistory(true);
+    setGradeHistoryError("");
+
+    fetchCategoryGradeChart(
+      authSession.access_token,
+      session.categoryId,
+      session.difficulty,
+    )
+      .then((response) => {
+        if (cancelled) return;
+        setGradeHistory(
+          response.points.map((point) => ({
+            endedAt: point.ended_at,
+            grade: point.grade,
+          })),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setGradeHistoryError("Couldn't load grade history right now.");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingGradeHistory(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authSession?.access_token, session?.categoryId, session?.difficulty]);
 
   const missed = useMemo(
     () => session?.cards.filter((card) => !card.knew) ?? [],
@@ -143,6 +413,26 @@ export default function SessionSummary() {
                   </View>
                 ))}
               </View>
+            )}
+          </View>
+
+          <View className="bg-card border border-border rounded-2xl p-5 mb-4">
+            <Text className="text-base font-medium text-foreground mb-1">Score History</Text>
+            <Text className="text-sm text-muted mb-4">
+              This shows how your lesson scores changed over time.
+            </Text>
+            {loadingGradeHistory ? (
+              <View className="py-8 items-center">
+                <ActivityIndicator size="small" color="#FF6B4A" />
+              </View>
+            ) : gradeHistoryError ? (
+              <Text className="text-sm text-muted">{gradeHistoryError}</Text>
+            ) : gradeHistory.length === 0 ? (
+              <Text className="text-sm text-muted">
+                No grade history is available for this session yet.
+              </Text>
+            ) : (
+              <SimpleGradeHistoryChart points={gradeHistory} />
             )}
           </View>
 

@@ -118,7 +118,7 @@ export default function SettingsScreen() {
   const [emailStatus, setEmailStatus] = useState<"idle" | "saving" | "sent" | "error">("idle");
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [targetLanguageIds, setTargetLanguageIds] = useState<string[]>(
-    profile?.target_language_ids?.map(String) ?? []
+    profile?.target_language_ids?.slice(0, 1).map(String) ?? []
   );
   const [showTargetPicker, setShowTargetPicker] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -148,7 +148,7 @@ export default function SettingsScreen() {
       notifications_enabled: profile.notifications_enabled,
     });
     setName(profile.name ?? "");
-    setTargetLanguageIds(profile.target_language_ids?.map(String) ?? []);
+    setTargetLanguageIds(profile.target_language_ids?.slice(0, 1).map(String) ?? []);
   }, [profile]);
 
   useEffect(() => {
@@ -251,12 +251,9 @@ export default function SettingsScreen() {
     return true;
   }
 
-  async function toggleTargetLanguage(id: string) {
+  async function selectTargetLanguage(id: string) {
     const previousTargetLanguageIds = targetLanguageIds;
-    const adding = !targetLanguageIds.includes(id);
-    const updated = adding
-      ? [...targetLanguageIds, id]
-      : targetLanguageIds.filter((l) => l !== id);
+    const updated = [id];
     setTargetLanguageIds(updated);
     const { error } = await updateProfileData({ target_language_ids: updated });
     if (error) {
@@ -264,7 +261,7 @@ export default function SettingsScreen() {
       Alert.alert("Error", error);
     } else {
       const lang = languages.find((l) => String(l.id) === id);
-      posthog?.capture("settings_target_language_toggled", { language: lang?.language, action: adding ? "added" : "removed" });
+      posthog?.capture("settings_target_language_selected", { language: lang?.language });
     }
   }
 
@@ -290,12 +287,12 @@ export default function SettingsScreen() {
     );
   }
 
-  const targetLanguagesLabel = targetLanguageIds.length === 0
+  const targetLanguageLabel = targetLanguageIds.length === 0
     ? "Select..."
     : targetLanguageIds
       .map((id) => languages.find((l) => String(l.id) === id)?.language)
       .filter(Boolean)
-      .join(", ");
+      .join("");
 
   usePreventRemove(hasUnsavedChanges, (event) => {
     if (typeof event.preventDefault !== "function") return;
@@ -438,7 +435,7 @@ export default function SettingsScreen() {
             >
               <View className="flex-1 mr-3">
                 <Text className="text-xs text-muted mb-0.5">Learning</Text>
-                <Text className="text-foreground font-medium" numberOfLines={2}>{targetLanguagesLabel}</Text>
+                <Text className="text-foreground font-medium" numberOfLines={2}>{targetLanguageLabel}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </Pressable>
@@ -556,8 +553,7 @@ export default function SettingsScreen() {
         visible={showTargetPicker}
         languages={languages}
         selectedIds={targetLanguageIds}
-        multiSelect
-        onToggle={toggleTargetLanguage}
+        onToggle={selectTargetLanguage}
         onClose={() => setShowTargetPicker(false)}
       />
     </SafeAreaView>

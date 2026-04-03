@@ -345,6 +345,8 @@ export async function saveCompletedSession(input: {
   topicTitle: string;
   language: string;
   languageLabel: string;
+  categoryId?: string;
+  difficulty?: number;
   cards: SessionCardResult[];
   reviewId?: string;
   reviewName?: string;
@@ -361,6 +363,8 @@ export async function saveCompletedSession(input: {
     topicTitle: input.topicTitle,
     language: input.language,
     languageLabel: input.languageLabel,
+    categoryId: input.categoryId,
+    difficulty: input.difficulty,
     correct,
     total,
     cards: input.cards,

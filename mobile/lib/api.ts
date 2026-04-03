@@ -40,12 +40,15 @@ export interface ApiConfig {
 export interface ApiStartLesson {
   profile_id: string;
   category_id: string;
+  difficulty: number;
+  card_count?: number;
   started_at?: string | null;
 }
 
 export interface ApiCreateLessonSession {
   profile_id: string;
   category_id: string;
+  difficulty?: number;
   started_at?: string | null;
   ended_at?: string | null;
   grade_percent?: number | null;
@@ -67,6 +70,7 @@ export interface ApiLessonSession {
   activity_id?: string;
   profile_id: string;
   category_id: string;
+  difficulty?: number | null;
   started_at: string;
   ended_at: string | null;
   duration_seconds: number | null;
@@ -471,6 +475,17 @@ export interface ApiSRSQueue {
   cards: ApiLessonCard[];
 }
 
+export interface ApiGradeChartPoint {
+  ended_at: string;
+  grade: number;
+}
+
+export interface ApiGradeChartResponse {
+  category_id: string;
+  difficulty: number;
+  points: ApiGradeChartPoint[];
+}
+
 export async function fetchLibrary(
   token: string | null | undefined,
   languageId?: string,
@@ -521,6 +536,21 @@ export async function fetchSRSQueue(
     headers: authHeaders(token),
   });
   return parseJson<ApiSRSQueue>(res);
+}
+
+export async function fetchCategoryGradeChart(
+  token: string | null | undefined,
+  categoryId: string,
+  difficulty: number,
+): Promise<ApiGradeChartResponse> {
+  const query = new URLSearchParams({ difficulty: String(difficulty) });
+  const res = await fetch(
+    `${API_BASE_URL}/analytics/categories/${categoryId}/grade-chart?${query.toString()}`,
+    {
+      headers: authHeaders(token),
+    },
+  );
+  return parseJson<ApiGradeChartResponse>(res);
 }
 
 export async function updateFlashcardAttempt(
