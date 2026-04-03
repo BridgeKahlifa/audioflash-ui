@@ -106,6 +106,7 @@ export default function SettingsScreen() {
   const { user, profile, profileLoading, updateProfileData, updateEmail, deleteAccount, signOut, isDevAuth } = useAuth();
   const posthog = useAnalytics();
   const navigation = useNavigation();
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [localSettings, setLocalSettings] = useState<ApiUpdateProfile>({
     cards_per_session: profile?.cards_per_session ?? 20,
@@ -137,7 +138,12 @@ export default function SettingsScreen() {
     (localSettings.notifications_enabled ?? false) !== normalizedProfileNotifications;
 
   useEffect(() => {
-    fetchLanguages().then(setLanguages).catch(() => { });
+    setErrorMessage("");
+    fetchLanguages()
+      .then(setLanguages)
+      .catch(() => {
+        setErrorMessage("We couldn't load your settings data right now. Please try again in a moment.");
+      });
   }, []);
 
   useEffect(() => {
@@ -175,6 +181,7 @@ export default function SettingsScreen() {
   }
 
   async function saveSettings() {
+    setErrorMessage("");
     const { error } = await updateProfileData(localSettings);
     if (!error) {
       setSaved(true);
@@ -184,21 +191,29 @@ export default function SettingsScreen() {
         audio_speed: localSettings.audio_speed,
         notifications_enabled: localSettings.notifications_enabled,
       });
+    } else {
+      setErrorMessage("We couldn't save your settings right now. Please try again.");
     }
   }
 
   async function saveName() {
     setNameStatus("saving");
+    setErrorMessage("");
     const { error } = await updateProfileData({ name });
     setNameStatus(error ? "error" : "saved");
+    if (error) {
+      setErrorMessage("We couldn't save your name right now. Please try again.");
+    }
     setTimeout(() => setNameStatus("idle"), 2000);
   }
 
   async function saveEmail() {
     setEmailStatus("saving");
+    setErrorMessage("");
     const { error } = await updateEmail(email);
     if (error) {
       setEmailStatus("error");
+      setErrorMessage("We couldn't update your email right now. Please try again.");
       setTimeout(() => setEmailStatus("idle"), 2000);
     } else {
       setEmailStatus("sent");
@@ -208,10 +223,11 @@ export default function SettingsScreen() {
   async function saveAllPendingChanges(): Promise<boolean> {
     if (name !== normalizedProfileName) {
       setNameStatus("saving");
+      setErrorMessage("");
       const { error } = await updateProfileData({ name });
       if (error) {
         setNameStatus("error");
-        Alert.alert("Error", error);
+        setErrorMessage("We couldn't save your name right now. Please try again.");
         return false;
       }
       setNameStatus("saved");
@@ -220,10 +236,11 @@ export default function SettingsScreen() {
 
     if (email !== normalizedProfileEmail) {
       setEmailStatus("saving");
+      setErrorMessage("");
       const { error } = await updateEmail(email);
       if (error) {
         setEmailStatus("error");
-        Alert.alert("Error", error);
+        setErrorMessage("We couldn't update your email right now. Please try again.");
         return false;
       }
       setEmailStatus("sent");
@@ -234,9 +251,10 @@ export default function SettingsScreen() {
       (localSettings.audio_speed ?? 1.0) !== normalizedProfileAudioSpeed ||
       (localSettings.notifications_enabled ?? false) !== normalizedProfileNotifications
     ) {
+      setErrorMessage("");
       const { error } = await updateProfileData(localSettings);
       if (error) {
-        Alert.alert("Error", error);
+        setErrorMessage("We couldn't save your settings right now. Please try again.");
         return false;
       }
       setSaved(true);
@@ -255,10 +273,11 @@ export default function SettingsScreen() {
     const previousTargetLanguageIds = targetLanguageIds;
     const updated = [id];
     setTargetLanguageIds(updated);
+    setErrorMessage("");
     const { error } = await updateProfileData({ target_language_ids: updated });
     if (error) {
       setTargetLanguageIds(previousTargetLanguageIds);
-      Alert.alert("Error", error);
+      setErrorMessage("We couldn't save your language selection right now. Please try again.");
     } else {
       const lang = languages.find((l) => String(l.id) === id);
       posthog?.capture("settings_target_language_selected", { language: lang?.language });
@@ -370,6 +389,11 @@ export default function SettingsScreen() {
         </View>
 
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 32 }}>
+          {errorMessage ? (
+            <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+              <Text className="text-red-600 text-sm">{errorMessage}</Text>
+            </View>
+          ) : null}
 
           {/* ── Profile ── */}
           <SectionLabel>Profile</SectionLabel>

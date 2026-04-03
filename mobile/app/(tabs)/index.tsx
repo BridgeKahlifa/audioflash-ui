@@ -23,6 +23,7 @@ export default function Home() {
   const [inProgressLesson, setInProgressLesson] = useState<ApiLessonSession | null>(null);
   const [inProgressLessonName, setInProgressLessonName] = useState<string | null>(null);
   const [loadingSRS, setLoadingSRS] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [startingBrowseCategories, setStartingBrowseCategories] = useState(false);
   const [continuingLesson, setContinuingLesson] = useState(false);
 
@@ -38,6 +39,7 @@ export default function Home() {
         }
 
         setLoadingSRS(true);
+        setLoadError("");
 
         try {
           const [queueResult, lessonResult, categoriesResult] = await Promise.allSettled([
@@ -57,10 +59,18 @@ export default function Home() {
               ? categories.find((category) => String(category.id) === String(lesson.category_id))?.name ?? null
               : null,
           );
+
+          const hasApiError = [queueResult, lessonResult, categoriesResult].some(
+            (result) => result.status === "rejected",
+          );
+          if (hasApiError) {
+            setLoadError("We had trouble loading part of your home screen. Please try again in a moment.");
+          }
         } catch {
           setSrsQueue(null);
           setInProgressLesson(null);
           setInProgressLessonName(null);
+          setLoadError("We couldn't load your home screen right now. Please check your connection and try again.");
         } finally {
           setLoadingSRS(false);
         }
@@ -147,6 +157,12 @@ export default function Home() {
               <Text className="text-muted mt-1 text-sm">Start practicing to build your streak</Text>
             )}
           </View>
+
+          {loadError ? (
+            <View className="mx-6 mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+              <Text className="text-red-600 text-sm">{loadError}</Text>
+            </View>
+          ) : null}
 
           {/* SRS due card */}
           {!loadingSRS && srsQueue != null && srsQueue.due_count > 0 && (
