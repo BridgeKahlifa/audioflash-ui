@@ -47,10 +47,12 @@ export default function ProgressDashboard() {
   const { session } = useAuth();
   const [sessions, setSessions] = useState<ApiSession[]>([]);
   const [stats, setStats] = useState<ApiSessionStats | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (!session?.access_token) return;
     const token = session.access_token;
+    setErrorMessage("");
 
     // Load cache immediately, then revalidate in background
     Promise.all([getCachedSessions(), getCachedSessionStats()]).then(([cachedSessions, cachedStats]) => {
@@ -66,7 +68,7 @@ export default function ProgressDashboard() {
         setCachedSessionStats(freshStats);
       })
       .catch(() => {
-        // Keep showing cached data
+        setErrorMessage("We couldn't refresh your progress right now. Showing the latest available data.");
       });
   }, [session?.user?.id]);
 
@@ -99,6 +101,11 @@ export default function ProgressDashboard() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
         >
+          {errorMessage ? (
+            <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+              <Text className="text-red-600 text-sm">{errorMessage}</Text>
+            </View>
+          ) : null}
 
           {/* Streak banner */}
           <View className="rounded-3xl p-6 mb-4" style={{ backgroundColor: "#FF6B4A" }}>

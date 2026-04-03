@@ -38,6 +38,7 @@ export default function Categories() {
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [languagesLoading, setLanguagesLoading] = useState(false);
   const [savingLanguage, setSavingLanguage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Resolved language object for the current preferredLanguageId
   const [resolvedLanguage, setResolvedLanguage] = useState<ApiLanguage | null>(null);
@@ -54,9 +55,12 @@ export default function Categories() {
   useEffect(() => {
     if (!needsLanguagePicker || languages.length > 0) return;
     setLanguagesLoading(true);
+    setErrorMessage("");
     fetchLanguages()
       .then(setLanguages)
-      .catch(() => { })
+      .catch(() => {
+        setErrorMessage("We couldn't load the available languages right now. Please try again in a moment.");
+      })
       .finally(() => setLanguagesLoading(false));
   }, [needsLanguagePicker]);
 
@@ -70,6 +74,7 @@ export default function Categories() {
     }
     if (resolvedIdRef.current === preferredLanguageId) return;
 
+    setErrorMessage("");
     fetchLanguages()
       .then((langs) => {
         const found = langs.find((l) => String(l.id) === String(preferredLanguageId));
@@ -78,7 +83,9 @@ export default function Categories() {
           setResolvedLanguage(found);
         }
       })
-      .catch(() => { });
+      .catch(() => {
+        setErrorMessage("We couldn't load your selected language right now. Please try again in a moment.");
+      });
   }, [preferredLanguageId]);
 
   // Load categories once the language is resolved
@@ -87,6 +94,7 @@ export default function Categories() {
     setCategoriesLoading(true);
     setTopics([]);
     setSelectedTopic(null);
+    setErrorMessage("");
     fetchCategories()
       .then((cats) => {
         setTopics(
@@ -99,7 +107,9 @@ export default function Categories() {
           }))
         );
       })
-      .catch(() => { })
+      .catch(() => {
+        setErrorMessage("We couldn't load the available categories right now. Please try again in a moment.");
+      })
       .finally(() => setCategoriesLoading(false));
   }, [resolvedLanguage?.id]);
 
@@ -109,6 +119,7 @@ export default function Categories() {
     resolvedIdRef.current = String(lang.id);
     setResolvedLanguage(lang);
     setSavingLanguage(true);
+    setErrorMessage("");
 
     const { error } = await updateProfileData({ target_language_ids: [String(lang.id)] });
     setSavingLanguage(false);
@@ -116,6 +127,7 @@ export default function Categories() {
     if (error) {
       resolvedIdRef.current = null;
       setResolvedLanguage(null);
+      setErrorMessage("We couldn't save your language selection right now. Please try again.");
     }
   }
 
@@ -165,6 +177,11 @@ export default function Categories() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 16 }}
           >
+            {errorMessage ? (
+              <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+                <Text className="text-red-600 text-sm">{errorMessage}</Text>
+              </View>
+            ) : null}
             {languagesLoading ? (
               <View className="items-center justify-center py-16">
                 <ActivityIndicator size="large" color="#FF6B4A" />
@@ -244,6 +261,11 @@ export default function Categories() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 16 }}
         >
+          {errorMessage ? (
+            <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+              <Text className="text-red-600 text-sm">{errorMessage}</Text>
+            </View>
+          ) : null}
           {categoriesLoading ? (
             <View className="items-center justify-center py-16">
               <ActivityIndicator size="large" color="#FF6B4A" />
