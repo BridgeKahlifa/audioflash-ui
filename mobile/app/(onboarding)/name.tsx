@@ -40,7 +40,7 @@ export default function OnboardingName() {
       >
         <View className="flex-1 px-6 max-w-md w-full mx-auto">
           <View className="pt-8 pb-10">
-            <StepDots current={1} total={3} />
+            <StepDots current={1} total={2} />
           </View>
 
           <View className="flex-1">

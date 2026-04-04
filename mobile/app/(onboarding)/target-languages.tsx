@@ -36,14 +36,18 @@ export default function OnboardingTargetLanguages() {
   async function handleContinue() {
     if (selectedIds.length === 0) return;
     setSaving(true);
-    const { error } = await updateProfileData({ target_language_ids: selectedIds });
+    const { error } = await updateProfileData({
+      target_language_ids: selectedIds,
+      onboarding_completed: true,
+    });
     setSaving(false);
     if (error) {
       setError(error);
       return;
     }
     posthog?.capture("onboarding_target_languages_set", { count: selectedIds.length });
-    router.push("/(onboarding)/daily-goal");
+    posthog?.capture("onboarding_completed", { target_language_count: selectedIds.length });
+    router.replace("/(tabs)");
   }
 
   const canContinue = selectedIds.length > 0;
@@ -52,7 +56,7 @@ export default function OnboardingTargetLanguages() {
     <SafeAreaView edges={["top", "left", "right", "bottom"]} className="flex-1 bg-background">
       <View className="flex-1 px-6 max-w-md w-full mx-auto">
         <View className="pt-8 pb-10">
-          <StepDots current={2} total={3} />
+          <StepDots current={2} total={2} />
         </View>
 
         <Text className="text-3xl font-semibold text-foreground tracking-tight mb-2">
