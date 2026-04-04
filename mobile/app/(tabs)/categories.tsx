@@ -1,16 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { fetchCategories, fetchLanguages, ApiLanguage } from "../../lib/api";
+import { ApiLanguage } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
+import { useLanguages, useCategories } from "../../lib/queries";
 import { LanguageFlag } from "../../components/LanguageFlag";
 
 interface Topic {
@@ -21,7 +16,6 @@ interface Topic {
   supportedDifficulties: number[];
 }
 
-
 const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
   "airplane", "car", "restaurant", "heart",
   "briefcase", "school", "bag-handle", "home",
@@ -29,94 +23,42 @@ const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
 
 export default function Categories() {
   const { profile, profileLoading, updateProfileData } = useAuth();
+  const { data: languages = [], isPending: languagesLoading, error: languagesError } = useLanguages();
+  const {
+    data: contextCategories = [],
+    isPending: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
 
   const preferredLanguageId = profile?.target_language_ids?.[0] ?? null;
-  // Show picker only once profile is loaded and has no language set
   const needsLanguagePicker = profile !== null && !preferredLanguageId;
 
-  // Language picker
-  const [languages, setLanguages] = useState<ApiLanguage[]>([]);
-  const [languagesLoading, setLanguagesLoading] = useState(false);
   const [savingLanguage, setSavingLanguage] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  // Resolved language object for the current preferredLanguageId
-  const [resolvedLanguage, setResolvedLanguage] = useState<ApiLanguage | null>(null);
-  // Ref tracks which ID is already resolved, so the effect doesn't re-fire
-  // after handleSelectLanguage pre-sets resolvedLanguage
-  const resolvedIdRef = useRef<string | null>(null);
-
-  // Categories
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [switchingLanguage, setSwitchingLanguage] = useState(false);
+  const [resolvedLanguage, setResolvedLanguage] = useState<ApiLanguage | null>(null);
 
-  // Load languages for the picker
   useEffect(() => {
-    if (!needsLanguagePicker || languages.length > 0) return;
-    setLanguagesLoading(true);
-    setErrorMessage("");
-    fetchLanguages()
-      .then(setLanguages)
-      .catch(() => {
-        setErrorMessage("We couldn't load the available languages right now. Please try again in a moment.");
-      })
-      .finally(() => setLanguagesLoading(false));
-  }, [needsLanguagePicker]);
-
-  // Resolve the language object from preferredLanguageId.
-  // Uses a ref so handleSelectLanguage can pre-set the ID and skip the fetch.
-  useEffect(() => {
-    if (!preferredLanguageId) {
-      resolvedIdRef.current = null;
+    if (switchingLanguage) return;
+    if (!preferredLanguageId || languages.length === 0) {
       setResolvedLanguage(null);
       return;
     }
-    if (resolvedIdRef.current === preferredLanguageId) return;
 
-    setErrorMessage("");
-    fetchLanguages()
-      .then((langs) => {
-        const found = langs.find((l) => String(l.id) === String(preferredLanguageId));
-        if (found) {
-          resolvedIdRef.current = preferredLanguageId;
-          setResolvedLanguage(found);
-        }
-      })
-      .catch(() => {
-        setErrorMessage("We couldn't load your selected language right now. Please try again in a moment.");
-      });
-  }, [preferredLanguageId]);
+    const found = languages.find((lang) => String(lang.id) === String(preferredLanguageId));
+    if (found) setResolvedLanguage(found);
+  }, [preferredLanguageId, languages, switchingLanguage]);
 
-  // Load categories once the language is resolved
-  useEffect(() => {
-    if (!resolvedLanguage) return;
-    setCategoriesLoading(true);
-    setTopics([]);
-    setSelectedTopic(null);
-    setErrorMessage("");
-    fetchCategories()
-      .then((cats) => {
-        setTopics(
-          cats.map((cat, i) => ({
-            id: `category-${cat.id}`,
-            title: cat.name,
-            icon: CATEGORY_ICONS[i % CATEGORY_ICONS.length],
-            apiCategoryId: String(cat.id),
-            supportedDifficulties: cat.supported_difficulties ?? [],
-          }))
-        );
-      })
-      .catch(() => {
-        setErrorMessage("We couldn't load the available categories right now. Please try again in a moment.");
-      })
-      .finally(() => setCategoriesLoading(false));
-  }, [resolvedLanguage?.id]);
+  const topics: Topic[] = contextCategories.map((category, index) => ({
+    id: `category-${category.id}`,
+    title: category.name,
+    icon: CATEGORY_ICONS[index % CATEGORY_ICONS.length],
+    apiCategoryId: String(category.id),
+    supportedDifficulties: category.supported_difficulties ?? [],
+  }));
 
   async function handleSelectLanguage(lang: ApiLanguage) {
-    // Pre-set ref and state immediately so the resolve effect skips
-    // when the optimistic profile update fires
-    resolvedIdRef.current = String(lang.id);
     setResolvedLanguage(lang);
     setSavingLanguage(true);
     setErrorMessage("");
@@ -125,15 +67,18 @@ export default function Categories() {
     setSavingLanguage(false);
 
     if (error) {
-      resolvedIdRef.current = null;
       setResolvedLanguage(null);
       setErrorMessage("We couldn't save your language selection right now. Please try again.");
+      return;
     }
+
+    setSwitchingLanguage(false);
   }
 
-  const handleStartLesson = () => {
+  function handleStartLesson() {
     if (!selectedTopic || !resolvedLanguage) return;
-    const topic = topics.find((t) => t.id === selectedTopic);
+    const topic = topics.find((item) => item.id === selectedTopic);
+
     router.push({
       pathname: "/lesson-ready/[topic]",
       params: {
@@ -147,9 +92,15 @@ export default function Categories() {
         supportedDifficulties: (topic?.supportedDifficulties ?? []).join(","),
       },
     });
-  };
+  }
 
-  // Profile still loading — don't render anything yet
+  const queryErrorMessage = languagesError
+    ? "We couldn't load the available languages right now. Please try again in a moment."
+    : categoriesError
+      ? "We couldn't load the available categories right now. Please try again in a moment."
+      : "";
+  const visibleErrorMessage = errorMessage || queryErrorMessage;
+
   if (profile === null && profileLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: "#FAFAF8", alignItems: "center", justifyContent: "center" }}>
@@ -158,18 +109,13 @@ export default function Categories() {
     );
   }
 
-  // --- Language selection ---
-  if (needsLanguagePicker) {
+  if (needsLanguagePicker || switchingLanguage) {
     return (
       <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
         <View className="flex-1 max-w-md w-full mx-auto">
           <View className="px-6 pt-8 pb-4">
-            <Text className="text-3xl font-semibold text-foreground tracking-tight">
-              Choose Language
-            </Text>
-            <Text className="text-muted text-sm mt-1">
-              Pick the language you want to learn
-            </Text>
+            <Text className="text-3xl font-semibold text-foreground tracking-tight">Choose Language</Text>
+            <Text className="text-muted text-sm mt-1">Pick the language you want to learn</Text>
           </View>
 
           <ScrollView
@@ -177,11 +123,12 @@ export default function Categories() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 16 }}
           >
-            {errorMessage ? (
+            {visibleErrorMessage ? (
               <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
-                <Text className="text-red-600 text-sm">{errorMessage}</Text>
+                <Text className="text-red-600 text-sm">{visibleErrorMessage}</Text>
               </View>
             ) : null}
+
             {languagesLoading ? (
               <View className="items-center justify-center py-16">
                 <ActivityIndicator size="large" color="#FF6B4A" />
@@ -194,7 +141,7 @@ export default function Categories() {
                     <Pressable
                       key={lang.id}
                       onPress={() => {
-                        if (available && !savingLanguage) handleSelectLanguage(lang);
+                        if (available && !savingLanguage) void handleSelectLanguage(lang);
                       }}
                       className={`rounded-2xl p-4 border-2 border-transparent flex-row items-center bg-card ${!available ? "opacity-60" : ""}`}
                       style={{
@@ -230,22 +177,19 @@ export default function Categories() {
     );
   }
 
-  // --- Category selection ---
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
         <View className="pt-8 pb-6 px-6">
           <Text className="text-3xl font-semibold text-foreground tracking-tight">Browse</Text>
           {resolvedLanguage ? (
-            <Pressable onPress={() => {
-              // Allow switching language
-              resolvedIdRef.current = null;
-              setResolvedLanguage(null);
-              // Clearing profile language would reopen picker; instead just reset local state
-              // so picker shows on next tap. For now just show inline by clearing resolvedLanguage.
-              // The profile still has the language — this is just a local UI switch.
-              setLanguages([]);
-            }} className="flex-row items-center mt-1">
+            <Pressable
+              onPress={() => {
+                setSwitchingLanguage(true);
+                setResolvedLanguage(null);
+              }}
+              className="flex-row items-center mt-1"
+            >
               <View style={{ marginRight: 4 }}>
                 <LanguageFlag name={resolvedLanguage.language} size="sm" />
               </View>
@@ -261,11 +205,12 @@ export default function Categories() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 16 }}
         >
-          {errorMessage ? (
+          {visibleErrorMessage ? (
             <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
-              <Text className="text-red-600 text-sm">{errorMessage}</Text>
+              <Text className="text-red-600 text-sm">{visibleErrorMessage}</Text>
             </View>
           ) : null}
+
           {categoriesLoading ? (
             <View className="items-center justify-center py-16">
               <ActivityIndicator size="large" color="#FF6B4A" />
@@ -275,6 +220,7 @@ export default function Categories() {
               <Text className="text-muted text-center">No categories available</Text>
             </View>
           ) : null}
+
           <View className="flex-row flex-wrap gap-3">
             {topics.map((topic) => {
               const isSelected = selectedTopic === topic.id;

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { Passkey, PasskeyCreateResult, PasskeyGetResult } from "react-native-passkey";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "./supabase";
 import {
   ApiProfile,
@@ -10,12 +11,9 @@ import {
   updateProfile,
   deleteAccount as apiDeleteAccount,
 } from "./api";
-import {
-  getCachedProfile,
-  setCachedProfile,
-  clearCachedProfile,
-  syncSettingsFromProfile,
-} from "./storage";
+import { syncSettingsFromProfile } from "./storage";
+import { clearQueryCache, queryClient } from "./query-client";
+import { queryKeys } from "./query-keys";
 
 interface AuthContextValue {
   session: Session | null;
@@ -48,7 +46,6 @@ const DEV_USER_EMAIL =
 
 function createDevSession(): Session {
   const nowSeconds = Math.floor(Date.now() / 1000);
-
   return {
     access_token: "",
     refresh_token: "",
@@ -70,92 +67,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [passkeySupported, setPasskeySupported] = useState(false);
-  const [profile, setProfile] = useState<ApiProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileError, setProfileError] = useState<string | null>(null);
+
   const authToken = session?.access_token || null;
+  const userId = session?.user?.id ?? (DEV_AUTH_MODE ? DEV_USER_ID : "");
+  const profileEnabled = !!(authToken || DEV_AUTH_MODE);
 
-  // Stale-while-revalidate: show cached profile instantly, then refresh from API in background
+  // ── Profile via TanStack Query ─────────────────────────────────────────────
+  const profileQuery = useQuery({
+    queryKey: queryKeys.profile(userId),
+    queryFn: () => fetchProfile(authToken),
+    enabled: profileEnabled,
+    staleTime: 5 * 60_000,
+  });
+
+  const profile = profileQuery.data ?? null;
+  // isPending is true when there's no data yet (first fetch or cache miss).
+  // isLoading also requires isFetching, which can be false when the query is disabled —
+  // using isPending ensures the splash stays up until we actually have profile data.
+  const profileLoading = profileQuery.isPending;
+  const profileError = profileQuery.error
+    ? ((profileQuery.error as any)?.message as string | undefined) ??
+      "We couldn't load your profile. Some personalized features may be unavailable."
+    : null;
+
+  // Sync device settings whenever profile data changes
   useEffect(() => {
-    if (!session) {
-      setProfile(null);
-      setProfileError(null);
-      return;
-    }
+    if (profile) syncSettingsFromProfile(profile);
+  }, [profile]);
 
-    let cancelled = false;
-
-    async function loadProfile() {
-      const cached = await getCachedProfile();
-      if (cached) {
-        if (!cancelled) setProfile(cached);
-      } else {
-        if (!cancelled) setProfileLoading(true);
-      }
-
-      try {
-        const fresh = await fetchProfile(authToken);
-        if (!cancelled) {
-          setProfile(fresh);
-          setCachedProfile(fresh);
-          syncSettingsFromProfile(fresh);
-          setProfileError(null);
-        }
-      } catch (error: any) {
-        if (!cancelled) {
-          const message = typeof error?.message === "string" && error.message.trim()
-            ? error.message.trim()
-            : "We couldn't load your profile. Some personalized features may be unavailable.";
-          setProfileError(message);
-        }
-      } finally {
-        if (!cancelled) setProfileLoading(false);
-      }
-    }
-
-    loadProfile();
-    return () => { cancelled = true; };
-  }, [authToken, session?.user?.id]); // re-fetch only if the logged-in user changes, not on token refresh
-
+  // ── Auth setup ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (DEV_AUTH_MODE) {
-      let cancelled = false;
-
       setSession(createDevSession());
       setPasskeySupported(false);
-
-      getCachedProfile().then((cached) => {
-        if (cached && !cancelled) {
-          setProfile(cached);
-        }
-      });
-
-      fetchProfile()
-        .then((fresh) => {
-          if (!cancelled) {
-            setProfile(fresh);
-            setCachedProfile(fresh);
-            syncSettingsFromProfile(fresh);
-            setProfileError(null);
-          }
-        })
-        .catch((error: any) => {
-          if (!cancelled) {
-            const message = typeof error?.message === "string" && error.message.trim()
-              ? error.message.trim()
-              : "We couldn't load your profile. Some personalized features may be unavailable.";
-            setProfileError(message);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) {
-            setLoading(false);
-          }
-        });
-
-      return () => {
-        cancelled = true;
-      };
+      setLoading(false);
+      return;
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -172,9 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // ── Auth methods ───────────────────────────────────────────────────────────
   async function sendOtp(email: string) {
     if (DEV_AUTH_MODE) return { error: "Email sign-in is disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
-
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { shouldCreateUser: true },
@@ -185,26 +131,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function verifyOtp(email: string, token: string) {
     if (DEV_AUTH_MODE) return { error: "OTP verification is disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
-
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: "email",
-    });
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
     if (error) return { error: error.message };
 
-    // Create profile if it doesn't exist yet
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
     }
-
     return { error: null };
   }
 
   async function registerPasskey() {
     if (DEV_AUTH_MODE) return { error: "Passkeys are disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
-
     try {
       const { data, error } = await supabase.auth.mfa.enroll({ factorType: "webauthn" });
       if (error) return { error: error.message };
@@ -217,22 +155,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         code: JSON.stringify(result),
       });
       if (verifyError) return { error: verifyError.message };
-
       return { error: null };
     } catch (e: any) {
-      if (e?.error === "UserCancelled") return { error: null }; // user dismissed — not an error
+      if (e?.error === "UserCancelled") return { error: null };
       return { error: e?.message ?? "Passkey registration failed" };
     }
   }
 
   async function signInWithPasskey() {
     if (DEV_AUTH_MODE) return { error: "Passkeys are disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
-
     try {
       const { error } = await supabase.auth.signInAnonymously();
       if (error) return { error: error.message };
 
-      // Get MFA factors and find webauthn
       const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
       if (factorsError) return { error: factorsError.message };
 
@@ -244,9 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (challengeError) return { error: challengeError.message };
 
-      const result: PasskeyGetResult = await Passkey.get(
-        (challengeData as any).webauthn
-      );
+      const result: PasskeyGetResult = await Passkey.get((challengeData as any).webauthn);
 
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId: webauthnFactor.id,
@@ -254,7 +187,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         code: JSON.stringify(result),
       });
       if (verifyError) return { error: verifyError.message };
-
       return { error: null };
     } catch (e: any) {
       if (e?.error === "UserCancelled") return { error: null };
@@ -263,80 +195,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function updateProfileData(updates: ApiUpdateProfile) {
-    if (!session) return { error: "Not authenticated" };
+    if (!session && !DEV_AUTH_MODE) return { error: "Not authenticated" };
 
     // Optimistic update
-    const previous = profile;
+    const previous = queryClient.getQueryData<ApiProfile>(queryKeys.profile(userId));
     if (previous) {
-      const optimistic = { ...previous, ...updates } as ApiProfile;
-      setProfile(optimistic);
+      queryClient.setQueryData(queryKeys.profile(userId), { ...previous, ...updates });
     }
 
     try {
       const updated = await updateProfile(authToken, updates);
-      setProfile(updated);
-      setCachedProfile(updated);
+      queryClient.setQueryData(queryKeys.profile(userId), updated);
       syncSettingsFromProfile(updated);
       return { error: null };
     } catch (e: any) {
-      // Revert on failure
-      setProfile(previous);
+      if (previous) queryClient.setQueryData(queryKeys.profile(userId), previous);
       return { error: e?.message ?? "Failed to update profile" };
     }
   }
 
   async function updateEmail(email: string) {
-    if (DEV_AUTH_MODE) {
-      return { error: "Email changes are unavailable while EXPO_PUBLIC_AUTH_MODE=dev." };
-    }
-
+    if (DEV_AUTH_MODE) return { error: "Email changes are unavailable while EXPO_PUBLIC_AUTH_MODE=dev." };
     const { error } = await supabase.auth.updateUser({ email });
     if (error) return { error: error.message };
     return { error: null };
   }
 
   function getDeleteAccountErrorMessage(e: any): string {
-    // Log raw error for debugging/monitoring
     console.error("deleteAccount error", e);
-
-    const raw = typeof e?.message === "string"
-      ? e.message
-      : typeof e === "string"
-        ? e
-        : "";
-
+    const raw = typeof e?.message === "string" ? e.message : typeof e === "string" ? e : "";
     const message = raw.toLowerCase();
-
-    // Session/authentication issues
-    if (message.includes("401") || message.includes("unauthorized")) {
+    if (message.includes("401") || message.includes("unauthorized"))
       return "Your session has expired. Please sign in again.";
-    }
-
-    if (message.includes("403") || message.includes("forbidden")) {
+    if (message.includes("403") || message.includes("forbidden"))
       return "You do not have permission to delete this account.";
-    }
-
-    // Network/offline issues
-    if (
-      message.includes("network") ||
-      message.includes("offline") ||
-      (typeof navigator !== "undefined" && navigator && (navigator as any).onLine === false)
-    ) {
+    if (message.includes("network") || message.includes("offline"))
       return "You appear to be offline. Check your internet connection and try again.";
-    }
-
-    // Generic fallback
     return "Something went wrong while deleting your account. Please try again.";
   }
 
   async function deleteAccount() {
     if (!session) return { error: "Not authenticated" };
-    if (DEV_AUTH_MODE) {
-      return { error: "Account deletion is unavailable while EXPO_PUBLIC_AUTH_MODE=dev." };
-    }
+    if (DEV_AUTH_MODE) return { error: "Account deletion is unavailable while EXPO_PUBLIC_AUTH_MODE=dev." };
     try {
       await apiDeleteAccount(authToken);
-      await Promise.all([supabase.auth.signOut(), clearCachedProfile()]);
+      await supabase.auth.signOut();
+      await clearQueryCache();
       return { error: null };
     } catch (e: any) {
       return { error: getDeleteAccountErrorMessage(e) };
@@ -345,11 +249,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     if (DEV_AUTH_MODE) {
-      await clearCachedProfile();
+      await clearQueryCache();
       return;
     }
-
-    await Promise.all([supabase.auth.signOut(), clearCachedProfile()]);
+    await supabase.auth.signOut();
+    await clearQueryCache();
   }
 
   return (

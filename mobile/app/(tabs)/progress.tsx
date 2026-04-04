@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useRef } from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "../../lib/auth-context";
-import { fetchSessions, fetchSessionStats, ApiSession, ApiSessionStats } from "../../lib/api";
-import { getCachedSessions, getCachedSessionStats, setCachedSessions, setCachedSessionStats } from "../../lib/storage";
+import { useFocusEffect } from "expo-router";
+import { useSessions, useSessionStats } from "../../lib/queries";
 
 function last7Days(): { day: string; date: string }[] {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -44,33 +43,34 @@ function SimpleBarChart({ data }: { data: { day: string; cards: number }[] }) {
 }
 
 export default function ProgressDashboard() {
-  const { session } = useAuth();
-  const [sessions, setSessions] = useState<ApiSession[]>([]);
-  const [stats, setStats] = useState<ApiSessionStats | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
+  const {
+    data: sessions = [],
+    refetch: refetchSessions,
+    isStale: isSessionsStale,
+    error: sessionsError,
+  } = useSessions();
+  const {
+    data: stats,
+    refetch: refetchStats,
+    isStale: isStatsStale,
+    error: statsError,
+  } = useSessionStats();
+  const errorMessage =
+    sessionsError || statsError
+      ? "We couldn't refresh your progress right now. Showing the latest available data."
+      : "";
 
-  useEffect(() => {
-    if (!session?.access_token) return;
-    const token = session.access_token;
-    setErrorMessage("");
+  const isSessionsStaleRef = useRef(false);
+  isSessionsStaleRef.current = isSessionsStale;
+  const isStatsStaleRef = useRef(false);
+  isStatsStaleRef.current = isStatsStale;
 
-    // Load cache immediately, then revalidate in background
-    Promise.all([getCachedSessions(), getCachedSessionStats()]).then(([cachedSessions, cachedStats]) => {
-      if (cachedSessions) setSessions(cachedSessions);
-      if (cachedStats) setStats(cachedStats);
-    });
-
-    Promise.all([fetchSessions(token), fetchSessionStats(token)])
-      .then(([freshSessions, freshStats]) => {
-        setSessions(freshSessions);
-        setStats(freshStats);
-        setCachedSessions(freshSessions);
-        setCachedSessionStats(freshStats);
-      })
-      .catch(() => {
-        setErrorMessage("We couldn't refresh your progress right now. Showing the latest available data.");
-      });
-  }, [session?.user?.id]);
+  useFocusEffect(
+    useCallback(() => {
+      if (isSessionsStaleRef.current) refetchSessions();
+      if (isStatsStaleRef.current) refetchStats();
+    }, [refetchSessions, refetchStats]),
+  );
 
   const days = last7Days();
   const weeklyData = days.map(({ day, date }) => ({

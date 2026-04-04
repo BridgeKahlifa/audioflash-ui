@@ -16,8 +16,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { useAuth } from "../../lib/auth-context";
-import { ApiUpdateProfile, ApiLanguage, fetchLanguages } from "../../lib/api";
+import { ApiUpdateProfile, ApiLanguage } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
+import { useLanguages } from "../../lib/queries";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -105,6 +106,7 @@ function LanguagePickerModal({
 
 export default function SettingsScreen() {
   const { user, profile, profileLoading, updateProfileData, updateEmail, deleteAccount, signOut, isDevAuth } = useAuth();
+  const { data: languages = [] } = useLanguages();
   const posthog = useAnalytics();
   const navigation = useNavigation();
   const [errorMessage, setErrorMessage] = useState("");
@@ -118,7 +120,6 @@ export default function SettingsScreen() {
   const [nameStatus, setNameStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [email, setEmail] = useState(user?.email ?? "");
   const [emailStatus, setEmailStatus] = useState<"idle" | "saving" | "sent" | "error">("idle");
-  const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [targetLanguageIds, setTargetLanguageIds] = useState<string[]>(
     profile?.target_language_ids?.slice(0, 1).map(String) ?? []
   );
@@ -143,15 +144,6 @@ export default function SettingsScreen() {
     (localSettings.notifications_enabled ?? false) !== normalizedProfileNotifications;
 
   useEffect(() => {
-    setErrorMessage("");
-    fetchLanguages()
-      .then(setLanguages)
-      .catch(() => {
-        setErrorMessage("We couldn't load your settings data right now. Please try again in a moment.");
-      });
-  }, []);
-
-  useEffect(() => {
     if (!profile) return;
     setLocalSettings({
       cards_per_session: profile.cards_per_session,
@@ -174,16 +166,6 @@ export default function SettingsScreen() {
     // Reset email status when the underlying user email changes
     setEmailStatus("idle");
   }, [user?.email]);
-
-  if (profileLoading) {
-    return (
-      <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#FF6B4A" />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   async function saveSettings() {
     setErrorMessage("");
@@ -385,6 +367,16 @@ export default function SettingsScreen() {
 
     return unsubscribe;
   }, [hasUnsavedChanges, navigation, name, email, localSettings, profile, user]);
+
+  if (profileLoading) {
+    return (
+      <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#FF6B4A" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">

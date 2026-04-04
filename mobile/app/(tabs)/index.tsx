@@ -1,83 +1,49 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, Image, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
-import {
-  fetchCategories,
-  fetchInProgressLesson,
-  fetchSRSQueue,
-  type ApiLessonSession,
-  type ApiSRSQueue,
-} from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
+import { useSRSQueue, useInProgressLesson, useInProgressLessonName } from "../../lib/queries";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
 
 
 export default function Home() {
-  const { session, profile } = useAuth();
+  const { profile } = useAuth();
   const posthog = useAnalytics();
-  const [srsQueue, setSrsQueue] = useState<ApiSRSQueue | null>(null);
-  const [inProgressLesson, setInProgressLesson] = useState<ApiLessonSession | null>(null);
-  const [inProgressLessonName, setInProgressLessonName] = useState<string | null>(null);
-  const [loadingSRS, setLoadingSRS] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [startingBrowseCategories, setStartingBrowseCategories] = useState(false);
+  const {
+    data: srsQueue,
+    refetch: refetchSRS,
+    isStale: isSRSStale,
+    error: srsError,
+  } = useSRSQueue();
+  const {
+    data: inProgressLesson,
+    refetch: refetchLesson,
+    isStale: isLessonStale,
+    error: lessonError,
+  } = useInProgressLesson();
+  const inProgressLessonName = useInProgressLessonName();
   const [continuingLesson, setContinuingLesson] = useState(false);
+  const loadError =
+    srsError || lessonError
+      ? "We had trouble loading part of your home screen. Please try again in a moment."
+      : "";
+
+  // Refs hold the current staleness so the useFocusEffect callback reads the
+  // live value without needing to be recreated every time isStale changes.
+  const isSRSStaleRef = useRef(false);
+  isSRSStaleRef.current = isSRSStale;
+  const isLessonStaleRef = useRef(false);
+  isLessonStaleRef.current = isLessonStale;
 
   useFocusEffect(
     useCallback(() => {
-      async function loadHomeData() {
-        if (!session?.access_token) {
-          setSrsQueue(null);
-          setInProgressLesson(null);
-          setInProgressLessonName(null);
-          setLoadingSRS(false);
-          return;
-        }
-
-        setLoadingSRS(true);
-        setLoadError("");
-
-        try {
-          const [queueResult, lessonResult, categoriesResult] = await Promise.allSettled([
-            fetchSRSQueue(session.access_token),
-            fetchInProgressLesson(session.access_token),
-            fetchCategories(),
-          ]);
-
-          const queue = queueResult.status === "fulfilled" ? queueResult.value : null;
-          const lesson = lessonResult.status === "fulfilled" ? lessonResult.value : null;
-          const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
-
-          setSrsQueue(queue);
-          setInProgressLesson(lesson);
-          setInProgressLessonName(
-            lesson
-              ? categories.find((category) => String(category.id) === String(lesson.category_id))?.name ?? null
-              : null,
-          );
-
-          const hasApiError = [queueResult, lessonResult, categoriesResult].some(
-            (result) => result.status === "rejected",
-          );
-          if (hasApiError) {
-            setLoadError("We had trouble loading part of your home screen. Please try again in a moment.");
-          }
-        } catch {
-          setSrsQueue(null);
-          setInProgressLesson(null);
-          setInProgressLessonName(null);
-          setLoadError("We couldn't load your home screen right now. Please check your connection and try again.");
-        } finally {
-          setLoadingSRS(false);
-        }
-      }
-
-      void loadHomeData();
-    }, [session?.access_token]),
+      if (isSRSStaleRef.current) refetchSRS();
+      if (isLessonStaleRef.current) refetchLesson();
+    }, [refetchSRS, refetchLesson]),
   );
 
   const greeting = (() => {
@@ -118,14 +84,12 @@ export default function Home() {
     }
   }
 
-  async function handleBrowseCategories() {
+  function handleBrowseCategories() {
     posthog?.capture("home_action_tapped", {
       action: "browse_categories",
       has_preferred_language: Boolean(profile?.target_language_ids?.[0]),
     });
-    setStartingBrowseCategories(true);
-    router.push("/categories");
-    setStartingBrowseCategories(false);
+    router.push("/(tabs)/categories");
   }
 
   return (
@@ -165,7 +129,7 @@ export default function Home() {
           ) : null}
 
           {/* SRS due card */}
-          {!loadingSRS && srsQueue != null && srsQueue.due_count > 0 && (
+          {srsQueue != null && srsQueue.due_count > 0 && (
             <Pressable
               onPress={() => { posthog?.capture("home_action_tapped", { action: "srs_review", due_count: srsQueue.due_count }); router.push("/(tabs)/review"); }}
               className="mx-6 mb-4 rounded-2xl p-4 flex-row items-center bg-primary"
