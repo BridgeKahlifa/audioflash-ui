@@ -66,6 +66,7 @@ export default function Generate() {
   const [cardCount, setCardCount] = useState(10);
   const [status, setStatus] = useState<"idle" | "generating" | "starting" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   // Preview step
   const [generatedResult, setGeneratedResult] = useState<GeneratedResult | null>(null);
@@ -76,6 +77,7 @@ export default function Generate() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    setLoadError("");
     fetchLanguages()
       .then((langs) => {
         const available = langs.filter(
@@ -91,7 +93,9 @@ export default function Generate() {
           setSelectedLanguageId(available[0].id);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setLoadError("We couldn't load the available languages right now. Please try again in a moment.");
+      });
   }, []);
 
   const canGenerate =
@@ -178,6 +182,7 @@ export default function Generate() {
       const lessonSession = await createLessonSession(session.access_token, {
         profile_id: profileId,
         category_id: generatedResult.categoryId,
+        difficulty: difficultyLevel,
         started_at: new Date().toISOString(),
         card_ids: previewCards.map((card) => String(card.id)),
         current_index: 0,
@@ -194,6 +199,7 @@ export default function Generate() {
           languageLabel: generatedResult.languageLabel,
           apiLanguageId: generatedResult.languageId,
           apiCategoryId: generatedResult.categoryId,
+          difficulty: String(difficultyLevel),
           apiLoaded: "true",
           lessonSessionId: lessonSession.session_id,
           activityId: lessonSession.activity_id ?? lessonSession.session_id,
@@ -594,6 +600,12 @@ export default function Generate() {
                 </Pressable>
               ))}
             </View>
+
+            {loadError ? (
+              <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+                <Text className="text-red-600 text-sm">{loadError}</Text>
+              </View>
+            ) : null}
 
             {errorMessage ? (
               <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">

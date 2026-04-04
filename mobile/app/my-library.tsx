@@ -18,6 +18,7 @@ export default function MyLibrary() {
   const [saved, setSaved] = useState<ApiSavedLesson[]>([]);
   const [languages, setLanguages] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   useFocusEffect(
@@ -28,6 +29,7 @@ export default function MyLibrary() {
           return;
         }
         setLoading(true);
+        setErrorMessage("");
         try {
           const [savedData, langData] = await Promise.all([
             fetchSavedLessons(session.access_token),
@@ -38,7 +40,7 @@ export default function MyLibrary() {
           langData.forEach((l: ApiLanguage) => langMap.set(l.id, l.language));
           setLanguages(langMap);
         } catch {
-          // ignore
+          setErrorMessage("We couldn't load your library right now. Please check your connection and try again.");
         } finally {
           setLoading(false);
         }
@@ -51,11 +53,12 @@ export default function MyLibrary() {
   async function handleRemove(categoryId: string) {
     if (!session?.access_token || removingId) return;
     setRemovingId(categoryId);
+    setErrorMessage("");
     try {
       await unsaveLesson(session.access_token, categoryId);
       setSaved((prev) => prev.filter((s) => s.category_id !== categoryId));
     } catch {
-      // ignore
+      setErrorMessage("We couldn't remove that lesson right now. Please try again.");
     } finally {
       setRemovingId(null);
     }
@@ -101,83 +104,93 @@ export default function MyLibrary() {
             <View className="items-center py-16">
               <ActivityIndicator size="large" color="#FF6B4A" />
             </View>
-          ) : saved.length === 0 ? (
-            <View className="items-center py-16 gap-3">
-              <View className="w-16 h-16 rounded-full bg-secondary items-center justify-center">
-                <Ionicons name="bookmark-outline" size={28} color="#A0A0A0" />
-              </View>
-              <Text className="text-foreground font-medium text-center">No saved lessons yet</Text>
-              <Text className="text-muted text-sm text-center">
-                Save lessons from the library or generate new ones to see them here.
-              </Text>
-              <Pressable
-                onPress={() => router.push("/generate")}
-                className="mt-2 rounded-2xl px-5 py-3 bg-primary"
-                style={{
-                  shadowColor: "#FF6B4A",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
-              >
-                <Text className="text-primary-foreground font-semibold">Generate a Lesson</Text>
-              </Pressable>
-            </View>
           ) : (
-            <View className="gap-3">
-              {saved.map((lesson) => {
-                const langName = lesson.language_id ? languages.get(lesson.language_id) : null;
-                return (
-                  <View
-                    key={lesson.id}
-                    className="bg-card border border-border rounded-2xl p-4"
+            <>
+              {errorMessage ? (
+                <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+                  <Text className="text-red-600 text-sm">{errorMessage}</Text>
+                </View>
+              ) : null}
+
+              {saved.length === 0 ? (
+                <View className="items-center py-16 gap-3">
+                  <View className="w-16 h-16 rounded-full bg-secondary items-center justify-center">
+                    <Ionicons name="bookmark-outline" size={28} color="#A0A0A0" />
+                  </View>
+                  <Text className="text-foreground font-medium text-center">No saved lessons yet</Text>
+                  <Text className="text-muted text-sm text-center">
+                    Save lessons from the library or generate new ones to see them here.
+                  </Text>
+                  <Pressable
+                    onPress={() => router.push("/generate")}
+                    className="mt-2 rounded-2xl px-5 py-3 bg-primary"
                     style={{
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.05,
-                      shadowRadius: 4,
-                      elevation: 1,
+                      shadowColor: "#FF6B4A",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 8,
+                      elevation: 4,
                     }}
                   >
-                    <View className="flex-row items-start gap-3">
-                      <View className="w-11 h-11 rounded-xl bg-secondary items-center justify-center flex-shrink-0">
-                        <LanguageFlag name={langName ?? ""} size="lg" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-foreground font-semibold">{lesson.category_name}</Text>
-                        {langName ? (
-                          <Text className="text-muted text-xs mt-0.5">{langName}</Text>
-                        ) : null}
-                        {lesson.supported_difficulties?.length > 0 && (
-                          <Text className="text-muted text-xs mt-0.5">
-                            Difficulty: {lesson.supported_difficulties.join(", ")}
-                          </Text>
-                        )}
-                      </View>
-                      <Pressable
-                        onPress={() => handleRemove(lesson.category_id)}
-                        disabled={removingId === lesson.category_id}
-                        className="w-8 h-8 items-center justify-center rounded-full bg-secondary"
+                    <Text className="text-primary-foreground font-semibold">Generate a Lesson</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View className="gap-3">
+                  {saved.map((lesson) => {
+                    const langName = lesson.language_id ? languages.get(lesson.language_id) : null;
+                    return (
+                      <View
+                        key={lesson.id}
+                        className="bg-card border border-border rounded-2xl p-4"
+                        style={{
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.05,
+                          shadowRadius: 4,
+                          elevation: 1,
+                        }}
                       >
-                        {removingId === lesson.category_id ? (
-                          <ActivityIndicator size="small" color="#A0A0A0" />
-                        ) : (
-                          <Ionicons name="bookmark" size={16} color="#FF6B4A" />
-                        )}
-                      </Pressable>
-                    </View>
+                        <View className="flex-row items-start gap-3">
+                          <View className="w-11 h-11 rounded-xl bg-secondary items-center justify-center flex-shrink-0">
+                            <LanguageFlag name={langName ?? ""} size="lg" />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-foreground font-semibold">{lesson.category_name}</Text>
+                            {langName ? (
+                              <Text className="text-muted text-xs mt-0.5">{langName}</Text>
+                            ) : null}
+                            {lesson.supported_difficulties?.length > 0 && (
+                              <Text className="text-muted text-xs mt-0.5">
+                                Difficulty: {lesson.supported_difficulties.join(", ")}
+                              </Text>
+                            )}
+                          </View>
+                          <Pressable
+                            onPress={() => handleRemove(lesson.category_id)}
+                            disabled={removingId === lesson.category_id}
+                            className="w-8 h-8 items-center justify-center rounded-full bg-secondary"
+                          >
+                            {removingId === lesson.category_id ? (
+                              <ActivityIndicator size="small" color="#A0A0A0" />
+                            ) : (
+                              <Ionicons name="bookmark" size={16} color="#FF6B4A" />
+                            )}
+                          </Pressable>
+                        </View>
 
-                    <Pressable
-                      onPress={() => handleStart(lesson)}
-                      className="mt-3 py-2.5 rounded-xl bg-accent items-center"
-                    >
-                      <Text className="text-primary font-semibold text-sm">Start Lesson</Text>
-                    </Pressable>
-                  </View>
-                );
-              })}
-            </View>
+                        <Pressable
+                          onPress={() => handleStart(lesson)}
+                          className="mt-3 py-2.5 rounded-xl bg-accent items-center"
+                        >
+                          <Text className="text-primary font-semibold text-sm">Start Lesson</Text>
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </>
           )}
         </ScrollView>
       </View>

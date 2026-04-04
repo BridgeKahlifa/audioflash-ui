@@ -13,10 +13,24 @@ const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
 export default function Home() {
   const { profile } = useAuth();
   const posthog = useAnalytics();
-  const { data: srsQueue, refetch: refetchSRS, isStale: isSRSStale } = useSRSQueue();
-  const { data: inProgressLesson, refetch: refetchLesson, isStale: isLessonStale } = useInProgressLesson();
+  const {
+    data: srsQueue,
+    refetch: refetchSRS,
+    isStale: isSRSStale,
+    error: srsError,
+  } = useSRSQueue();
+  const {
+    data: inProgressLesson,
+    refetch: refetchLesson,
+    isStale: isLessonStale,
+    error: lessonError,
+  } = useInProgressLesson();
   const inProgressLessonName = useInProgressLessonName();
   const [continuingLesson, setContinuingLesson] = useState(false);
+  const loadError =
+    srsError || lessonError
+      ? "We had trouble loading part of your home screen. Please try again in a moment."
+      : "";
 
   // Refs hold the current staleness so the useFocusEffect callback reads the
   // live value without needing to be recreated every time isStale changes.
@@ -40,8 +54,6 @@ export default function Home() {
   })();
 
   const firstName = profile?.name?.split(" ")[0] ?? null;
-  const preferredLanguageId = profile?.target_language_ids?.[0] ?? null;
-
   async function handleContinueLesson() {
     if (!inProgressLesson || continuingLesson) return;
 
@@ -75,7 +87,7 @@ export default function Home() {
   function handleBrowseCategories() {
     posthog?.capture("home_action_tapped", {
       action: "browse_categories",
-      has_preferred_language: Boolean(preferredLanguageId),
+      has_preferred_language: Boolean(profile?.target_language_ids?.[0]),
     });
     router.push("/(tabs)/categories");
   }
@@ -109,6 +121,12 @@ export default function Home() {
               <Text className="text-muted mt-1 text-sm">Start practicing to build your streak</Text>
             )}
           </View>
+
+          {loadError ? (
+            <View className="mx-6 mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+              <Text className="text-red-600 text-sm">{loadError}</Text>
+            </View>
+          ) : null}
 
           {/* SRS due card */}
           {srsQueue != null && srsQueue.due_count > 0 && (

@@ -108,6 +108,7 @@ export default function SettingsScreen() {
   const { data: languages = [] } = useLanguages();
   const posthog = useAnalytics();
   const navigation = useNavigation();
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [localSettings, setLocalSettings] = useState<ApiUpdateProfile>({
     cards_per_session: profile?.cards_per_session ?? 20,
@@ -119,7 +120,7 @@ export default function SettingsScreen() {
   const [email, setEmail] = useState(user?.email ?? "");
   const [emailStatus, setEmailStatus] = useState<"idle" | "saving" | "sent" | "error">("idle");
   const [targetLanguageIds, setTargetLanguageIds] = useState<string[]>(
-    profile?.target_language_ids?.map(String) ?? []
+    profile?.target_language_ids?.slice(0, 1).map(String) ?? []
   );
   const [showTargetPicker, setShowTargetPicker] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -145,7 +146,7 @@ export default function SettingsScreen() {
       notifications_enabled: profile.notifications_enabled,
     });
     setName(profile.name ?? "");
-    setTargetLanguageIds(profile.target_language_ids?.map(String) ?? []);
+    setTargetLanguageIds(profile.target_language_ids?.slice(0, 1).map(String) ?? []);
   }, [profile]);
 
   useEffect(() => {
@@ -161,17 +162,8 @@ export default function SettingsScreen() {
     setEmailStatus("idle");
   }, [user?.email]);
 
-  if (profileLoading) {
-    return (
-      <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#FF6B4A" />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   async function saveSettings() {
+    setErrorMessage("");
     const { error } = await updateProfileData(localSettings);
     if (!error) {
       setSaved(true);
@@ -181,21 +173,29 @@ export default function SettingsScreen() {
         audio_speed: localSettings.audio_speed,
         notifications_enabled: localSettings.notifications_enabled,
       });
+    } else {
+      setErrorMessage("We couldn't save your settings right now. Please try again.");
     }
   }
 
   async function saveName() {
     setNameStatus("saving");
+    setErrorMessage("");
     const { error } = await updateProfileData({ name });
     setNameStatus(error ? "error" : "saved");
+    if (error) {
+      setErrorMessage("We couldn't save your name right now. Please try again.");
+    }
     setTimeout(() => setNameStatus("idle"), 2000);
   }
 
   async function saveEmail() {
     setEmailStatus("saving");
+    setErrorMessage("");
     const { error } = await updateEmail(email);
     if (error) {
       setEmailStatus("error");
+      setErrorMessage("We couldn't update your email right now. Please try again.");
       setTimeout(() => setEmailStatus("idle"), 2000);
     } else {
       setEmailStatus("sent");
@@ -205,10 +205,11 @@ export default function SettingsScreen() {
   async function saveAllPendingChanges(): Promise<boolean> {
     if (name !== normalizedProfileName) {
       setNameStatus("saving");
+      setErrorMessage("");
       const { error } = await updateProfileData({ name });
       if (error) {
         setNameStatus("error");
-        Alert.alert("Error", error);
+        setErrorMessage("We couldn't save your name right now. Please try again.");
         return false;
       }
       setNameStatus("saved");
@@ -217,10 +218,11 @@ export default function SettingsScreen() {
 
     if (email !== normalizedProfileEmail) {
       setEmailStatus("saving");
+      setErrorMessage("");
       const { error } = await updateEmail(email);
       if (error) {
         setEmailStatus("error");
-        Alert.alert("Error", error);
+        setErrorMessage("We couldn't update your email right now. Please try again.");
         return false;
       }
       setEmailStatus("sent");
@@ -231,9 +233,10 @@ export default function SettingsScreen() {
       (localSettings.audio_speed ?? 1.0) !== normalizedProfileAudioSpeed ||
       (localSettings.notifications_enabled ?? false) !== normalizedProfileNotifications
     ) {
+      setErrorMessage("");
       const { error } = await updateProfileData(localSettings);
       if (error) {
-        Alert.alert("Error", error);
+        setErrorMessage("We couldn't save your settings right now. Please try again.");
         return false;
       }
       setSaved(true);
@@ -248,20 +251,18 @@ export default function SettingsScreen() {
     return true;
   }
 
-  async function toggleTargetLanguage(id: string) {
+  async function selectTargetLanguage(id: string) {
     const previousTargetLanguageIds = targetLanguageIds;
-    const adding = !targetLanguageIds.includes(id);
-    const updated = adding
-      ? [...targetLanguageIds, id]
-      : targetLanguageIds.filter((l) => l !== id);
+    const updated = [id];
     setTargetLanguageIds(updated);
+    setErrorMessage("");
     const { error } = await updateProfileData({ target_language_ids: updated });
     if (error) {
       setTargetLanguageIds(previousTargetLanguageIds);
-      Alert.alert("Error", error);
+      setErrorMessage("We couldn't save your language selection right now. Please try again.");
     } else {
       const lang = languages.find((l) => String(l.id) === id);
-      posthog?.capture("settings_target_language_toggled", { language: lang?.language, action: adding ? "added" : "removed" });
+      posthog?.capture("settings_target_language_selected", { language: lang?.language });
     }
   }
 
@@ -287,12 +288,12 @@ export default function SettingsScreen() {
     );
   }
 
-  const targetLanguagesLabel = targetLanguageIds.length === 0
+  const targetLanguageLabel = targetLanguageIds.length === 0
     ? "Select..."
     : targetLanguageIds
       .map((id) => languages.find((l) => String(l.id) === id)?.language)
       .filter(Boolean)
-      .join(", ");
+      .join("");
 
   usePreventRemove(hasUnsavedChanges, (event) => {
     if (typeof event.preventDefault !== "function") return;
@@ -362,6 +363,16 @@ export default function SettingsScreen() {
     return unsubscribe;
   }, [hasUnsavedChanges, navigation, name, email, localSettings, profile, user]);
 
+  if (profileLoading) {
+    return (
+      <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#FF6B4A" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
@@ -370,6 +381,11 @@ export default function SettingsScreen() {
         </View>
 
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 32 }}>
+          {errorMessage ? (
+            <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+              <Text className="text-red-600 text-sm">{errorMessage}</Text>
+            </View>
+          ) : null}
 
           {/* ── Profile ── */}
           <SectionLabel>Profile</SectionLabel>
@@ -435,7 +451,7 @@ export default function SettingsScreen() {
             >
               <View className="flex-1 mr-3">
                 <Text className="text-xs text-muted mb-0.5">Learning</Text>
-                <Text className="text-foreground font-medium" numberOfLines={2}>{targetLanguagesLabel}</Text>
+                <Text className="text-foreground font-medium" numberOfLines={2}>{targetLanguageLabel}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </Pressable>
@@ -553,8 +569,7 @@ export default function SettingsScreen() {
         visible={showTargetPicker}
         languages={languages}
         selectedIds={targetLanguageIds}
-        multiSelect
-        onToggle={toggleTargetLanguage}
+        onToggle={selectTargetLanguage}
         onClose={() => setShowTargetPicker(false)}
       />
     </SafeAreaView>

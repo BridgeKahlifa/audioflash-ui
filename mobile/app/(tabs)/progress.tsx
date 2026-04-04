@@ -43,8 +43,22 @@ function SimpleBarChart({ data }: { data: { day: string; cards: number }[] }) {
 }
 
 export default function ProgressDashboard() {
-  const { data: sessions = [], refetch: refetchSessions, isStale: isSessionsStale } = useSessions();
-  const { data: stats, refetch: refetchStats, isStale: isStatsStale } = useSessionStats();
+  const {
+    data: sessions = [],
+    refetch: refetchSessions,
+    isStale: isSessionsStale,
+    error: sessionsError,
+  } = useSessions();
+  const {
+    data: stats,
+    refetch: refetchStats,
+    isStale: isStatsStale,
+    error: statsError,
+  } = useSessionStats();
+  const errorMessage =
+    sessionsError || statsError
+      ? "We couldn't refresh your progress right now. Showing the latest available data."
+      : "";
 
   const isSessionsStaleRef = useRef(false);
   isSessionsStaleRef.current = isSessionsStale;
@@ -87,6 +101,11 @@ export default function ProgressDashboard() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
         >
+          {errorMessage ? (
+            <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+              <Text className="text-red-600 text-sm">{errorMessage}</Text>
+            </View>
+          ) : null}
 
           {/* Streak banner */}
           <View className="rounded-3xl p-6 mb-4" style={{ backgroundColor: "#FF6B4A" }}>

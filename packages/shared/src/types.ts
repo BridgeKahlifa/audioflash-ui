@@ -37,6 +37,8 @@ export interface SessionHistoryItem {
   topicTitle: string;
   language: string;
   languageLabel: string;
+  categoryId?: string;
+  difficulty?: number;
   correct: number;
   total: number;
   cards: SessionCardResult[];

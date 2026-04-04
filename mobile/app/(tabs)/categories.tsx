@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,7 +16,6 @@ interface Topic {
   supportedDifficulties: number[];
 }
 
-
 const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
   "airplane", "car", "restaurant", "heart",
   "briefcase", "school", "bag-handle", "home",
@@ -30,57 +23,62 @@ const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
 
 export default function Categories() {
   const { profile, profileLoading, updateProfileData } = useAuth();
-  const { data: languages = [] } = useLanguages();
-  const { data: contextCategories = [] } = useCategories();
+  const { data: languages = [], isPending: languagesLoading, error: languagesError } = useLanguages();
+  const {
+    data: contextCategories = [],
+    isPending: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
 
   const preferredLanguageId = profile?.target_language_ids?.[0] ?? null;
   const needsLanguagePicker = profile !== null && !preferredLanguageId;
 
   const [savingLanguage, setSavingLanguage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  // True while the user has manually opened the language picker to switch languages.
-  // Prevents the useEffect from immediately re-resolving resolvedLanguage from the
-  // profile (which still has the old language) before the new one is saved.
   const [switchingLanguage, setSwitchingLanguage] = useState(false);
-
   const [resolvedLanguage, setResolvedLanguage] = useState<ApiLanguage | null>(null);
+
   useEffect(() => {
     if (switchingLanguage) return;
     if (!preferredLanguageId || languages.length === 0) {
       setResolvedLanguage(null);
       return;
     }
-    const found = languages.find((l) => String(l.id) === String(preferredLanguageId));
+
+    const found = languages.find((lang) => String(lang.id) === String(preferredLanguageId));
     if (found) setResolvedLanguage(found);
   }, [preferredLanguageId, languages, switchingLanguage]);
 
-  // Derive topics from context categories
-  const topics = contextCategories.map((cat, i) => ({
-    id: `category-${cat.id}`,
-    title: cat.name,
-    icon: CATEGORY_ICONS[i % CATEGORY_ICONS.length],
-    apiCategoryId: String(cat.id),
-    supportedDifficulties: cat.supported_difficulties ?? [],
+  const topics: Topic[] = contextCategories.map((category, index) => ({
+    id: `category-${category.id}`,
+    title: category.name,
+    icon: CATEGORY_ICONS[index % CATEGORY_ICONS.length],
+    apiCategoryId: String(category.id),
+    supportedDifficulties: category.supported_difficulties ?? [],
   }));
 
   async function handleSelectLanguage(lang: ApiLanguage) {
     setResolvedLanguage(lang);
     setSavingLanguage(true);
+    setErrorMessage("");
 
     const { error } = await updateProfileData({ target_language_ids: [String(lang.id)] });
     setSavingLanguage(false);
 
     if (error) {
       setResolvedLanguage(null);
-      // Keep switchingLanguage true so the picker stays visible for retry
-    } else {
-      setSwitchingLanguage(false);
+      setErrorMessage("We couldn't save your language selection right now. Please try again.");
+      return;
     }
+
+    setSwitchingLanguage(false);
   }
 
-  const handleStartLesson = () => {
+  function handleStartLesson() {
     if (!selectedTopic || !resolvedLanguage) return;
-    const topic = topics.find((t) => t.id === selectedTopic);
+    const topic = topics.find((item) => item.id === selectedTopic);
+
     router.push({
       pathname: "/lesson-ready/[topic]",
       params: {
@@ -94,9 +92,15 @@ export default function Categories() {
         supportedDifficulties: (topic?.supportedDifficulties ?? []).join(","),
       },
     });
-  };
+  }
 
-  // Profile still loading — don't render anything yet
+  const queryErrorMessage = languagesError
+    ? "We couldn't load the available languages right now. Please try again in a moment."
+    : categoriesError
+      ? "We couldn't load the available categories right now. Please try again in a moment."
+      : "";
+  const visibleErrorMessage = errorMessage || queryErrorMessage;
+
   if (profile === null && profileLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: "#FAFAF8", alignItems: "center", justifyContent: "center" }}>
@@ -105,18 +109,13 @@ export default function Categories() {
     );
   }
 
-  // --- Language selection ---
   if (needsLanguagePicker || switchingLanguage) {
     return (
       <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
         <View className="flex-1 max-w-md w-full mx-auto">
           <View className="px-6 pt-8 pb-4">
-            <Text className="text-3xl font-semibold text-foreground tracking-tight">
-              Choose Language
-            </Text>
-            <Text className="text-muted text-sm mt-1">
-              Pick the language you want to learn
-            </Text>
+            <Text className="text-3xl font-semibold text-foreground tracking-tight">Choose Language</Text>
+            <Text className="text-muted text-sm mt-1">Pick the language you want to learn</Text>
           </View>
 
           <ScrollView
@@ -124,14 +123,25 @@ export default function Categories() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 16 }}
           >
-            <View className="gap-3">
+            {visibleErrorMessage ? (
+              <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+                <Text className="text-red-600 text-sm">{visibleErrorMessage}</Text>
+              </View>
+            ) : null}
+
+            {languagesLoading ? (
+              <View className="items-center justify-center py-16">
+                <ActivityIndicator size="large" color="#FF6B4A" />
+              </View>
+            ) : (
+              <View className="gap-3">
                 {languages.map((lang) => {
                   const available = !lang.language.toLowerCase().includes("coming soon");
                   return (
                     <Pressable
                       key={lang.id}
                       onPress={() => {
-                        if (available && !savingLanguage) handleSelectLanguage(lang);
+                        if (available && !savingLanguage) void handleSelectLanguage(lang);
                       }}
                       className={`rounded-2xl p-4 border-2 border-transparent flex-row items-center bg-card ${!available ? "opacity-60" : ""}`}
                       style={{
@@ -160,20 +170,26 @@ export default function Categories() {
                   );
                 })}
               </View>
+            )}
           </ScrollView>
         </View>
       </SafeAreaView>
     );
   }
 
-  // --- Category selection ---
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
         <View className="pt-8 pb-6 px-6">
           <Text className="text-3xl font-semibold text-foreground tracking-tight">Browse</Text>
           {resolvedLanguage ? (
-            <Pressable onPress={() => { setSwitchingLanguage(true); setResolvedLanguage(null); }} className="flex-row items-center mt-1">
+            <Pressable
+              onPress={() => {
+                setSwitchingLanguage(true);
+                setResolvedLanguage(null);
+              }}
+              className="flex-row items-center mt-1"
+            >
               <View style={{ marginRight: 4 }}>
                 <LanguageFlag name={resolvedLanguage.language} size="sm" />
               </View>
@@ -189,11 +205,22 @@ export default function Categories() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 16 }}
         >
-          {topics.length === 0 ? (
+          {visibleErrorMessage ? (
+            <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+              <Text className="text-red-600 text-sm">{visibleErrorMessage}</Text>
+            </View>
+          ) : null}
+
+          {categoriesLoading ? (
+            <View className="items-center justify-center py-16">
+              <ActivityIndicator size="large" color="#FF6B4A" />
+            </View>
+          ) : topics.length === 0 ? (
             <View className="items-center justify-center py-16">
               <Text className="text-muted text-center">No categories available</Text>
             </View>
           ) : null}
+
           <View className="flex-row flex-wrap gap-3">
             {topics.map((topic) => {
               const isSelected = selectedTopic === topic.id;

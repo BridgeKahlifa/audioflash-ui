@@ -26,6 +26,7 @@ export default function FlashcardPractice() {
     languageLabel,
     apiLanguageId,
     apiCategoryId,
+    difficulty,
     apiLoaded,
     lessonSessionId,
     activityId,
@@ -40,6 +41,7 @@ export default function FlashcardPractice() {
     languageLabel?: string;
     apiLanguageId?: string;
     apiCategoryId?: string;
+    difficulty?: string;
     apiLoaded?: string;
     lessonSessionId?: string;
     activityId?: string;
@@ -62,7 +64,9 @@ export default function FlashcardPractice() {
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [sliderWidth, setSliderWidth] = useState(0);
   const [resolvedActivityId, setResolvedActivityId] = useState<string | null>(activityId ?? null);
-
+  const [resolvedDifficulty, setResolvedDifficulty] = useState<number | null>(
+    difficulty != null ? Number(difficulty) : null,
+  );
   const shownAtRef = useRef(Date.now());
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionStartedAt = useRef(Date.now());
@@ -115,6 +119,15 @@ export default function FlashcardPractice() {
 
           setCards(mappedCards);
           setResolvedActivityId(lessonSession.activity_id ?? lessonSession.session_id);
+          setResolvedDifficulty(
+            typeof lessonSession.difficulty === "number"
+              ? lessonSession.difficulty
+              : typeof sessionFlashcards[0]?.difficulty === "number"
+              ? sessionFlashcards[0].difficulty
+              : difficulty != null
+                ? Number(difficulty)
+                : null,
+          );
           setCurrentIndex(
             Math.max(
               0,
@@ -143,6 +156,7 @@ export default function FlashcardPractice() {
       if (stored && stored.length > 0) {
         setCards(stored);
         setResolvedActivityId(activityId ?? null);
+        setResolvedDifficulty(difficulty != null ? Number(difficulty) : null);
         setCurrentIndex(0);
         posthog?.capture("session_started", {
           language: languageLabel,
@@ -157,6 +171,7 @@ export default function FlashcardPractice() {
     void loadCards();
   }, [
     activityId,
+    difficulty,
     initialResumeIndex,
     isResumeSession,
     languageLabel,
