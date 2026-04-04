@@ -10,25 +10,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Flashcard, SessionCardResult } from "../../lib/types";
+import { Flashcard } from "../../lib/types";
 import { getCurrentCards } from "../../lib/storage";
-import { saveCompletedSession } from "../../lib/storage";
 import { speakText } from "../../lib/audio";
 import { useAuth } from "../../lib/auth-context";
-import {
-  completeReviewLifecycle,
-  createReview,
-  createFlashcardAttempt,
-  createSession,
-  endLesson,
-  fetchLessonSession,
-  fetchLessonSessionFlashcards,
-  fetchSessions,
-  fetchSessionStats,
-  updateFlashcardAttempt,
-} from "../../lib/api";
-import { setCachedSessions, setCachedSessionStats } from "../../lib/storage";
+import { fetchLessonSession, fetchLessonSessionFlashcards } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
+import { useSessionManager } from "../../lib/use-session-manager";
 
 export default function FlashcardPractice() {
   const {
@@ -62,34 +50,51 @@ export default function FlashcardPractice() {
     initialCurrentIndex?: string;
     lessonStatus?: string;
   }>();
-  const { profile, session } = useAuth();
+
+  const { session } = useAuth();
   const posthog = useAnalytics();
+
+  // ── Card state ─────────────────────────────────────────────────────────────
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [canRevealAnswer, setCanRevealAnswer] = useState(false);
-  const [results, setResults] = useState<SessionCardResult[]>([]);
   const [selectedConfidence, setSelectedConfidence] = useState<number | null>(null);
   const [audioPlayCount, setAudioPlayCount] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  const [submitting, setSubmitting] = useState(false);
-  const [submittingResult, setSubmittingResult] = useState<"knew" | "didnt-know" | null>(null);
-  const [attemptError, setAttemptError] = useState("");
   const [sliderWidth, setSliderWidth] = useState(0);
   const [resolvedActivityId, setResolvedActivityId] = useState<string | null>(activityId ?? null);
   const [resolvedDifficulty, setResolvedDifficulty] = useState<number | null>(
     difficulty != null ? Number(difficulty) : null,
   );
   const shownAtRef = useRef(Date.now());
-  const submitLockRef = useRef(false);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionStartedAt = useRef(Date.now());
   const isResumeSession = resumeSession === "true";
   const initialResumeIndex = Number(initialCurrentIndex ?? 0);
 
-  // Swipe animation
+  // ── Session manager (all API orchestration) ────────────────────────────────
+  const { submitting, submittingResult, attemptError, results, handleResult } = useSessionManager({
+    cards,
+    currentIndex,
+    resolvedActivityId,
+    selectedConfidence,
+    audioPlayCount,
+    shownAtRef,
+    sessionStartedAt,
+    isResumeSession,
+    lessonSessionId,
+    reviewId,
+    topic,
+    topicTitle,
+    language,
+    languageLabel,
+  });
+
+  // ── Swipe animation ────────────────────────────────────────────────────────
   const translateX = useRef(new Animated.Value(0)).current;
 
+  // ── Load cards ─────────────────────────────────────────────────────────────
   useEffect(() => {
     async function loadCards() {
       if (isResumeSession && lessonSessionId && session?.access_token) {
@@ -101,10 +106,10 @@ export default function FlashcardPractice() {
           const flashcardsById = new Map(
             sessionFlashcards.map((card) => [String(card.id), card]),
           );
-          const orderedSessionFlashcards = lessonSession.card_ids
+          const ordered = lessonSession.card_ids
             .map((cardId) => flashcardsById.get(String(cardId)))
             .filter((card): card is (typeof sessionFlashcards)[number] => Boolean(card));
-          const mappedCards: Flashcard[] = orderedSessionFlashcards.map((card, index) => ({
+          const mappedCards: Flashcard[] = ordered.map((card, index) => ({
             id: index + 1,
             dbId: String(card.id),
             sourceText: card.source_text,
@@ -141,11 +146,10 @@ export default function FlashcardPractice() {
             lesson_status: lessonSession.status ?? lessonStatus,
             current_index: lessonSession.current_index ?? initialResumeIndex,
           });
-          return;
         } catch {
           setCards([]);
-          return;
         }
+        return;
       }
 
       const stored = await getCurrentCards(topic);
@@ -179,13 +183,13 @@ export default function FlashcardPractice() {
     topicTitle,
   ]);
 
+  // ── Per-card setup ─────────────────────────────────────────────────────────
   useEffect(() => {
     shownAtRef.current = Date.now();
     setAudioPlayCount(0);
-    setAttemptError("");
-    setSubmittingResult(null);
 
     const existingResult = results[currentIndex];
+    // Restore the confidence rating the user already picked for this card (if navigating back).
     setSelectedConfidence(existingResult?.confidenceRating ?? null);
     setCanRevealAnswer(Boolean(existingResult));
     setShowAnswer(Boolean(existingResult));
@@ -203,21 +207,23 @@ export default function FlashcardPractice() {
       }, 1500);
       speakText(card.sourceText, language ?? "chinese", playbackSpeed);
     }
-  }, [currentIndex, cards]);
+  // `results` is a dep because we read results[currentIndex] to restore state
+  // when the user navigates back to a card they already answered.
+  }, [currentIndex, cards, results]);
 
   useEffect(() => {
     return () => {
-      if (revealTimerRef.current) {
-        clearTimeout(revealTimerRef.current);
-      }
+      if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
     };
   }, []);
 
+  // ── Derived display values ─────────────────────────────────────────────────
   const currentCard = cards[currentIndex];
   const progress = cards.length > 0 ? (currentIndex + 1) / cards.length : 0;
   const shouldShowRevealButton = canRevealAnswer && !showAnswer;
   const shouldShowAnswerActions = canRevealAnswer && showAnswer;
-  const shouldPersistAttempts = Boolean(resolvedActivityId && currentCard?.dbId);
+
+  // ── Playback speed slider ──────────────────────────────────────────────────
   const minPlaybackSpeed = 0.5;
   const maxPlaybackSpeed = 1.0;
   const sliderThumbSize = 28;
@@ -232,46 +238,27 @@ export default function FlashcardPractice() {
     if (sliderUsableWidth <= 0) return;
     const ratio = Math.min(1, Math.max(0, position / sliderUsableWidth));
     const rawValue = minPlaybackSpeed + ratio * (maxPlaybackSpeed - minPlaybackSpeed);
-    const steppedValue = Math.round(rawValue * 10) / 10;
-    setPlaybackSpeed(Math.min(maxPlaybackSpeed, Math.max(minPlaybackSpeed, steppedValue)));
+    setPlaybackSpeed(Math.round(rawValue * 10) / 10);
   }
 
   function handleSliderLayout(event: LayoutChangeEvent) {
     setSliderWidth(event.nativeEvent.layout.width);
   }
 
+  // ── Navigation ─────────────────────────────────────────────────────────────
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 8,
-      onPanResponderMove: (_, gs) => {
-        translateX.setValue(gs.dx);
-      },
+      onPanResponderMove: (_, gs) => translateX.setValue(gs.dx),
       onPanResponderRelease: (_, gs) => {
         if (gs.dx < -100) {
-          // Swipe left → next
-          Animated.timing(translateX, {
-            toValue: -400,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            translateX.setValue(0);
-            goNext();
-          });
+          Animated.timing(translateX, { toValue: -400, duration: 200, useNativeDriver: true })
+            .start(() => { translateX.setValue(0); goNext(); });
         } else if (gs.dx > 100) {
-          // Swipe right → previous
-          Animated.timing(translateX, {
-            toValue: 400,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            translateX.setValue(0);
-            goPrev();
-          });
+          Animated.timing(translateX, { toValue: 400, duration: 200, useNativeDriver: true })
+            .start(() => { translateX.setValue(0); goPrev(); });
         } else {
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
         }
       },
     })
@@ -280,12 +267,8 @@ export default function FlashcardPractice() {
   const sliderPanResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (event) => {
-      updatePlaybackSpeedFromPosition(event.nativeEvent.locationX - sliderThumbSize / 2);
-    },
-    onPanResponderMove: (event) => {
-      updatePlaybackSpeedFromPosition(event.nativeEvent.locationX - sliderThumbSize / 2);
-    },
+    onPanResponderGrant: (e) => updatePlaybackSpeedFromPosition(e.nativeEvent.locationX - sliderThumbSize / 2),
+    onPanResponderMove: (e) => updatePlaybackSpeedFromPosition(e.nativeEvent.locationX - sliderThumbSize / 2),
   });
 
   function goPrev() {
@@ -302,207 +285,14 @@ export default function FlashcardPractice() {
     }
   }
 
-  async function handleResult(knew: boolean) {
-    if (!currentCard || submitting || submitLockRef.current) return;
-
-    submitLockRef.current = true;
-    setSubmitting(true);
-    setSubmittingResult(knew ? "knew" : "didnt-know");
-    setAttemptError("");
-    const responseTimeMs = Math.max(0, Date.now() - shownAtRef.current);
-    const existingResult = results[currentIndex];
-    let attemptId = existingResult?.attemptId;
-    let nextIndexFromServer: number | null = null;
-
-    if (shouldPersistAttempts) {
-      try {
-        if (attemptId) {
-          const updatedAttempt = await updateFlashcardAttempt(session?.access_token, attemptId, {
-            correct: knew,
-            confidence_rating: selectedConfidence,
-          });
-          nextIndexFromServer = updatedAttempt.current_index;
-        } else {
-          const attempt = await createFlashcardAttempt(session?.access_token, {
-            activity_id: resolvedActivityId!,
-            flashcard_id: currentCard.dbId!,
-            correct: knew,
-            response_time_ms: responseTimeMs,
-            audio_play_count: audioPlayCount,
-            hint_used: false,
-            confidence_rating: selectedConfidence,
-          });
-          attemptId = attempt.attempt_id;
-          nextIndexFromServer = attempt.current_index;
-        }
-      } catch (error) {
-        console.error("Failed to record flashcard attempt", error);
-        setAttemptError("We couldn't save that answer. Please check your connection and try again.");
-        setSubmitting(false);
-        setSubmittingResult(null);
-        submitLockRef.current = false;
-        return;
-      }
-    }
-
-    const nextResult: SessionCardResult = {
-      cardId: currentCard.dbId ?? currentCard.id,
-      sourceText: currentCard.sourceText,
-      romanization: currentCard.romanization,
-      translation: currentCard.translation,
-      knew,
-      confidenceRating: selectedConfidence,
-      attemptId,
-    };
-    const newResults = [...results];
-    newResults[currentIndex] = nextResult;
-    setResults(newResults);
-
-    posthog?.capture("card_result_submitted", {
-      knew,
-      confidence_rating: selectedConfidence,
-      response_time_ms: Math.max(0, Date.now() - shownAtRef.current),
-      audio_play_count: audioPlayCount,
-      card_index: currentIndex,
-      language: languageLabel,
-    });
-
-    const nextIndex = isResumeSession && nextIndexFromServer != null
-      ? nextIndexFromServer
-      : currentIndex + 1;
-
-    if (nextIndex < cards.length) {
-      setCurrentIndex(nextIndex);
-      setShowAnswer(false);
-      setSubmitting(false);
-      setSubmittingResult(null);
-      submitLockRef.current = false;
-    } else {
-      const completedResults = newResults.filter(
-        (result): result is SessionCardResult => Boolean(result),
-      );
-      const correct = completedResults.filter((r) => r.knew).length;
-      let createdReviewId: string | undefined;
-      let createdReviewName: string | undefined;
-
-      if (shouldPersistAttempts) {
-        const profileId = profile?.id ?? session?.user?.id;
-        if (!profileId) {
-          setAttemptError("We couldn't finish this session because your learner profile is missing.");
-          setSubmitting(false);
-          setSubmittingResult(null);
-          submitLockRef.current = false;
-          return;
-        }
-
-        try {
-          if (lessonSessionId) {
-            await endLesson(session?.access_token, {
-              profile_id: profileId,
-              session_id: lessonSessionId,
-            });
-          } else if (!reviewId) {
-            setAttemptError("We couldn't finish this lesson because the lesson session is missing.");
-            setSubmitting(false);
-            setSubmittingResult(null);
-            submitLockRef.current = false;
-            return;
-          }
-
-          if (!reviewId && lessonSessionId) {
-            const missedFlashcardIds = completedResults
-              .filter((result) => !result.knew)
-              .map((result) =>
-                cards.find(
-                  (card) => card.dbId === result.cardId || card.id === result.cardId,
-                )?.dbId,
-              )
-              .filter((dbId): dbId is string => Boolean(dbId));
-
-            if (missedFlashcardIds.length > 0) {
-              const createdReview = await createReview(session?.access_token, {
-                profile_id: profileId,
-                parent_session_id: lessonSessionId,
-                review_name: `${topicTitle ?? topic} Missed Cards`,
-                flashcard_ids: missedFlashcardIds,
-              });
-              createdReviewId = createdReview.id;
-              createdReviewName = createdReview.review_name;
-            }
-          }
-        } catch (error) {
-          console.error("Failed to finish lesson session", error);
-          setAttemptError("We couldn't finish the lesson right now. Please try again.");
-          setSubmitting(false);
-          setSubmittingResult(null);
-          submitLockRef.current = false;
-          return;
-        }
-      }
-
-      if (reviewId) {
-        try {
-          await completeReviewLifecycle(session?.access_token, reviewId);
-        } catch (error) {
-          console.error("Failed to complete review", error);
-          setAttemptError("We couldn't finish the review right now. Please try again.");
-          setSubmitting(false);
-          setSubmittingResult(null);
-          submitLockRef.current = false;
-          return;
-        }
-      }
-
-      await saveCompletedSession({
-        topic,
-        topicTitle: topicTitle ?? topic,
-        language: language ?? "",
-        languageLabel: languageLabel ?? "",
-        categoryId: apiCategoryId,
-        difficulty: resolvedDifficulty ?? undefined,
-        cards: completedResults,
-        reviewId: createdReviewId,
-        reviewName: createdReviewName,
-      });
-
-      // Sync to API in the background — don't block navigation
-      if (shouldPersistAttempts && session?.access_token) {
-        const token = session.access_token;
-        Promise.all([
-          createSession(token, {
-            topic_title: topicTitle ?? topic,
-            language_label: languageLabel,
-            cards_attempted: completedResults.length,
-            cards_correct: correct,
-            completed_at: new Date().toISOString(),
-          }),
-          fetchSessions(token),
-          fetchSessionStats(token),
-        ]).then(([, freshSessions, freshStats]) => {
-          setCachedSessions(freshSessions);
-          setCachedSessionStats(freshStats);
-        }).catch(() => {
-          // Non-critical — local storage still has the data
-        });
-      }
-
-      posthog?.capture("session_completed", {
-        language: languageLabel,
-        card_count: completedResults.length,
-        cards_correct: correct,
-        accuracy: completedResults.length > 0 ? Math.round((correct / completedResults.length) * 100) : 0,
-        duration_ms: Date.now() - sessionStartedAt.current,
-        is_review: Boolean(reviewId),
-        topic: topicTitle ?? topic,
-      });
-
-      setSubmitting(false);
-      setSubmittingResult(null);
-      submitLockRef.current = false;
-      router.replace("/session-summary");
-    }
+  async function onResult(knew: boolean) {
+    const outcome = await handleResult(knew);
+    if (!outcome || outcome.isComplete) return;
+    setCurrentIndex(outcome.nextIndex);
+    setShowAnswer(false);
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   if (cards.length === 0 || !currentCard) {
     return (
       <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
@@ -523,8 +313,8 @@ export default function FlashcardPractice() {
               router.replace({
                 pathname: "/categories",
                 params: {
-                  language: language,
-                  languageLabel: languageLabel,
+                  language,
+                  languageLabel,
                   apiLanguageId: apiLanguageId ?? "",
                   apiCategoryId: apiCategoryId ?? "",
                   apiLoaded: apiLoaded ?? "",
@@ -543,10 +333,7 @@ export default function FlashcardPractice() {
 
         {/* Progress bar */}
         <View className="mx-4 mb-4 h-1.5 bg-secondary rounded-full overflow-hidden">
-          <View
-            className="h-full bg-primary rounded-full"
-            style={{ width: `${progress * 100}%` }}
-          />
+          <View className="h-full bg-primary rounded-full" style={{ width: `${progress * 100}%` }} />
         </View>
 
         {/* Card */}
@@ -556,8 +343,7 @@ export default function FlashcardPractice() {
             disabled={currentIndex === 0 || submitting}
             className="absolute left-4 top-4 z-10 w-11 h-11 items-center justify-center rounded-full"
             style={{
-              backgroundColor:
-                currentIndex === 0 || submitting ? "#F5F5F5" : "#FFFFFF",
+              backgroundColor: currentIndex === 0 || submitting ? "#F5F5F5" : "#FFFFFF",
               opacity: currentIndex === 0 || submitting ? 0.9 : 1,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
@@ -572,6 +358,7 @@ export default function FlashcardPractice() {
               color={currentIndex === 0 || submitting ? "#B8B8B8" : "#1A1A1A"}
             />
           </Pressable>
+
           <Animated.View
             {...panResponder.panHandlers}
             className="bg-card rounded-3xl"
@@ -591,11 +378,7 @@ export default function FlashcardPractice() {
           >
             <Pressable
               onPress={() => {
-                setAudioPlayCount((count) => count + 1);
-
-                console.log("Card object keys:", Object.keys(currentCard));
-                console.log("sourceText value:", currentCard.sourceText);
-                console.log("language param:", language);
+                setAudioPlayCount((c) => c + 1);
                 speakText(currentCard.sourceText, language ?? "chinese", playbackSpeed);
               }}
               hitSlop={10}
@@ -615,9 +398,7 @@ export default function FlashcardPractice() {
               <View className="mt-4 w-full px-3">
                 <View className="mb-1 flex-row items-center justify-between">
                   <Text className="text-sm text-muted">Slow</Text>
-                  <Text className="text-sm font-semibold text-primary">
-                    {playbackSpeed.toFixed(1)}x
-                  </Text>
+                  <Text className="text-sm font-semibold text-primary">{playbackSpeed.toFixed(1)}x</Text>
                   <Text className="text-sm text-muted">Normal</Text>
                 </View>
                 <View
@@ -628,10 +409,7 @@ export default function FlashcardPractice() {
                 >
                   <View
                     className="rounded-full bg-primary"
-                    style={{
-                      height: sliderTrackHeight,
-                      marginHorizontal: sliderThumbSize / 2,
-                    }}
+                    style={{ height: sliderTrackHeight, marginHorizontal: sliderThumbSize / 2 }}
                   />
                   <View
                     className="absolute rounded-full bg-primary"
@@ -674,17 +452,14 @@ export default function FlashcardPractice() {
               className="py-4 bg-secondary rounded-2xl items-center"
               disabled={submitting}
             >
-              <Text className="text-base font-medium text-muted">
-                Reveal Answer
-              </Text>
+              <Text className="text-base font-medium text-muted">Reveal Answer</Text>
             </Pressable>
           ) : null}
+
           {shouldShowAnswerActions ? (
             <>
               <View className="items-center gap-3">
-                <Text className="text-sm font-medium text-muted">
-                  How confident were you?
-                </Text>
+                <Text className="text-sm font-medium text-muted">How confident were you?</Text>
                 <View className="flex-row gap-2">
                   {[1, 2, 3, 4, 5].map((value) => {
                     const selected = selectedConfidence === value;
@@ -692,16 +467,12 @@ export default function FlashcardPractice() {
                       <Pressable
                         key={value}
                         onPress={() => setSelectedConfidence(value)}
-                        className={`w-11 h-11 rounded-full items-center justify-center border ${selected
-                            ? "bg-primary border-primary"
-                            : "bg-secondary border-border"
-                          }`}
+                        className={`w-11 h-11 rounded-full items-center justify-center border ${
+                          selected ? "bg-primary border-primary" : "bg-secondary border-border"
+                        }`}
                         disabled={submitting}
                       >
-                        <Text
-                          className={`font-semibold ${selected ? "text-primary-foreground" : "text-foreground"
-                            }`}
-                        >
+                        <Text className={`font-semibold ${selected ? "text-primary-foreground" : "text-foreground"}`}>
                           {value}
                         </Text>
                       </Pressable>
@@ -711,7 +482,7 @@ export default function FlashcardPractice() {
               </View>
               <View className="flex-row gap-3">
                 <Pressable
-                  onPress={() => handleResult(false)}
+                  onPress={() => void onResult(false)}
                   disabled={submitting}
                   className="flex-1 py-4 bg-secondary rounded-2xl items-center"
                 >
@@ -720,7 +491,7 @@ export default function FlashcardPractice() {
                   </Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => handleResult(true)}
+                  onPress={() => void onResult(true)}
                   disabled={submitting}
                   className="flex-1 py-4 bg-primary rounded-2xl items-center"
                   style={{
@@ -737,15 +508,12 @@ export default function FlashcardPractice() {
                 </Pressable>
               </View>
               {attemptError ? (
-                <Text className="text-center text-sm text-red-500">
-                  {attemptError}
-                </Text>
+                <Text className="text-center text-sm text-red-500">{attemptError}</Text>
               ) : null}
             </>
           ) : null}
-          <Text className="text-center text-xs text-muted">
-            Swipe left or right to navigate
-          </Text>
+
+          <Text className="text-center text-xs text-muted">Swipe left or right to navigate</Text>
         </View>
       </View>
     </SafeAreaView>
