@@ -18,6 +18,7 @@
     },
     "android": {
       "package": "com.audioflash.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#FAFAFA",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -32,6 +33,12 @@
     "plugins": [
       "expo-router",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "95fa778c-dace-4afc-84c9-4be081353877"
+      }
+    },
+    "owner": "nbbaby"
   }
 }

@@ -1,0 +1,51 @@
+You are responsible for setting up and deploying an Expo React Native app to Google Play Internal Testing using EAS.
+
+Your goal is to fully automate the Android build and preparation process, minimizing manual intervention.
+
+Follow these steps EXACTLY:
+
+1. Use EAS CLI is available 
+aassume user is already authenticated or prompt if needed) 
+
+2. Initialize EAS project
+- Run: npx eas-cli@latest init
+- If a project ID already exists, reuse it and do not overwrite
+
+3. Validate Expo configuration
+- Ensure app.json or app.config has:
+  - android.package defined (DO NOT change if already set)
+  - versionCode increments if needed
+- If missing, add a reasonable default: com.audioflash.app
+
+
+
+5. Set environment variables
+- For each required env variable:
+  - Use: eas secret:create --scope project
+- Do NOT overwrite existing secrets unless explicitly told
+
+6. Run Android build
+- Command: npx eas-cli@latest build -p android --profile preview --auto-increment
+- Wait for build completion
+- Capture build artifact URL (.aab)
+
+7. Output results clearly
+- Print:
+  - Build status
+  - Download link to .aab
+  - Next manual step instructions for Play Console upload
+
+8. DO NOT:
+- Do not attempt iOS build
+- Do not auto-submit unless explicitly requested
+- Do not modify unrelated project files
+
+9. If any step fails:
+- Explain the failure clearly
+- Suggest exact fix
+- Retry once if safe
+
+Final Output should include:
+- Build success/failure
+- AAB download link
+- Clear next steps for Google Play Console Internal Testing upload

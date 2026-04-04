@@ -11,6 +11,7 @@ import {
   Alert,
   Linking,
 } from "react-native";
+import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
@@ -123,6 +124,10 @@ export default function SettingsScreen() {
   );
   const [showTargetPicker, setShowTargetPicker] = useState(false);
   const [saved, setSaved] = useState(false);
+  const appVersion = Constants.expoConfig?.version ?? "unknown";
+  const appBuildNumber = Constants.expoConfig?.android?.versionCode != null
+    ? String(Constants.expoConfig.android.versionCode)
+    : "unknown";
 
   const normalizedProfileName = profile?.name ?? "";
   const normalizedProfileEmail = user?.email ?? "";
@@ -568,6 +573,12 @@ export default function SettingsScreen() {
                 </Pressable>
               </>
             )}
+          </View>
+
+          <SectionLabel>App Info</SectionLabel>
+          <View className="pb-2 px-1">
+            <Text className="text-xs text-muted">AudioFlash v{appVersion}</Text>
+            <Text className="text-xs text-muted mt-1">Build {appBuildNumber}</Text>
           </View>
 
         </ScrollView>
