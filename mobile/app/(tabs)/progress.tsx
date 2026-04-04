@@ -1,10 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
-import { useAppData } from "../../lib/app-data-context";
+import { useSessions, useSessionStats } from "../../lib/queries";
 
 function last7Days(): { day: string; date: string }[] {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -43,13 +43,19 @@ function SimpleBarChart({ data }: { data: { day: string; cards: number }[] }) {
 }
 
 export default function ProgressDashboard() {
-  const { sessions, sessionStats: stats, refresh } = useAppData();
+  const { data: sessions = [], refetch: refetchSessions, isStale: isSessionsStale } = useSessions();
+  const { data: stats, refetch: refetchStats, isStale: isStatsStale } = useSessionStats();
+
+  const isSessionsStaleRef = useRef(false);
+  isSessionsStaleRef.current = isSessionsStale;
+  const isStatsStaleRef = useRef(false);
+  isStatsStaleRef.current = isStatsStale;
 
   useFocusEffect(
     useCallback(() => {
-      refresh("sessions");
-      refresh("sessionStats");
-    }, [refresh]),
+      if (isSessionsStaleRef.current) refetchSessions();
+      if (isStatsStaleRef.current) refetchStats();
+    }, [refetchSessions, refetchStats]),
   );
 
   const days = last7Days();

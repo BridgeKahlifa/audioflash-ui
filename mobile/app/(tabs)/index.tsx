@@ -1,11 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, Image, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
-import { useAppData } from "../../lib/app-data-context";
 import { useAnalytics } from "../../lib/analytics";
+import { useSRSQueue, useInProgressLesson, useInProgressLessonName } from "../../lib/queries";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
 
@@ -13,14 +13,23 @@ const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
 export default function Home() {
   const { profile } = useAuth();
   const posthog = useAnalytics();
-  const { srsQueue, inProgressLesson, inProgressLessonName, refresh } = useAppData();
+  const { data: srsQueue, refetch: refetchSRS, isStale: isSRSStale } = useSRSQueue();
+  const { data: inProgressLesson, refetch: refetchLesson, isStale: isLessonStale } = useInProgressLesson();
+  const inProgressLessonName = useInProgressLessonName();
   const [continuingLesson, setContinuingLesson] = useState(false);
+
+  // Refs hold the current staleness so the useFocusEffect callback reads the
+  // live value without needing to be recreated every time isStale changes.
+  const isSRSStaleRef = useRef(false);
+  isSRSStaleRef.current = isSRSStale;
+  const isLessonStaleRef = useRef(false);
+  isLessonStaleRef.current = isLessonStale;
 
   useFocusEffect(
     useCallback(() => {
-      refresh("srsQueue");
-      refresh("inProgressLesson");
-    }, [refresh]),
+      if (isSRSStaleRef.current) refetchSRS();
+      if (isLessonStaleRef.current) refetchLesson();
+    }, [refetchSRS, refetchLesson]),
   );
 
   const greeting = (() => {

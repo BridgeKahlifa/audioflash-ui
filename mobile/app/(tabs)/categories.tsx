@@ -11,7 +11,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ApiLanguage } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
-import { useAppData } from "../../lib/app-data-context";
+import { useLanguages, useCategories } from "../../lib/queries";
 import { LanguageFlag } from "../../components/LanguageFlag";
 
 interface Topic {
@@ -30,24 +30,29 @@ const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
 
 export default function Categories() {
   const { profile, profileLoading, updateProfileData } = useAuth();
-  const { languages, categories: contextCategories } = useAppData();
+  const { data: languages = [] } = useLanguages();
+  const { data: contextCategories = [] } = useCategories();
 
   const preferredLanguageId = profile?.target_language_ids?.[0] ?? null;
   const needsLanguagePicker = profile !== null && !preferredLanguageId;
 
   const [savingLanguage, setSavingLanguage] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  // True while the user has manually opened the language picker to switch languages.
+  // Prevents the useEffect from immediately re-resolving resolvedLanguage from the
+  // profile (which still has the old language) before the new one is saved.
+  const [switchingLanguage, setSwitchingLanguage] = useState(false);
 
-  // Resolve the language object from context languages
   const [resolvedLanguage, setResolvedLanguage] = useState<ApiLanguage | null>(null);
   useEffect(() => {
+    if (switchingLanguage) return;
     if (!preferredLanguageId || languages.length === 0) {
       setResolvedLanguage(null);
       return;
     }
     const found = languages.find((l) => String(l.id) === String(preferredLanguageId));
     if (found) setResolvedLanguage(found);
-  }, [preferredLanguageId, languages]);
+  }, [preferredLanguageId, languages, switchingLanguage]);
 
   // Derive topics from context categories
   const topics = contextCategories.map((cat, i) => ({
@@ -67,6 +72,9 @@ export default function Categories() {
 
     if (error) {
       setResolvedLanguage(null);
+      // Keep switchingLanguage true so the picker stays visible for retry
+    } else {
+      setSwitchingLanguage(false);
     }
   }
 
@@ -98,7 +106,7 @@ export default function Categories() {
   }
 
   // --- Language selection ---
-  if (needsLanguagePicker) {
+  if (needsLanguagePicker || switchingLanguage) {
     return (
       <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
         <View className="flex-1 max-w-md w-full mx-auto">
@@ -165,7 +173,7 @@ export default function Categories() {
         <View className="pt-8 pb-6 px-6">
           <Text className="text-3xl font-semibold text-foreground tracking-tight">Browse</Text>
           {resolvedLanguage ? (
-            <Pressable onPress={() => setResolvedLanguage(null)} className="flex-row items-center mt-1">
+            <Pressable onPress={() => { setSwitchingLanguage(true); setResolvedLanguage(null); }} className="flex-row items-center mt-1">
               <View style={{ marginRight: 4 }}>
                 <LanguageFlag name={resolvedLanguage.language} size="sm" />
               </View>

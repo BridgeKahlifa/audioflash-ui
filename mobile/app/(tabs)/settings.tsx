@@ -17,7 +17,7 @@ import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { useAuth } from "../../lib/auth-context";
 import { ApiUpdateProfile, ApiLanguage } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
-import { useAppData } from "../../lib/app-data-context";
+import { useLanguages } from "../../lib/queries";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -105,7 +105,7 @@ function LanguagePickerModal({
 
 export default function SettingsScreen() {
   const { user, profile, profileLoading, updateProfileData, updateEmail, deleteAccount, signOut, isDevAuth } = useAuth();
-  const { languages } = useAppData();
+  const { data: languages = [] } = useLanguages();
   const posthog = useAnalytics();
   const navigation = useNavigation();
 

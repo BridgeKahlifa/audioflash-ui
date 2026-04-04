@@ -1,10 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
-import { useAppData } from "../../lib/app-data-context";
+import { useSRSQueue, useSavedReviews } from "../../lib/queries";
 import {
   fetchFlashcards,
   startLesson,
@@ -20,16 +20,22 @@ function formatReviewDate(dateStr: string): string {
 
 export default function ReviewQueue() {
   const { session, profile } = useAuth();
-  const { srsQueue: queue, savedReviews: reviews, refresh } = useAppData();
+  const { data: queue, refetch: refetchSRS, isStale: isSRSStale } = useSRSQueue();
+  const { data: reviews = [], refetch: refetchReviews, isStale: isReviewsStale } = useSavedReviews();
   const [startingSRS, setStartingSRS] = useState(false);
   const [startingReviewId, setStartingReviewId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+  const isSRSStaleRef = useRef(false);
+  isSRSStaleRef.current = isSRSStale;
+  const isReviewsStaleRef = useRef(false);
+  isReviewsStaleRef.current = isReviewsStale;
+
   useFocusEffect(
     useCallback(() => {
-      refresh("srsQueue");
-      refresh("savedReviews");
-    }, [refresh]),
+      if (isSRSStaleRef.current) refetchSRS();
+      if (isReviewsStaleRef.current) refetchReviews();
+    }, [refetchSRS, refetchReviews]),
   );
 
   async function startSRSReview() {
