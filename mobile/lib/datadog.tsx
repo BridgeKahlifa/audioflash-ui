@@ -13,7 +13,7 @@ import {
 type LogContext = Record<string, unknown>;
 
 const DATADOG_CLIENT_TOKEN = process.env.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN?.trim() ?? "";
-const DATADOG_ENV = process.env.EXPO_PUBLIC_DATADOG_ENV?.trim() || "development";
+const DATADOG_ENV = process.env.EXPO_PUBLIC_DATADOG_ENV?.trim() || "dev";
 const DATADOG_SERVICE = process.env.EXPO_PUBLIC_DATADOG_SERVICE?.trim() || "audioflash-mobile";
 const DATADOG_SITE = process.env.EXPO_PUBLIC_DATADOG_SITE?.trim() || "US1";
 const DATADOG_ENV_DISABLED = DATADOG_ENV.toLowerCase() === "local";

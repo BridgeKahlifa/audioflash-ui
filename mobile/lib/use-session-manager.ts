@@ -18,6 +18,8 @@ interface SessionManagerParams {
   cards: Flashcard[];
   currentIndex: number;
   resolvedActivityId: string | null;
+  categoryId?: string;
+  difficulty?: number | null;
   selectedConfidence: number | null;
   audioPlayCount: number;
   shownAtRef: React.MutableRefObject<number>;
@@ -66,7 +68,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
   async function handleResult(knew: boolean): Promise<SubmitOutcome | null> {
     // Read all params at call time — they reflect the current render's values
     const {
-      cards, currentIndex, resolvedActivityId, selectedConfidence, audioPlayCount,
+      cards, currentIndex, resolvedActivityId, categoryId, difficulty, selectedConfidence, audioPlayCount,
       shownAtRef, sessionStartedAt, isResumeSession,
       lessonSessionId, reviewId, topic, topicTitle, language, languageLabel,
     } = params;
@@ -228,6 +230,8 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       topicTitle: topicTitle ?? topic,
       language: language ?? "",
       languageLabel: languageLabel ?? "",
+      categoryId,
+      difficulty: typeof difficulty === "number" ? difficulty : undefined,
       cards: completedResults,
       reviewId: createdReviewId,
       reviewName: createdReviewName,
@@ -258,7 +262,13 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
 
     // Invalidate profile too — the server updates streak_count after a completed session.
     invalidate("srsQueue", "inProgressLesson", "sessions", "sessionStats", "savedReviews", "profile");
-    router.replace("/session-summary");
+    router.replace({
+      pathname: "/session-summary",
+      params: {
+        categoryId,
+        difficulty: typeof difficulty === "number" ? String(difficulty) : undefined,
+      },
+    });
 
     // Return isComplete so the caller knows not to update card state
     setSubmitting(false);

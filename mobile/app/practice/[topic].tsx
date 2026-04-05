@@ -78,6 +78,8 @@ export default function FlashcardPractice() {
     cards,
     currentIndex,
     resolvedActivityId,
+    categoryId: apiCategoryId,
+    difficulty: resolvedDifficulty,
     selectedConfidence,
     audioPlayCount,
     shownAtRef,
