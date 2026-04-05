@@ -33,6 +33,12 @@
       "expo-router",
       "expo-secure-store",
       "expo-datadog"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "95fa778c-dace-4afc-84c9-4be081353877"
+      }
+    }
   }
 }
