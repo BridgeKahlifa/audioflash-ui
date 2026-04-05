@@ -459,7 +459,7 @@ export default function SettingsScreen() {
 
           {/* ── Practice ── */}
           <SectionLabel>Practice</SectionLabel>
-          <View className="bg-card border border-border rounded-2xl p-5 gap-4">
+          <View className="bg-card border border-border rounded-2xl p-5">
             <View>
               <Text className="text-foreground font-medium mb-3">Cards Per Session</Text>
               <View className="flex-row items-center justify-between">
@@ -472,25 +472,6 @@ export default function SettingsScreen() {
                 <Text className="text-2xl font-semibold text-foreground">{localSettings.cards_per_session}</Text>
                 <Pressable
                   onPress={() => setLocalSettings((p) => ({ ...p, cards_per_session: clamp((p.cards_per_session ?? 20) + 5, 5, 50) }))}
-                  className="w-10 h-10 rounded-full bg-secondary items-center justify-center"
-                >
-                  <Ionicons name="add" size={20} color="#1A1A1A" />
-                </Pressable>
-              </View>
-            </View>
-
-            <View className="border-t border-border pt-4">
-              <Text className="text-foreground font-medium mb-3">Audio Speed</Text>
-              <View className="flex-row items-center justify-between">
-                <Pressable
-                  onPress={() => setLocalSettings((p) => ({ ...p, audio_speed: clamp(Number(((p.audio_speed ?? 1.0) - 0.1).toFixed(1)), 0.5, 1.5) }))}
-                  className="w-10 h-10 rounded-full bg-secondary items-center justify-center"
-                >
-                  <Ionicons name="remove" size={20} color="#1A1A1A" />
-                </Pressable>
-                <Text className="text-2xl font-semibold text-foreground">{(localSettings.audio_speed ?? 1.0).toFixed(1)}x</Text>
-                <Pressable
-                  onPress={() => setLocalSettings((p) => ({ ...p, audio_speed: clamp(Number(((p.audio_speed ?? 1.0) + 0.1).toFixed(1)), 0.5, 1.5) }))}
                   className="w-10 h-10 rounded-full bg-secondary items-center justify-center"
                 >
                   <Ionicons name="add" size={20} color="#1A1A1A" />
