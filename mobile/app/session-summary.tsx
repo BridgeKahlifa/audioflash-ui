@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import Svg, { Circle, Line, Polyline } from "react-native-svg";
 import { SessionHistoryItem } from "../lib/types";
 import { getLastSession, setCurrentCards } from "../lib/storage";
@@ -232,12 +232,27 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
 
 export default function SessionSummary() {
   const { session: authSession } = useAuth();
+  const { categoryId: categoryIdParam, difficulty: difficultyParam } = useLocalSearchParams<{
+    categoryId?: string;
+    difficulty?: string;
+  }>();
   const [session, setSession] = useState<SessionHistoryItem | null>(null);
   const [startingReview, setStartingReview] = useState(false);
   const [gradeHistory, setGradeHistory] = useState<GradeHistoryPoint[]>([]);
   const [loadingGradeHistory, setLoadingGradeHistory] = useState(false);
   const [gradeHistoryError, setGradeHistoryError] = useState("");
   const [error, setError] = useState("");
+  const effectiveCategoryId = session?.categoryId ?? categoryIdParam;
+  const parsedDifficulty =
+    typeof difficultyParam === "string" && difficultyParam.length > 0
+      ? Number(difficultyParam)
+      : NaN;
+  const effectiveDifficulty =
+    typeof session?.difficulty === "number"
+      ? session.difficulty
+      : Number.isFinite(parsedDifficulty)
+        ? parsedDifficulty
+        : undefined;
 
   useEffect(() => {
     getLastSession().then(setSession);
@@ -246,8 +261,8 @@ export default function SessionSummary() {
   useEffect(() => {
     if (
       !authSession?.access_token ||
-      !session?.categoryId ||
-      typeof session.difficulty !== "number"
+      !effectiveCategoryId ||
+      typeof effectiveDifficulty !== "number"
     ) {
       setGradeHistory([]);
       setLoadingGradeHistory(false);
@@ -261,8 +276,8 @@ export default function SessionSummary() {
 
     fetchCategoryGradeChart(
       authSession.access_token,
-      session.categoryId,
-      session.difficulty,
+      effectiveCategoryId,
+      effectiveDifficulty,
     )
       .then((response) => {
         if (cancelled) return;
@@ -285,7 +300,7 @@ export default function SessionSummary() {
     return () => {
       cancelled = true;
     };
-  }, [authSession?.access_token, session?.categoryId, session?.difficulty]);
+  }, [authSession?.access_token, effectiveCategoryId, effectiveDifficulty]);
 
   const missed = useMemo(
     () => session?.cards.filter((card) => !card.knew) ?? [],
