@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "scheme": "audioflash",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/app_icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -23,9 +23,7 @@
       "package": "com.audioflash.app",
       "adaptiveIcon": {
         "backgroundColor": "#FAFAFA",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/app_icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
