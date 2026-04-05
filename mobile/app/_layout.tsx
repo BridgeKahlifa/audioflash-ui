@@ -1,10 +1,10 @@
 import "../global.css";
 import { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import { Stack, router, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
-import { PostHogProvider, usePostHog } from "posthog-react-native";
+import { PostHogErrorBoundary, PostHogProvider, usePostHog } from "posthog-react-native";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -13,7 +13,7 @@ import { AuthModeBadge } from "../components/AuthModeBadge";
 import { ConfigProvider } from "../lib/config-context";
 import { AppDataProvider, useAppData } from "../lib/app-data-context";
 import { SplashScreen } from "../components/SplashScreen";
-import { POSTHOG_KEY, POSTHOG_HOST } from "../lib/analytics";
+import { buildExceptionProperties, POSTHOG_KEY, POSTHOG_HOST } from "../lib/analytics";
 import { queryClient, QUERY_CACHE_PERSIST_KEY } from "../lib/query-client";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -23,6 +23,19 @@ const persister = createAsyncStoragePersister({
   key: QUERY_CACHE_PERSIST_KEY,
   throttleTime: 1000,
 });
+
+function RootErrorFallback() {
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <Text style={{ fontSize: 20, fontWeight: "700", color: "#1f2937", marginBottom: 8 }}>
+        Something went wrong
+      </Text>
+      <Text style={{ fontSize: 15, color: "#4b5563", textAlign: "center" }}>
+        Restart the app and try again.
+      </Text>
+    </View>
+  );
+}
 
 function RootNavigator() {
   const { session, loading, isDevAuth, profile, profileLoading, profileError } = useAuth();
@@ -126,15 +139,47 @@ export default function RootLayout() {
         client={queryClient}
         persistOptions={{ persister, maxAge: DAY_MS }}
       >
-        <PostHogProvider apiKey={POSTHOG_KEY} options={{ host: POSTHOG_HOST, disabled: !POSTHOG_KEY }}>
-          <ConfigProvider>
-            <AuthProvider>
-              <AppDataProvider>
-                <AuthModeBadge />
-                <RootNavigator />
-              </AppDataProvider>
-            </AuthProvider>
-          </ConfigProvider>
+        <PostHogProvider
+          apiKey={POSTHOG_KEY}
+          options={{
+            host: POSTHOG_HOST,
+            disabled: !POSTHOG_KEY,
+            captureAppLifecycleEvents: true,
+            enableSessionReplay: true,
+            errorTracking: {
+              autocapture: {
+                uncaughtExceptions: true,
+                unhandledRejections: true,
+                console: ["error"],
+              },
+            },
+            sessionReplayConfig: {
+              maskAllTextInputs: true,
+              maskAllImages: true,
+              maskAllSandboxedViews: true,
+              captureLog: true,
+              captureNetworkTelemetry: true,
+              sampleRate: __DEV__ ? 1 : 0.2,
+            },
+          }}
+        >
+          <PostHogErrorBoundary
+            fallback={RootErrorFallback}
+            additionalProperties={(error) =>
+              buildExceptionProperties(error, {
+                error_boundary: "root_layout",
+              })
+            }
+          >
+            <ConfigProvider>
+              <AuthProvider>
+                <AppDataProvider>
+                  <AuthModeBadge />
+                  <RootNavigator />
+                </AppDataProvider>
+              </AuthProvider>
+            </ConfigProvider>
+          </PostHogErrorBoundary>
         </PostHogProvider>
       </PersistQueryClientProvider>
     </GestureHandlerRootView>

@@ -13,6 +13,7 @@ import {
 } from "../../lib/api";
 import { setCurrentCards } from "../../lib/storage";
 import type { Flashcard } from "../../lib/types";
+import { useAnalytics } from "../../lib/analytics";
 
 function formatReviewDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -20,6 +21,7 @@ function formatReviewDate(dateStr: string): string {
 
 export default function ReviewQueue() {
   const { session, profile } = useAuth();
+  const posthog = useAnalytics();
   const { data: queue, refetch: refetchSRS, isStale: isSRSStale } = useSRSQueue();
   const { data: reviews = [], refetch: refetchReviews, isStale: isReviewsStale } = useSavedReviews();
   const [startingSRS, setStartingSRS] = useState(false);
@@ -44,6 +46,7 @@ export default function ReviewQueue() {
     const profileId = profile?.id ?? session.user?.id;
     if (!profileId) return;
 
+    posthog?.capture("review_srs_started", { card_count: queue.cards.length });
     setStartingSRS(true);
     setError("");
 
@@ -88,6 +91,10 @@ export default function ReviewQueue() {
   async function startNamedReview(review: ApiReview) {
     if (!session?.access_token) return;
 
+    posthog?.capture("review_named_started", {
+      review_name: review.review_name,
+      card_count: review.flashcard_ids.length,
+    });
     setStartingReviewId(review.id);
     setError("");
 

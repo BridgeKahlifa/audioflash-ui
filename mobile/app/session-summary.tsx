@@ -7,6 +7,7 @@ import { SessionHistoryItem } from "../lib/types";
 import { getLastSession, setCurrentCards } from "../lib/storage";
 import { useAuth } from "../lib/auth-context";
 import { fetchCategoryGradeChart, startReviewLifecycle } from "../lib/api";
+import { useAnalytics } from "../lib/analytics";
 
 interface GradeHistoryPoint {
   endedAt: string;
@@ -232,6 +233,7 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
 
 export default function SessionSummary() {
   const { session: authSession } = useAuth();
+  const posthog = useAnalytics();
   const { categoryId: categoryIdParam, difficulty: difficultyParam } = useLocalSearchParams<{
     categoryId?: string;
     difficulty?: string;
@@ -314,6 +316,13 @@ export default function SessionSummary() {
 
   async function retryMissed() {
     if (!session || missed.length === 0) return;
+
+    posthog?.capture("session_summary_retry_missed", {
+      missed_count: missed.length,
+      is_review: Boolean(session.reviewId),
+      language: session.languageLabel,
+      topic: session.topicTitle,
+    });
 
     setError("");
     const topicKey = session.reviewId ? `review-${session.reviewId}` : session.topic;
