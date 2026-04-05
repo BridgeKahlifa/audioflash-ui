@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { setCurrentCards, getSettings } from "../../lib/storage";
+import { logError } from "../../lib/datadog";
 import { Flashcard } from "../../lib/types";
 import { createLessonSession, fetchLessonsByCategory, saveLesson, unsaveLesson } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
@@ -27,6 +28,7 @@ export default function LessonReady() {
   const [errorMessage, setErrorMessage] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [shuffleEnabled, setShuffleEnabled] = useState(false);
   const startLockRef = useRef(false);
   const availableDifficulties = (supportedDifficulties ?? "")
     .split(",")
@@ -97,6 +99,7 @@ export default function LessonReady() {
         categoryId: apiCategoryId,
         limit: cardsToFetch,
         difficulty: selectedDifficulty,
+        shuffle: shuffleEnabled,
       });
 
       if (lessonCards.length === 0) {
@@ -143,6 +146,11 @@ export default function LessonReady() {
       });
     } catch (error) {
       console.error("Failed to prepare lesson", error);
+      logError("lesson_ready_start_failed", error, {
+        category_id: apiCategoryId,
+        difficulty: selectedDifficulty,
+        topic,
+      });
       setStatus("error");
       setErrorMessage("We couldn't start the lesson right now. Please try again.");
     } finally {
@@ -227,9 +235,28 @@ export default function LessonReady() {
             <Text className="text-muted">
               Language: <Text className="text-foreground font-medium">{languageLabel}</Text>
             </Text>
-            <Text className="text-muted">
-              Topic: <Text className="text-foreground font-medium">{topicTitle ?? topic}</Text>
-            </Text>
+            <View className="flex-row items-center gap-2">
+              <Text className="text-muted">
+                Topic: <Text className="text-foreground font-medium">{topicTitle ?? topic}</Text>
+              </Text>
+              <Pressable
+                onPress={() => setShuffleEnabled((current) => !current)}
+                disabled={starting}
+                className={`w-8 h-8 rounded-full border items-center justify-center ${
+                  shuffleEnabled
+                    ? "bg-primary border-primary"
+                    : "bg-secondary border-border"
+                }`}
+                accessibilityRole="button"
+                accessibilityLabel={shuffleEnabled ? "Disable shuffle" : "Enable shuffle"}
+              >
+                <Ionicons
+                  name="shuffle"
+                  size={16}
+                  color={shuffleEnabled ? "#FFFFFF" : "#1A1A1A"}
+                />
+              </Pressable>
+            </View>
             <View className="items-center gap-3 mt-5">
               <Text className="text-sm font-medium text-muted">Choose difficulty</Text>
               <View className="flex-row gap-2">

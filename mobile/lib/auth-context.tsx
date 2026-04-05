@@ -11,6 +11,7 @@ import {
   updateProfile,
   deleteAccount as apiDeleteAccount,
 } from "./api";
+import { clearDatadogUser, setDatadogUser } from "./datadog";
 import { syncSettingsFromProfile } from "./storage";
 import { clearQueryCache, queryClient } from "./query-client";
 import { queryKeys } from "./query-keys";
@@ -94,6 +95,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (profile) syncSettingsFromProfile(profile);
   }, [profile]);
+
+  useEffect(() => {
+    const currentUser = session?.user;
+
+    if (!currentUser && !DEV_AUTH_MODE) {
+      clearDatadogUser();
+      return;
+    }
+
+    const effectiveUserId = currentUser?.id ?? DEV_USER_ID;
+    const effectiveEmail = currentUser?.email ?? DEV_USER_EMAIL;
+
+    setDatadogUser({
+      id: effectiveUserId,
+      name: profile?.name ?? undefined,
+      email: effectiveEmail,
+      extraInfo: {
+        profile_id: profile?.id ?? effectiveUserId,
+        is_dev_auth: DEV_AUTH_MODE,
+        native_language_id: profile?.native_language_id ?? null,
+        target_language_ids: profile?.target_language_ids ?? [],
+        daily_goal: profile?.daily_goal ?? null,
+      },
+    });
+  }, [session?.user?.id, session?.user?.email, profile?.id, profile?.name, profile?.native_language_id, profile?.daily_goal, JSON.stringify(profile?.target_language_ids)]);
 
   // ── Auth setup ─────────────────────────────────────────────────────────────
   useEffect(() => {

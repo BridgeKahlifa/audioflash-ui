@@ -297,6 +297,7 @@ export async function fetchLessonsByCategory(params: {
   categoryId: string;
   limit?: number;
   difficulty?: number;
+  shuffle?: boolean;
 }): Promise<ApiLessonCard[]> {
   if (!params.categoryId) {
     throw new Error("categoryId is required");
@@ -308,6 +309,9 @@ export async function fetchLessonsByCategory(params: {
   }
   if (typeof params.difficulty === "number") {
     query.set("difficulty", String(params.difficulty));
+  }
+  if (typeof params.shuffle === "boolean") {
+    query.set("shuffle", String(params.shuffle));
   }
 
   const endpoint = `${API_BASE_URL}/lessons/${params.categoryId}`;
