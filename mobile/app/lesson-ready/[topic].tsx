@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { setCurrentCards, getSettings } from "../../lib/storage";
+import { logError } from "../../lib/datadog";
 import { Flashcard } from "../../lib/types";
 import { createLessonSession, fetchLessonsByCategory, saveLesson, unsaveLesson } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
@@ -145,6 +146,11 @@ export default function LessonReady() {
       });
     } catch (error) {
       console.error("Failed to prepare lesson", error);
+      logError("lesson_ready_start_failed", error, {
+        category_id: apiCategoryId,
+        difficulty: selectedDifficulty,
+        topic,
+      });
       setStatus("error");
       setErrorMessage("We couldn't start the lesson right now. Please try again.");
     } finally {
