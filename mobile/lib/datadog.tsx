@@ -1,4 +1,5 @@
 import type { PropsWithChildren } from "react";
+import { NativeModules } from "react-native";
 import {
   DatadogProvider,
   DatadogProviderConfiguration,
@@ -17,8 +18,10 @@ const DATADOG_ENV = process.env.EXPO_PUBLIC_DATADOG_ENV?.trim() || "dev";
 const DATADOG_SERVICE = process.env.EXPO_PUBLIC_DATADOG_SERVICE?.trim() || "audioflash-mobile";
 const DATADOG_SITE = process.env.EXPO_PUBLIC_DATADOG_SITE?.trim() || "US1";
 const DATADOG_ENV_DISABLED = DATADOG_ENV.toLowerCase() === "local";
+const DATADOG_NATIVE_AVAILABLE = NativeModules.DdSdk != null;
 
-export const isDatadogEnabled = DATADOG_CLIENT_TOKEN.length > 0 && !DATADOG_ENV_DISABLED;
+export const isDatadogEnabled =
+  DATADOG_CLIENT_TOKEN.length > 0 && !DATADOG_ENV_DISABLED && DATADOG_NATIVE_AVAILABLE;
 
 const configuration = isDatadogEnabled
   ? new DatadogProviderConfiguration(DATADOG_CLIENT_TOKEN, DATADOG_ENV, TrackingConsent.GRANTED, {
@@ -31,6 +34,16 @@ const configuration = isDatadogEnabled
 
 if (configuration) {
   configuration.initializationMode = InitializationMode.ASYNC;
+}
+
+async function safeDatadogCall(action: string, operation: () => Promise<void>) {
+  try {
+    await operation();
+  } catch (error) {
+    if (__DEV__) {
+      console.warn(`Datadog ${action} skipped`, error);
+    }
+  }
 }
 
 function normalizeError(error: unknown) {
@@ -59,29 +72,31 @@ export function DatadogAppProvider({ children }: PropsWithChildren) {
 
 export function logDebug(message: string, context: LogContext = {}) {
   if (!isDatadogEnabled) return;
-  void DdLogs.debug(message, context);
+  void safeDatadogCall("debug", () => DdLogs.debug(message, context));
 }
 
 export function logInfo(message: string, context: LogContext = {}) {
   if (!isDatadogEnabled) return;
-  void DdLogs.info(message, context);
+  void safeDatadogCall("info", () => DdLogs.info(message, context));
 }
 
 export function logWarn(message: string, context: LogContext = {}) {
   if (!isDatadogEnabled) return;
-  void DdLogs.warn(message, context);
+  void safeDatadogCall("warn", () => DdLogs.warn(message, context));
 }
 
 export function logError(message: string, error: unknown, context: LogContext = {}) {
   if (!isDatadogEnabled) return;
 
   const normalizedError = normalizeError(error);
-  void DdLogs.error(
-    message,
-    normalizedError.kind,
-    normalizedError.message,
-    normalizedError.stack,
-    context,
+  void safeDatadogCall("error", () =>
+    DdLogs.error(
+      message,
+      normalizedError.kind,
+      normalizedError.message,
+      normalizedError.stack,
+      context,
+    ),
   );
 }
 
@@ -92,10 +107,10 @@ export function setDatadogUser(user: {
   extraInfo?: Record<string, unknown>;
 }) {
   if (!isDatadogEnabled) return;
-  void DdSdkReactNative.setUserInfo(user);
+  void safeDatadogCall("setUserInfo", () => DdSdkReactNative.setUserInfo(user));
 }
 
 export function clearDatadogUser() {
   if (!isDatadogEnabled) return;
-  void DdSdkReactNative.clearUserInfo();
+  void safeDatadogCall("clearUserInfo", () => DdSdkReactNative.clearUserInfo());
 }
