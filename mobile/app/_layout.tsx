@@ -14,7 +14,6 @@ import { ConfigProvider } from "../lib/config-context";
 import { AppDataProvider, useAppData } from "../lib/app-data-context";
 import { SplashScreen } from "../components/SplashScreen";
 import { POSTHOG_KEY, POSTHOG_HOST } from "../lib/analytics";
-import { DatadogAppProvider, logInfo } from "../lib/datadog";
 import { queryClient, QUERY_CACHE_PERSIST_KEY } from "../lib/query-client";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -57,14 +56,10 @@ function RootNavigator() {
     if (session?.user || isDevAuth) {
       hasTrackedOpen.current = true;
       const isNewSignIn = prevSessionId.current === null;
-      logInfo("app_opened", {
-        is_new_sign_in: isNewSignIn,
-        streak: profile?.streak_count ?? 0,
-        is_dev_auth: isDevAuth,
-      });
       posthog?.capture("app_opened", {
         is_new_sign_in: isNewSignIn,
         streak: profile?.streak_count ?? 0,
+        is_dev_auth: isDevAuth,
       });
     }
     prevSessionId.current = session?.user?.id ?? null;
@@ -131,18 +126,16 @@ export default function RootLayout() {
         client={queryClient}
         persistOptions={{ persister, maxAge: DAY_MS }}
       >
-        <DatadogAppProvider>
-          <PostHogProvider apiKey={POSTHOG_KEY} options={{ host: POSTHOG_HOST, disabled: !POSTHOG_KEY }}>
-            <ConfigProvider>
-              <AuthProvider>
-                <AppDataProvider>
-                  <AuthModeBadge />
-                  <RootNavigator />
-                </AppDataProvider>
-              </AuthProvider>
-            </ConfigProvider>
-          </PostHogProvider>
-        </DatadogAppProvider>
+        <PostHogProvider apiKey={POSTHOG_KEY} options={{ host: POSTHOG_HOST, disabled: !POSTHOG_KEY }}>
+          <ConfigProvider>
+            <AuthProvider>
+              <AppDataProvider>
+                <AuthModeBadge />
+                <RootNavigator />
+              </AppDataProvider>
+            </AuthProvider>
+          </ConfigProvider>
+        </PostHogProvider>
       </PersistQueryClientProvider>
     </GestureHandlerRootView>
   );
