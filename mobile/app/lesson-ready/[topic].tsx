@@ -130,6 +130,14 @@ export default function LessonReady() {
 
       await setCurrentCards(topic, mappedCards);
 
+      posthog?.capture("lesson_started", {
+        language: languageLabel,
+        topic: topicTitle ?? topic,
+        difficulty: selectedDifficulty,
+        card_count: mappedCards.length,
+        shuffle: shuffleEnabled,
+      });
+
       router.push({
         pathname: "/practice/[topic]",
         params: {
