@@ -147,11 +147,7 @@ export default function RootLayout() {
             captureAppLifecycleEvents: true,
             enableSessionReplay: true,
             errorTracking: {
-              autocapture: {
-                uncaughtExceptions: true,
-                unhandledRejections: true,
-                console: ["error"],
-              },
+              autocapture: true
             },
             sessionReplayConfig: {
               maskAllTextInputs: true,
@@ -165,11 +161,7 @@ export default function RootLayout() {
         >
           <PostHogErrorBoundary
             fallback={RootErrorFallback}
-            additionalProperties={(error) =>
-              buildExceptionProperties(error, {
-                error_boundary: "root_layout",
-              })
-            }
+            additionalProperties={{ error_boundary: "root_layout" }}
           >
             <ConfigProvider>
               <AuthProvider>
