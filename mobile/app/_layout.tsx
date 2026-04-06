@@ -13,7 +13,13 @@ import { AuthModeBadge } from "../components/AuthModeBadge";
 import { ConfigProvider } from "../lib/config-context";
 import { AppDataProvider, useAppData } from "../lib/app-data-context";
 import { SplashScreen } from "../components/SplashScreen";
-import { buildExceptionProperties, POSTHOG_KEY, POSTHOG_HOST } from "../lib/analytics";
+import {
+  buildExceptionProperties,
+  POSTHOG_ENABLE_ERROR_TRACKING,
+  POSTHOG_ENABLE_SESSION_REPLAY,
+  POSTHOG_HOST,
+  POSTHOG_KEY,
+} from "../lib/analytics";
 import { queryClient, QUERY_CACHE_PERSIST_KEY } from "../lib/query-client";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -187,18 +193,22 @@ export default function RootLayout() {
             host: POSTHOG_HOST,
             disabled: !POSTHOG_KEY,
             captureAppLifecycleEvents: true,
-            enableSessionReplay: true,
-            errorTracking: {
-              autocapture: true
-            },
-            sessionReplayConfig: {
-              maskAllTextInputs: true,
-              maskAllImages: true,
-              maskAllSandboxedViews: true,
-              captureLog: true,
-              captureNetworkTelemetry: true,
-              sampleRate: __DEV__ ? 1 : 0.2,
-            },
+            enableSessionReplay: POSTHOG_ENABLE_SESSION_REPLAY,
+            errorTracking: POSTHOG_ENABLE_ERROR_TRACKING
+              ? {
+                  autocapture: true,
+                }
+              : undefined,
+            sessionReplayConfig: POSTHOG_ENABLE_SESSION_REPLAY
+              ? {
+                  maskAllTextInputs: true,
+                  maskAllImages: true,
+                  maskAllSandboxedViews: true,
+                  captureLog: true,
+                  captureNetworkTelemetry: true,
+                  sampleRate: __DEV__ ? 1 : 0.2,
+                }
+              : undefined,
           }}
         >
           <PostHogErrorBoundary

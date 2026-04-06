@@ -5,6 +5,10 @@ export { usePostHog as useAnalytics };
 
 export const POSTHOG_KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY ?? "";
 export const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+export const POSTHOG_ENABLE_SESSION_REPLAY =
+  process.env.EXPO_PUBLIC_POSTHOG_ENABLE_SESSION_REPLAY === "true";
+export const POSTHOG_ENABLE_ERROR_TRACKING =
+  process.env.EXPO_PUBLIC_POSTHOG_ENABLE_ERROR_TRACKING === "true";
 
 type AnalyticsProperties = Record<string, unknown>;
 const REDACTED = "[REDACTED]";
