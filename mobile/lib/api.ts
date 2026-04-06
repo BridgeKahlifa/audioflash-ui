@@ -143,8 +143,14 @@ export interface ApiUpdateFlashcardAttempt {
   confidence_rating?: number | null;
 }
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090/api";
+export const API_BASE_URL =
+  (process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090/api").replace(/\/$/, "");
+
+const SHOULD_LOG_API = typeof __DEV__ !== "undefined" && __DEV__;
+
+if (SHOULD_LOG_API) {
+  console.log("[api] baseUrl", API_BASE_URL);
+}
 
 export const AUTH_MODE = process.env.EXPO_PUBLIC_AUTH_MODE ?? "supabase";
 export const DEV_AUTH_MODE = AUTH_MODE === "dev";
@@ -177,7 +183,7 @@ async function buildApiError(res: Response): Promise<Error> {
   }
   const baseMessage = `API ${res.status}${
     res.statusText ? " " + res.statusText : ""
-  }`;
+  }${res.url ? ` @ ${res.url}` : ""}`;
   const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
   return new Error(message);
 }
@@ -200,8 +206,18 @@ function authHeaders(
   };
 }
 
+async function apiFetch(
+  url: string,
+  init?: RequestInit,
+): Promise<Response> {
+  if (SHOULD_LOG_API) {
+    console.log("[api] request", init?.method ?? "GET", url);
+  }
+  return fetch(url, init);
+}
+
 export async function fetchProfile(token?: string | null): Promise<ApiProfile> {
-  const res = await fetch(`${API_BASE_URL}/profile`, {
+  const res = await apiFetch(`${API_BASE_URL}/profile`, {
     headers: authHeaders(token),
   });
   return parseJson<ApiProfile>(res);
@@ -228,7 +244,7 @@ export async function deleteAccount(token: string | null | undefined): Promise<v
 }
 
 export async function fetchSessions(token?: string | null): Promise<ApiSession[]> {
-  const res = await fetch(`${API_BASE_URL}/sessions`, {
+  const res = await apiFetch(`${API_BASE_URL}/sessions`, {
     headers: authHeaders(token),
   });
   return parseJson<ApiSession[]>(res);
@@ -237,7 +253,7 @@ export async function fetchSessions(token?: string | null): Promise<ApiSession[]
 export async function fetchSessionStats(
   token?: string | null,
 ): Promise<ApiSessionStats> {
-  const res = await fetch(`${API_BASE_URL}/sessions/stats`, {
+  const res = await apiFetch(`${API_BASE_URL}/sessions/stats`, {
     headers: authHeaders(token),
   });
   return parseJson<ApiSessionStats>(res);
@@ -279,17 +295,17 @@ export async function bulkCreateFlashcards(
 }
 
 export async function fetchLanguages(): Promise<ApiLanguage[]> {
-  const res = await fetch(`${API_BASE_URL}/languages`);
+  const res = await apiFetch(`${API_BASE_URL}/languages`);
   return parseJson<ApiLanguage[]>(res);
 }
 
 export async function fetchCategories(): Promise<ApiCategory[]> {
-  const res = await fetch(`${API_BASE_URL}/lessons/categories`);
+  const res = await apiFetch(`${API_BASE_URL}/lessons/categories`);
   return parseJson<ApiCategory[]>(res);
 }
 
 export async function fetchConfig(): Promise<ApiConfig> {
-  const res = await fetch(`${API_BASE_URL}/config`);
+  const res = await apiFetch(`${API_BASE_URL}/config`);
   return parseJson<ApiConfig>(res);
 }
 
@@ -327,7 +343,7 @@ export async function fetchFlashcards(): Promise<ApiLessonCard[]> {
 }
 
 export async function fetchReviews(token?: string | null): Promise<ApiReview[]> {
-  const res = await fetch(`${API_BASE_URL}/review`, {
+  const res = await apiFetch(`${API_BASE_URL}/review`, {
     headers: authHeaders(token),
   });
   return parseJson<ApiReview[]>(res);
@@ -536,7 +552,7 @@ export async function unsaveLesson(
 export async function fetchSRSQueue(
   token: string | null | undefined,
 ): Promise<ApiSRSQueue> {
-  const res = await fetch(`${API_BASE_URL}/library/srs/queue`, {
+  const res = await apiFetch(`${API_BASE_URL}/library/srs/queue`, {
     headers: authHeaders(token),
   });
   return parseJson<ApiSRSQueue>(res);
