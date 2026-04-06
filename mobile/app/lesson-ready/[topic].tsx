@@ -4,13 +4,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { setCurrentCards, getSettings } from "../../lib/storage";
-import { logError } from "../../lib/datadog";
 import { Flashcard } from "../../lib/types";
 import { createLessonSession, fetchLessonsByCategory, saveLesson, unsaveLesson } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
+import { buildErrorProperties, useAnalytics } from "../../lib/analytics";
 
 export default function LessonReady() {
   const { profile, session } = useAuth();
+  const posthog = useAnalytics();
   const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded, supportedDifficulties } =
     useLocalSearchParams<{
       topic: string;
@@ -129,6 +130,14 @@ export default function LessonReady() {
 
       await setCurrentCards(topic, mappedCards);
 
+      posthog?.capture("lesson_started", {
+        language: languageLabel,
+        topic: topicTitle ?? topic,
+        difficulty: selectedDifficulty,
+        card_count: mappedCards.length,
+        shuffle: shuffleEnabled,
+      });
+
       router.push({
         pathname: "/practice/[topic]",
         params: {
@@ -146,11 +155,11 @@ export default function LessonReady() {
       });
     } catch (error) {
       console.error("Failed to prepare lesson", error);
-      logError("lesson_ready_start_failed", error, {
+      posthog?.capture("lesson_ready_start_failed", buildErrorProperties(error, {
         category_id: apiCategoryId,
         difficulty: selectedDifficulty,
         topic,
-      });
+      }));
       setStatus("error");
       setErrorMessage("We couldn't start the lesson right now. Please try again.");
     } finally {

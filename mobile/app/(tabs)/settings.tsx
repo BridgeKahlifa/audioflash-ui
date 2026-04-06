@@ -11,6 +11,7 @@ import {
   Alert,
   Linking,
 } from "react-native";
+import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
@@ -124,6 +125,9 @@ export default function SettingsScreen() {
   );
   const [showTargetPicker, setShowTargetPicker] = useState(false);
   const [saved, setSaved] = useState(false);
+  const appVersion = Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? "unknown";
+  const buildVersion = Constants.nativeBuildVersion;
+  const versionLabel = buildVersion ? `Version ${appVersion} (${buildVersion})` : `Version ${appVersion}`;
 
   const normalizedProfileName = profile?.name ?? "";
   const normalizedProfileEmail = user?.email ?? "";
@@ -542,6 +546,7 @@ export default function SettingsScreen() {
               </>
             )}
           </View>
+          <Text className="text-center text-xs text-muted mt-5">{versionLabel}</Text>
 
         </ScrollView>
       </View>

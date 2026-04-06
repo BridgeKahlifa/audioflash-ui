@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
 import { useAnalytics } from "../../lib/analytics";
 
-const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
+const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
 
 export default function SignIn() {
   const { sendOtp, passkeySupported, signInWithPasskey } = useAuth();
