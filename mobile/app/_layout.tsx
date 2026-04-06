@@ -74,6 +74,34 @@ function RootNavigator() {
   const profilePending = isAuthenticated && profile === null && profileLoading && !profileError;
   const showSplash = loading || profilePending || (isAuthenticated && !appDataReady);
 
+  useEffect(() => {
+    console.log("[startup][RootNavigator]", {
+      loading,
+      isDevAuth,
+      hasSession: !!session,
+      hasProfile: !!profile,
+      profileLoading,
+      profileError: profileError ?? null,
+      appDataReady,
+      isAuthenticated,
+      profilePending,
+      showSplash,
+      segments,
+    });
+  }, [
+    loading,
+    isDevAuth,
+    !!session,
+    !!profile,
+    profileLoading,
+    profileError,
+    appDataReady,
+    isAuthenticated,
+    profilePending,
+    showSplash,
+    segments,
+  ]);
+
   // Derive mount state synchronously during render — not in a useEffect.
   // A useEffect fires after paint, creating a race where fast queries (e.g.
   // profile) resolve before the splash ever mounts, so it never appears.
@@ -89,13 +117,27 @@ function RootNavigator() {
     const inOnboardingGroup = segments[0] === "(onboarding)";
     const needsOnboarding = profile != null && !profile.onboarding_completed;
 
+    console.log("[startup][redirect-check]", {
+      isAuthenticated,
+      loading,
+      profilePending,
+      inAuthGroup,
+      inOnboardingGroup,
+      needsOnboarding,
+      segments,
+    });
+
     if (!isAuthenticated && !inAuthGroup) {
+      console.log("[startup][redirect]", "/(auth)/sign-in");
       router.replace("/(auth)/sign-in");
     } else if (isAuthenticated && inAuthGroup) {
+      console.log("[startup][redirect]", needsOnboarding ? "/(onboarding)" : "/(tabs)");
       router.replace(needsOnboarding ? "/(onboarding)" : "/(tabs)");
     } else if (isAuthenticated && needsOnboarding && !inOnboardingGroup) {
+      console.log("[startup][redirect]", "/(onboarding)");
       router.replace("/(onboarding)");
     } else if (isAuthenticated && !needsOnboarding && inOnboardingGroup) {
+      console.log("[startup][redirect]", "/(tabs)");
       router.replace("/(tabs)");
     }
   }, [isAuthenticated, loading, profilePending, segments, profile?.onboarding_completed]);
