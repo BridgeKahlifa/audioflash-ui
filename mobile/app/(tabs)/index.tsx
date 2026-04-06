@@ -7,7 +7,7 @@ import { useAuth } from "../../lib/auth-context";
 import { useAnalytics } from "../../lib/analytics";
 import { useSRSQueue, useInProgressLesson, useInProgressLessonName } from "../../lib/queries";
 
-const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
+const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
 
 
 export default function Home() {
