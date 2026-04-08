@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "AudioFlash",
-    "slug": "audioflash",
+    "slug": "audio-flash",
     "version": "1.0.0",
     "scheme": "audioflash",
     "orientation": "portrait",
@@ -16,7 +16,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "ai.audioflash.mobile",
       "infoPlist": {
-        "NSLocalNetworkUsageDescription": "Allow AudioFlash to connect to the local development server on your Mac."
+        "NSLocalNetworkUsageDescription": "Allow AudioFlash to connect to the local development server on your Mac.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -37,9 +38,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "95fa778c-dace-4afc-84c9-4be081353877"
+        "projectId": "eb4ac187-0d19-4b08-8276-3c8333ed1c4b"
       }
     },
-    "owner": "nbbaby"
+    "owner": "nbbabys-organization"
   }
 }
