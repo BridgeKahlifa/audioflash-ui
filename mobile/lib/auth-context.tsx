@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { Passkey, PasskeyCreateResult, PasskeyGetResult } from "react-native-passkey";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "./supabase";
 import {
@@ -11,7 +10,6 @@ import {
   updateProfile,
   deleteAccount as apiDeleteAccount,
 } from "./api";
-import { clearDatadogUser, setDatadogUser } from "./datadog";
 import { syncSettingsFromProfile } from "./storage";
 import { clearQueryCache, queryClient } from "./query-client";
 import { queryKeys } from "./query-keys";
@@ -44,6 +42,20 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const DEV_USER_ID = process.env.EXPO_PUBLIC_DEV_USER_ID?.trim() || "dev-user";
 const DEV_USER_EMAIL =
   process.env.EXPO_PUBLIC_DEV_USER_EMAIL?.trim() || "dev@audioflash.local";
+
+type PasskeyModule = typeof import("react-native-passkey").Passkey;
+type PasskeyCreateResult = import("react-native-passkey").PasskeyCreateResult;
+type PasskeyGetResult = import("react-native-passkey").PasskeyGetResult;
+
+function getPasskeyModule(): PasskeyModule | null {
+  try {
+    const passkeyModule = require("react-native-passkey") as { Passkey?: PasskeyModule };
+    return passkeyModule.Passkey ?? null;
+  } catch (error) {
+    console.warn("[auth] Passkey native module unavailable", error);
+    return null;
+  }
+}
 
 function createDevSession(): Session {
   const nowSeconds = Math.floor(Date.now() / 1000);
@@ -96,31 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (profile) syncSettingsFromProfile(profile);
   }, [profile]);
 
-  useEffect(() => {
-    const currentUser = session?.user;
-
-    if (!currentUser && !DEV_AUTH_MODE) {
-      clearDatadogUser();
-      return;
-    }
-
-    const effectiveUserId = currentUser?.id ?? DEV_USER_ID;
-    const effectiveEmail = currentUser?.email ?? DEV_USER_EMAIL;
-
-    setDatadogUser({
-      id: effectiveUserId,
-      name: profile?.name ?? undefined,
-      email: effectiveEmail,
-      extraInfo: {
-        profile_id: profile?.id ?? effectiveUserId,
-        is_dev_auth: DEV_AUTH_MODE,
-        native_language_id: profile?.native_language_id ?? null,
-        target_language_ids: profile?.target_language_ids ?? [],
-        daily_goal: profile?.daily_goal ?? null,
-      },
-    });
-  }, [session?.user?.id, session?.user?.email, profile?.id, profile?.name, profile?.native_language_id, profile?.daily_goal, JSON.stringify(profile?.target_language_ids)]);
-
   // ── Auth setup ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (DEV_AUTH_MODE) {
@@ -139,7 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
     });
 
-    setPasskeySupported(Passkey.isSupported());
+    const passkey = getPasskeyModule();
+    setPasskeySupported(passkey?.isSupported?.() ?? false);
 
     return () => subscription.unsubscribe();
   }, []);
@@ -169,12 +157,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function registerPasskey() {
     if (DEV_AUTH_MODE) return { error: "Passkeys are disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
+    const passkey = getPasskeyModule();
+    if (!passkey?.isSupported?.()) return { error: "Passkeys are not available on this device." };
     try {
       const { data, error } = await supabase.auth.mfa.enroll({ factorType: "webauthn" });
       if (error) return { error: error.message };
 
       const webauthnData = (data as any).webauthn;
-      const result: PasskeyCreateResult = await Passkey.create(webauthnData);
+      const result: PasskeyCreateResult = await passkey.create(webauthnData);
 
       const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
         factorId: data.id,
@@ -190,6 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signInWithPasskey() {
     if (DEV_AUTH_MODE) return { error: "Passkeys are disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
+    const passkey = getPasskeyModule();
+    if (!passkey?.isSupported?.()) return { error: "Passkeys are not available on this device." };
     try {
       const { error } = await supabase.auth.signInAnonymously();
       if (error) return { error: error.message };
@@ -205,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (challengeError) return { error: challengeError.message };
 
-      const result: PasskeyGetResult = await Passkey.get((challengeData as any).webauthn);
+      const result: PasskeyGetResult = await passkey.get((challengeData as any).webauthn);
 
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId: webauthnFactor.id,

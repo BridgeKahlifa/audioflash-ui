@@ -1,38 +1,46 @@
 {
   "expo": {
     "name": "AudioFlash",
-    "slug": "audioflash",
+    "slug": "audio-flash",
     "version": "1.0.0",
     "scheme": "audioflash",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/app_icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/app_icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FAFAFA"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.audioflash.app"
+      "bundleIdentifier": "ai.audioflash.mobile",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Allow AudioFlash to connect to the local development server on your Mac.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.audioflash.app",
       "adaptiveIcon": {
         "backgroundColor": "#FAFAFA",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/app_icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.ico"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
-      "expo-datadog"
-    ]
+      "expo-secure-store"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "eb4ac187-0d19-4b08-8276-3c8333ed1c4b"
+      }
+    },
+    "owner": "nbbabys-organization"
   }
 }

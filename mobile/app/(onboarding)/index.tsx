@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAnalytics } from "../../lib/analytics";
 
-const LOGO_IMAGE = require("../../assets/AudioFlashLogo3.png");
+const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
 
 export default function OnboardingWelcome() {
   const posthog = useAnalytics();

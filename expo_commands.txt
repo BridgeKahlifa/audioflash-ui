@@ -1,0 +1,15 @@
+Android
+______
+Run the app natively for Android: npx expo run:android
+
+
+Build the app for Android: npx eas-cli build --profile preview --platform android --clear-cache
+
+
+
+
+
+
+IOS:
+____
+Build the app for iOS: npx eas-cli build --profile preview --platform ios --clear-cache

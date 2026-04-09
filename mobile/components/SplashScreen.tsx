@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Animated, Image, StyleSheet, Text, View } from "react-native";
 
-const LOGO = require("../assets/AudioFlashLogo3.png");
+const LOGO = require("../assets/AudioFlashLogo.png");
 
 export function SplashScreen({ visible, onHidden }: { visible: boolean; onHidden: () => void }) {
   const opacity = useRef(new Animated.Value(1)).current;
