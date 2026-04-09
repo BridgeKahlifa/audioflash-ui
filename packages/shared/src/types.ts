@@ -41,6 +41,7 @@ export interface SessionHistoryItem {
   difficulty?: number;
   correct: number;
   total: number;
+  missedCount?: number;
   cards: SessionCardResult[];
   reviewId?: string;
   reviewName?: string;

@@ -25,6 +25,8 @@ interface SessionManagerParams {
   shownAtRef: React.MutableRefObject<number>;
   sessionStartedAt: React.MutableRefObject<number>;
   isResumeSession: boolean;
+  resumeCardsSeen?: number;
+  resumeCardsCorrect?: number;
   lessonSessionId?: string;
   reviewId?: string;
   topic: string;
@@ -70,6 +72,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
     const {
       cards, currentIndex, resolvedActivityId, categoryId, difficulty, selectedConfidence, audioPlayCount,
       shownAtRef, sessionStartedAt, isResumeSession,
+      resumeCardsSeen = 0, resumeCardsCorrect = 0,
       lessonSessionId, reviewId, topic, topicTitle, language, languageLabel,
     } = params;
 
@@ -157,9 +160,19 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
     const completedResults = newResults.filter(
       (r): r is SessionCardResult => Boolean(r),
     );
-    const correct = completedResults.filter((r) => r.knew).length;
+    const localCorrect = completedResults.filter((r) => r.knew).length;
+    let aggregateCorrect = localCorrect + (isResumeSession ? resumeCardsCorrect : 0);
+    let aggregateTotal = isResumeSession
+      ? Math.max(cards.length, resumeCardsSeen + completedResults.length)
+      : completedResults.length;
     let createdReviewId: string | undefined;
     let createdReviewName: string | undefined;
+    let endedLessonSummary:
+      | {
+          cardsCorrect: number;
+          cardsSeen: number;
+        }
+      | undefined;
 
     if (shouldPersistAttempts) {
       const profileId = profile?.id ?? session?.user?.id;
@@ -173,10 +186,14 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
 
       try {
         if (lessonSessionId) {
-          await endLesson(session?.access_token, {
+          const endedLesson = await endLesson(session?.access_token, {
             profile_id: profileId,
             session_id: lessonSessionId,
           });
+          endedLessonSummary = {
+            cardsCorrect: endedLesson.cards_correct,
+            cardsSeen: endedLesson.cards_seen,
+          };
         } else if (!reviewId) {
           setAttemptError("We couldn't finish this lesson because the lesson session is missing.");
           setSubmitting(false);
@@ -212,6 +229,11 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       }
     }
 
+    if (endedLessonSummary) {
+      aggregateCorrect = endedLessonSummary.cardsCorrect;
+      aggregateTotal = endedLessonSummary.cardsSeen;
+    }
+
     if (reviewId) {
       try {
         await completeReviewLifecycle(session?.access_token, reviewId);
@@ -233,6 +255,8 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       categoryId,
       difficulty: typeof difficulty === "number" ? difficulty : undefined,
       cards: completedResults,
+      total: aggregateTotal,
+      correct: aggregateCorrect,
       reviewId: createdReviewId,
       reviewName: createdReviewName,
     });
@@ -242,18 +266,18 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       createSession(session.access_token, {
         topic_title: topicTitle ?? topic,
         language_label: languageLabel,
-        cards_attempted: completedResults.length,
-        cards_correct: correct,
+        cards_attempted: aggregateTotal,
+        cards_correct: aggregateCorrect,
         completed_at: new Date().toISOString(),
       }).catch(() => {});
     }
 
     posthog?.capture("session_completed", {
       language: languageLabel,
-      card_count: completedResults.length,
-      cards_correct: correct,
-      accuracy: completedResults.length > 0
-        ? Math.round((correct / completedResults.length) * 100)
+      card_count: aggregateTotal,
+      cards_correct: aggregateCorrect,
+      accuracy: aggregateTotal > 0
+        ? Math.round((aggregateCorrect / aggregateTotal) * 100)
         : 0,
       duration_ms: Date.now() - sessionStartedAt.current,
       is_review: Boolean(reviewId),

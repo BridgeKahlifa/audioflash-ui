@@ -308,6 +308,8 @@ export default function SessionSummary() {
     () => session?.cards.filter((card) => !card.knew) ?? [],
     [session]
   );
+  const missedCount =
+    typeof session?.missedCount === "number" ? session.missedCount : missed.length;
 
   const accuracy =
     session && session.total > 0
@@ -420,15 +422,24 @@ export default function SessionSummary() {
             <Text className="text-muted text-xs mb-2">{session.languageLabel} · {session.topicTitle}</Text>
             <Text className="text-3xl font-semibold text-foreground">{session.correct}/{session.total}</Text>
             <Text className="text-muted mt-1">Accuracy: {accuracy}%</Text>
-            <Text className="text-muted mt-1">Missed: {missed.length}</Text>
+            <Text className="text-muted mt-1">Missed: {missedCount}</Text>
           </View>
 
           <View className="bg-card border border-border rounded-2xl p-5 mb-4">
             <Text className="text-base font-medium text-foreground mb-3">Missed Cards</Text>
             {missed.length === 0 ? (
-              <Text className="text-muted">Perfect run. Nothing to retry.</Text>
+              <Text className="text-muted">
+                {missedCount === 0
+                  ? "Perfect run. Nothing to retry."
+                  : "Missed cards from earlier in this resumed lesson are not available to list here."}
+              </Text>
             ) : (
               <View className="gap-3">
+                {missedCount > missed.length ? (
+                  <Text className="text-muted text-sm">
+                    Showing missed cards from this segment of the lesson.
+                  </Text>
+                ) : null}
                 {missed.map((card) => (
                   <View key={`${card.cardId}-${card.sourceText}`} className="bg-secondary rounded-xl p-3">
                     <Text className="text-foreground text-lg">{card.sourceText}</Text>

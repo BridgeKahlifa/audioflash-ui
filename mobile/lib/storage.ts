@@ -348,11 +348,13 @@ export async function saveCompletedSession(input: {
   categoryId?: string;
   difficulty?: number;
   cards: SessionCardResult[];
+  total?: number;
+  correct?: number;
   reviewId?: string;
   reviewName?: string;
 }): Promise<SessionHistoryItem> {
-  const total = input.cards.length;
-  const correct = input.cards.filter((card) => card.knew).length;
+  const total = input.total ?? input.cards.length;
+  const correct = input.correct ?? input.cards.filter((card) => card.knew).length;
 
   await recordSession(correct, total);
 
@@ -367,6 +369,7 @@ export async function saveCompletedSession(input: {
     difficulty: input.difficulty,
     correct,
     total,
+    missedCount: Math.max(total - correct, 0),
     cards: input.cards,
     reviewId: input.reviewId,
     reviewName: input.reviewName,

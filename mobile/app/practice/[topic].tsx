@@ -67,9 +67,12 @@ export default function FlashcardPractice() {
   const [resolvedDifficulty, setResolvedDifficulty] = useState<number | null>(
     difficulty != null ? Number(difficulty) : null,
   );
+  const [resumeCardsSeen, setResumeCardsSeen] = useState(0);
+  const [resumeCardsCorrect, setResumeCardsCorrect] = useState(0);
   const shownAtRef = useRef(Date.now());
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionStartedAt = useRef(Date.now());
+  const sliderDragStartPosition = useRef(0);
   const isResumeSession = resumeSession === "true";
   const initialResumeIndex = Number(initialCurrentIndex ?? 0);
 
@@ -85,6 +88,8 @@ export default function FlashcardPractice() {
     shownAtRef,
     sessionStartedAt,
     isResumeSession,
+    resumeCardsSeen,
+    resumeCardsCorrect,
     lessonSessionId,
     reviewId,
     topic,
@@ -121,6 +126,8 @@ export default function FlashcardPractice() {
 
           setCards(mappedCards);
           setResolvedActivityId(lessonSession.activity_id ?? lessonSession.session_id);
+          setResumeCardsSeen(lessonSession.cards_seen ?? lessonSession.current_index ?? 0);
+          setResumeCardsCorrect(lessonSession.cards_correct ?? 0);
           setResolvedDifficulty(
             typeof lessonSession.difficulty === "number"
               ? lessonSession.difficulty
@@ -158,6 +165,8 @@ export default function FlashcardPractice() {
       if (stored && stored.length > 0) {
         setCards(stored);
         setResolvedActivityId(activityId ?? null);
+        setResumeCardsSeen(0);
+        setResumeCardsCorrect(0);
         setResolvedDifficulty(difficulty != null ? Number(difficulty) : null);
         setCurrentIndex(0);
         posthog?.capture("session_started", {
@@ -236,11 +245,15 @@ export default function FlashcardPractice() {
       ? ((playbackSpeed - minPlaybackSpeed) / (maxPlaybackSpeed - minPlaybackSpeed)) * sliderUsableWidth
       : 0;
 
+  function clampSliderPosition(position: number) {
+    return Math.min(sliderUsableWidth, Math.max(0, position));
+  }
+
   function updatePlaybackSpeedFromPosition(position: number) {
     if (sliderUsableWidth <= 0) return;
-    const ratio = Math.min(1, Math.max(0, position / sliderUsableWidth));
+    const ratio = clampSliderPosition(position) / sliderUsableWidth;
     const rawValue = minPlaybackSpeed + ratio * (maxPlaybackSpeed - minPlaybackSpeed);
-    setPlaybackSpeed(Math.round(rawValue * 10) / 10);
+    setPlaybackSpeed(rawValue);
   }
 
   function handleSliderLayout(event: LayoutChangeEvent) {
@@ -269,8 +282,16 @@ export default function FlashcardPractice() {
   const sliderPanResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (e) => updatePlaybackSpeedFromPosition(e.nativeEvent.locationX - sliderThumbSize / 2),
-    onPanResponderMove: (e) => updatePlaybackSpeedFromPosition(e.nativeEvent.locationX - sliderThumbSize / 2),
+    onPanResponderGrant: (event) => {
+      sliderDragStartPosition.current = sliderPosition;
+      const pressedPosition = event.nativeEvent.locationX - sliderThumbSize / 2;
+      if (Math.abs(pressedPosition - sliderPosition) > sliderThumbSize / 2) {
+        updatePlaybackSpeedFromPosition(pressedPosition);
+      }
+    },
+    onPanResponderMove: (_, gs) => {
+      updatePlaybackSpeedFromPosition(sliderDragStartPosition.current + gs.dx);
+    },
   });
 
   function goPrev() {
