@@ -4,6 +4,7 @@ import {
   Text,
   Pressable,
   PanResponder,
+  Animated,
   LayoutChangeEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -74,6 +75,7 @@ export default function FlashcardPractice() {
   const sliderRef = useRef<ElementRef<typeof View>>(null);
   const sliderPageXRef = useRef(0);
   const sliderMeasuredWidthRef = useRef(0);
+  const translateX = useRef(new Animated.Value(0)).current;
   const isResumeSession = resumeSession === "true";
   const initialResumeIndex = Number(initialCurrentIndex ?? 0);
 
@@ -301,6 +303,12 @@ export default function FlashcardPractice() {
       !submitting &&
       gestureState.dx > 35 &&
       Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25,
+    onPanResponderGrant: () => {
+      translateX.stopAnimation();
+    },
+    onPanResponderMove: (_, gestureState) => {
+      translateX.setValue(Math.max(0, gestureState.dx));
+    },
     onPanResponderRelease: (_, gestureState) => {
       if (
         currentIndex > 0 &&
@@ -308,8 +316,27 @@ export default function FlashcardPractice() {
         gestureState.dx > 80 &&
         Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25
       ) {
-        goPrev();
+        Animated.timing(translateX, {
+          toValue: 420,
+          duration: 180,
+          useNativeDriver: true,
+        }).start(() => {
+          translateX.setValue(0);
+          goPrev();
+        });
+        return;
       }
+
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+      }).start();
+    },
+    onPanResponderTerminate: () => {
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+      }).start();
     },
   });
 
@@ -373,10 +400,11 @@ export default function FlashcardPractice() {
 
         {/* Card */}
         <View className="flex-1 px-4 pb-4">
-          <View
+          <Animated.View
             {...previousCardPanResponder.panHandlers}
             className="bg-card rounded-3xl"
             style={{
+              transform: [{ translateX }],
               flex: 1,
               flexDirection: "column",
               alignItems: "center",
@@ -455,7 +483,7 @@ export default function FlashcardPractice() {
                 </Text>
               </View>
             )}
-          </View>
+          </Animated.View>
         </View>
 
         {/* Actions */}
