@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ApiLanguage } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
@@ -28,6 +28,7 @@ export default function Categories() {
     data: contextCategories = [],
     isPending: categoriesLoading,
     error: categoriesError,
+    refetch: refetchCategories,
   } = useCategories();
 
   const preferredLanguageId = profile?.target_language_ids?.[0] ?? null;
@@ -38,6 +39,12 @@ export default function Categories() {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [switchingLanguage, setSwitchingLanguage] = useState(false);
   const [resolvedLanguage, setResolvedLanguage] = useState<ApiLanguage | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetchCategories();
+    }, [refetchCategories])
+  );
 
   useEffect(() => {
     if (switchingLanguage) return;

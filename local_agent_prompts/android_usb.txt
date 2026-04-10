@@ -1,0 +1,101 @@
+You are my USB testing agent for the AudioFlash mobile app.
+
+Context:
+I'm running this on my Windows 11 PC.
+but I could also run it on my laptop
+Repo path:
+C:\Users\fatta\source\repos\audioflash-ui
+
+Mobile app path:
+C:\Users\fatta\source\repos\audioflash-ui\mobile
+
+Device:
+Physical Android device, serial R5CY10TWNXW
+
+Goal:
+Get the AudioFlash Dev app installed and running on my phone through USB, connected to Metro.
+
+Steps to perform:
+
+1. Go to the mobile app directory:
+   cd C:\Users\fatta\source\repos\audioflash-ui\mobile
+
+2. Check that adb can see my phone:
+   & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" devices -l
+
+   The phone should show as:
+   R5CY10TWNXW device
+
+   If it says offline, restart adb:
+   & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" kill-server
+   & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" start-server
+   & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" devices -l
+
+3. Confirm the debug APK exists:
+   Get-Item android\app\build\outputs\apk\debug\app-debug.apk
+
+   If the APK is missing or stale, build/install using:
+   npx expo run:android
+
+4. Verify the APK is the dev variant, not prod:
+   & "$env:LOCALAPPDATA\Android\Sdk\build-tools\37.0.0\aapt.exe" dump badging android\app\build\outputs\apk\debug\app-debug.apk | Select-String -Pattern "package:|application-label"
+
+   Expected:
+   package: name='com.audioflash.app.dev'
+   application-label:'AudioFlash Dev'
+
+5. Install the dev APK directly:
+   & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" -s R5CY10TWNXW install -r -d --user 0 android\app\build\outputs\apk\debug\app-debug.apk
+
+   Expected:
+   Performing Streamed Install
+   Success
+
+6. Set up USB reverse so the phone can reach Metro:
+   & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" -s R5CY10TWNXW reverse tcp:8081 tcp:8081
+   & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" -s R5CY10TWNXW reverse --list
+
+   Expected:
+   UsbFfs tcp:8081 tcp:8081
+
+7. Check whether Metro is already running:
+   Get-NetTCPConnection -LocalPort 8081 -State Listen -ErrorAction SilentlyContinue
+
+   If nothing is listening, start Metro in a new PowerShell window:
+   Start-Process powershell.exe -ArgumentList @(
+     '-NoExit',
+     '-Command',
+     'Set-Location "C:\Users\fatta\source\repos\audioflash-ui\mobile"; npx expo start --dev-client --host localhost'
+   )
+
+8. Wait a few seconds, then verify Metro is listening:
+   Start-Sleep -Seconds 6
+   Get-NetTCPConnection -LocalPort 8081 -State Listen -ErrorAction SilentlyContinue
+
+   Expected:
+   LocalPort 8081
+   State Listen
+
+9. Launch AudioFlash Dev on the phone:
+   & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" -s R5CY10TWNXW shell monkey -p com.audioflash.app.dev 1
+
+   Expected:
+   Events injected: 1
+
+10. Tell me the final status:
+   - Whether the phone is online in adb
+   - Whether the APK installed successfully
+   - Whether adb reverse is active
+   - Whether Metro is listening on 8081
+   - Whether AudioFlash Dev was launched
+
+Important notes:
+- The dev app package is com.audioflash.app.dev.
+- The prod app package is com.audioflash.app.
+- Do not uninstall com.audioflash.app unless I explicitly ask.
+- If install fails with signature mismatch for com.audioflash.app.dev, uninstall only the dev app:
+  & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" -s R5CY10TWNXW uninstall com.audioflash.app.dev
+- Keep the Metro PowerShell window open while I test.
+- If I want Wi-Fi instead of USB, use:
+  npx expo start --dev-client --host lan
+  But for USB testing, prefer --host localhost plus adb reverse tcp:8081 tcp:8081.

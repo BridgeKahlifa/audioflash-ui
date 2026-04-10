@@ -21,6 +21,7 @@ import {
   POSTHOG_KEY,
 } from "../lib/analytics";
 import { queryClient, QUERY_CACHE_PERSIST_KEY } from "../lib/query-client";
+import { SUPABASE_CONFIG_ERROR } from "../lib/supabase";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -39,6 +40,27 @@ function RootErrorFallback() {
       <Text style={{ fontSize: 15, color: "#4b5563", textAlign: "center" }}>
         Restart the app and try again.
       </Text>
+    </View>
+  );
+}
+
+function ConfigurationErrorScreen({ message }: { message: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: "#fff7ed", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <View style={{ width: "100%", maxWidth: 360, backgroundColor: "#ffffff", borderRadius: 24, padding: 24 }}>
+        <Text style={{ fontSize: 24, fontWeight: "700", color: "#111827", marginBottom: 10 }}>
+          Something Went Wrong
+        </Text>
+        <Text style={{ fontSize: 15, lineHeight: 22, color: "#4b5563", marginBottom: 16 }}>
+          AudioFlash could not start correctly.
+        </Text>
+        <Text style={{ fontSize: 14, lineHeight: 21, color: "#9a3412", marginBottom: 16 }}>
+          Please try again in a moment. If the problem continues, reinstall the app or contact support.
+        </Text>
+        <Text style={{ fontSize: 13, lineHeight: 20, color: "#6b7280" }}>
+          {message}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -178,6 +200,15 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  if (SUPABASE_CONFIG_ERROR) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <StatusBar style="dark" />
+        <ConfigurationErrorScreen message={SUPABASE_CONFIG_ERROR} />
+      </GestureHandlerRootView>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />

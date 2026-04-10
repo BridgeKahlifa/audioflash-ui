@@ -484,6 +484,7 @@ export default function SettingsScreen() {
             </View>
           </View>
 
+          {/*
           <SectionLabel>Reminders</SectionLabel>
           <View className="bg-card border border-border rounded-2xl p-5">
             <Text className="text-foreground font-medium mb-3">Practice Reminders</Text>
@@ -496,6 +497,7 @@ export default function SettingsScreen() {
               </Text>
             </Pressable>
           </View>
+          */}
 
           <Pressable onPress={saveSettings} className="py-4 rounded-2xl items-center bg-primary mt-3">
             <Text className="text-primary-foreground font-semibold">Save Settings</Text>

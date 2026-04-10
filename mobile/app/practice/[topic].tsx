@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ElementRef } from "react";
 import {
   View,
   Text,
@@ -67,9 +67,15 @@ export default function FlashcardPractice() {
   const [resolvedDifficulty, setResolvedDifficulty] = useState<number | null>(
     difficulty != null ? Number(difficulty) : null,
   );
+  const [resumeCardsSeen, setResumeCardsSeen] = useState(0);
+  const [resumeCardsCorrect, setResumeCardsCorrect] = useState(0);
   const shownAtRef = useRef(Date.now());
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionStartedAt = useRef(Date.now());
+  const sliderRef = useRef<ElementRef<typeof View>>(null);
+  const sliderPageXRef = useRef(0);
+  const sliderMeasuredWidthRef = useRef(0);
+  const translateX = useRef(new Animated.Value(0)).current;
   const isResumeSession = resumeSession === "true";
   const initialResumeIndex = Number(initialCurrentIndex ?? 0);
 
@@ -85,6 +91,8 @@ export default function FlashcardPractice() {
     shownAtRef,
     sessionStartedAt,
     isResumeSession,
+    resumeCardsSeen,
+    resumeCardsCorrect,
     lessonSessionId,
     reviewId,
     topic,
@@ -92,9 +100,6 @@ export default function FlashcardPractice() {
     language,
     languageLabel,
   });
-
-  // ── Swipe animation ────────────────────────────────────────────────────────
-  const translateX = useRef(new Animated.Value(0)).current;
 
   // ── Load cards ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -121,6 +126,8 @@ export default function FlashcardPractice() {
 
           setCards(mappedCards);
           setResolvedActivityId(lessonSession.activity_id ?? lessonSession.session_id);
+          setResumeCardsSeen(lessonSession.cards_seen ?? lessonSession.current_index ?? 0);
+          setResumeCardsCorrect(lessonSession.cards_correct ?? 0);
           setResolvedDifficulty(
             typeof lessonSession.difficulty === "number"
               ? lessonSession.difficulty
@@ -158,6 +165,8 @@ export default function FlashcardPractice() {
       if (stored && stored.length > 0) {
         setCards(stored);
         setResolvedActivityId(activityId ?? null);
+        setResumeCardsSeen(0);
+        setResumeCardsCorrect(0);
         setResolvedDifficulty(difficulty != null ? Number(difficulty) : null);
         setCurrentIndex(0);
         posthog?.capture("session_started", {
@@ -236,53 +245,104 @@ export default function FlashcardPractice() {
       ? ((playbackSpeed - minPlaybackSpeed) / (maxPlaybackSpeed - minPlaybackSpeed)) * sliderUsableWidth
       : 0;
 
-  function updatePlaybackSpeedFromPosition(position: number) {
-    if (sliderUsableWidth <= 0) return;
-    const ratio = Math.min(1, Math.max(0, position / sliderUsableWidth));
+  function updatePlaybackSpeedFromPosition(position: number, usableWidth: number) {
+    if (usableWidth <= 0) return;
+    const clampedPosition = Math.min(usableWidth, Math.max(0, position));
+    const ratio = clampedPosition / usableWidth;
     const rawValue = minPlaybackSpeed + ratio * (maxPlaybackSpeed - minPlaybackSpeed);
-    setPlaybackSpeed(Math.round(rawValue * 10) / 10);
+    setPlaybackSpeed(rawValue);
+  }
+
+  function updatePlaybackSpeedFromPageX(
+    pageX: number,
+    measuredPageX = sliderPageXRef.current,
+    measuredWidth = sliderMeasuredWidthRef.current,
+  ) {
+    const usableWidth = Math.max(measuredWidth - sliderThumbSize, 0);
+    updatePlaybackSpeedFromPosition(pageX - measuredPageX - sliderThumbSize / 2, usableWidth);
+  }
+
+  function measureSlider(pageX?: number) {
+    sliderRef.current?.measureInWindow((x, _y, width) => {
+      sliderPageXRef.current = x;
+      sliderMeasuredWidthRef.current = width;
+      if (width > 0) setSliderWidth(width);
+      if (typeof pageX === "number") {
+        updatePlaybackSpeedFromPageX(pageX, x, width);
+      }
+    });
   }
 
   function handleSliderLayout(event: LayoutChangeEvent) {
-    setSliderWidth(event.nativeEvent.layout.width);
+    const width = event.nativeEvent.layout.width;
+    sliderMeasuredWidthRef.current = width;
+    setSliderWidth(width);
+    requestAnimationFrame(() => measureSlider());
   }
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
-  const panResponder = useRef(
+  // ── Slider gestures ────────────────────────────────────────────────────────
+  const sliderPanResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 8,
-      onPanResponderMove: (_, gs) => translateX.setValue(gs.dx),
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dx < -100) {
-          Animated.timing(translateX, { toValue: -400, duration: 200, useNativeDriver: true })
-            .start(() => { translateX.setValue(0); goNext(); });
-        } else if (gs.dx > 100) {
-          Animated.timing(translateX, { toValue: 400, duration: 200, useNativeDriver: true })
-            .start(() => { translateX.setValue(0); goPrev(); });
-        } else {
-          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
-        }
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (event, gestureState) => {
+        const pageX = event.nativeEvent.pageX || gestureState.x0;
+        measureSlider(pageX);
+        updatePlaybackSpeedFromPageX(pageX);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        updatePlaybackSpeedFromPageX(gestureState.moveX);
       },
     })
   ).current;
 
-  const sliderPanResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (e) => updatePlaybackSpeedFromPosition(e.nativeEvent.locationX - sliderThumbSize / 2),
-    onPanResponderMove: (e) => updatePlaybackSpeedFromPosition(e.nativeEvent.locationX - sliderThumbSize / 2),
+  const previousCardPanResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gestureState) =>
+      currentIndex > 0 &&
+      !submitting &&
+      gestureState.dx > 35 &&
+      Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25,
+    onPanResponderGrant: () => {
+      translateX.stopAnimation();
+    },
+    onPanResponderMove: (_, gestureState) => {
+      translateX.setValue(Math.max(0, gestureState.dx));
+    },
+    onPanResponderRelease: (_, gestureState) => {
+      if (
+        currentIndex > 0 &&
+        !submitting &&
+        gestureState.dx > 80 &&
+        Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25
+      ) {
+        Animated.timing(translateX, {
+          toValue: 420,
+          duration: 180,
+          useNativeDriver: true,
+        }).start(() => {
+          translateX.setValue(0);
+          goPrev();
+        });
+        return;
+      }
+
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+      }).start();
+    },
+    onPanResponderTerminate: () => {
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+      }).start();
+    },
   });
 
   function goPrev() {
     if (currentIndex > 0 && !submitting) {
       setCurrentIndex((i) => i - 1);
-      setShowAnswer(false);
-    }
-  }
-
-  function goNext() {
-    if (currentIndex < cards.length - 1 && !submitting) {
-      setCurrentIndex((i) => i + 1);
       setShowAnswer(false);
     }
   }
@@ -340,29 +400,8 @@ export default function FlashcardPractice() {
 
         {/* Card */}
         <View className="flex-1 px-4 pb-4">
-          <Pressable
-            onPress={goPrev}
-            disabled={currentIndex === 0 || submitting}
-            className="absolute left-4 top-4 z-10 w-11 h-11 items-center justify-center rounded-full"
-            style={{
-              backgroundColor: currentIndex === 0 || submitting ? "#F5F5F5" : "#FFFFFF",
-              opacity: currentIndex === 0 || submitting ? 0.9 : 1,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: currentIndex === 0 || submitting ? 0.04 : 0.08,
-              shadowRadius: 8,
-              elevation: 3,
-            }}
-          >
-            <Ionicons
-              name="arrow-back"
-              size={22}
-              color={currentIndex === 0 || submitting ? "#B8B8B8" : "#1A1A1A"}
-            />
-          </Pressable>
-
           <Animated.View
-            {...panResponder.panHandlers}
+            {...previousCardPanResponder.panHandlers}
             className="bg-card rounded-3xl"
             style={{
               transform: [{ translateX }],
@@ -404,6 +443,7 @@ export default function FlashcardPractice() {
                   <Text className="text-sm text-muted">Normal</Text>
                 </View>
                 <View
+                  ref={sliderRef}
                   onLayout={handleSliderLayout}
                   className="justify-center"
                   style={{ height: sliderThumbSize }}
@@ -515,7 +555,6 @@ export default function FlashcardPractice() {
             </>
           ) : null}
 
-          <Text className="text-center text-xs text-muted">Swipe left or right to navigate</Text>
         </View>
       </View>
     </SafeAreaView>
