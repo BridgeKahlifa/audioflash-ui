@@ -72,7 +72,6 @@ export default function FlashcardPractice() {
   const shownAtRef = useRef(Date.now());
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionStartedAt = useRef(Date.now());
-  const sliderDragStartPosition = useRef(0);
   const isResumeSession = resumeSession === "true";
   const initialResumeIndex = Number(initialCurrentIndex ?? 0);
 
@@ -256,6 +255,10 @@ export default function FlashcardPractice() {
     setPlaybackSpeed(rawValue);
   }
 
+  function updatePlaybackSpeedFromTouch(locationX: number) {
+    updatePlaybackSpeedFromPosition(locationX - sliderThumbSize / 2);
+  }
+
   function handleSliderLayout(event: LayoutChangeEvent) {
     setSliderWidth(event.nativeEvent.layout.width);
   }
@@ -282,15 +285,12 @@ export default function FlashcardPractice() {
   const sliderPanResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
+    onPanResponderTerminationRequest: () => false,
     onPanResponderGrant: (event) => {
-      sliderDragStartPosition.current = sliderPosition;
-      const pressedPosition = event.nativeEvent.locationX - sliderThumbSize / 2;
-      if (Math.abs(pressedPosition - sliderPosition) > sliderThumbSize / 2) {
-        updatePlaybackSpeedFromPosition(pressedPosition);
-      }
+      updatePlaybackSpeedFromTouch(event.nativeEvent.locationX);
     },
-    onPanResponderMove: (_, gs) => {
-      updatePlaybackSpeedFromPosition(sliderDragStartPosition.current + gs.dx);
+    onPanResponderMove: (event) => {
+      updatePlaybackSpeedFromTouch(event.nativeEvent.locationX);
     },
   });
 

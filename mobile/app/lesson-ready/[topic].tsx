@@ -265,7 +265,7 @@ export default function LessonReady() {
             <View className="h-px bg-border mt-6 mb-5" />
 
             <View className="items-center">
-              <Text className="text-base font-medium text-muted mb-4">Select Difficulty</Text>
+              <Text className="text-base font-medium text-muted mb-3">Difficulty</Text>
               <View className="flex-row justify-center gap-3">
                 {availableDifficulties.map((value) => {
                   const selected = selectedDifficulty === value;
@@ -295,15 +295,15 @@ export default function LessonReady() {
               </View>
             </View>
 
-            <View className="h-px bg-border mt-6 mb-5" />
+            <View className="h-px bg-border mt-5 mb-4" />
 
-            <View className="flex-row items-center justify-between">
-              <Text className="text-base font-medium text-foreground">Number of Cards</Text>
+            <View className="flex-row items-center justify-center">
+              <Text className="text-base font-medium text-foreground mr-4">Cards</Text>
               <View className="flex-row items-center">
                 <Text className="w-9 text-center text-xl font-semibold text-foreground">
                   {cardCount}
                 </Text>
-                <View className="ml-2 rounded-xl border border-border bg-background overflow-hidden">
+                <View className="ml-1.5 rounded-xl border border-border bg-background overflow-hidden">
                   <Pressable
                     onPress={() => updateCardCount(1)}
                     disabled={starting || cardCount >= MAX_CARD_COUNT}

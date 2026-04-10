@@ -22,6 +22,7 @@
     },
     "android": {
       "package": "com.audioflash.app",
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#FAFAFA",
         "foregroundImage": "./assets/app_icon.png"
