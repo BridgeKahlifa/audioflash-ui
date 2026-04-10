@@ -331,8 +331,9 @@ export async function fetchLessonsByCategory(params: {
   }
 
   const endpoint = `${API_BASE_URL}/lessons/${params.categoryId}`;
+  const queryString = query.toString();
   const res = await fetch(
-    query.size > 0 ? `${endpoint}?${query.toString()}` : endpoint,
+    queryString ? `${endpoint}?${queryString}` : endpoint,
   );
   return parseJson<ApiLessonCard[]>(res);
 }

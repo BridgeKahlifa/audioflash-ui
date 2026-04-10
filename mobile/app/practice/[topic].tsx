@@ -295,16 +295,27 @@ export default function FlashcardPractice() {
     })
   ).current;
 
+  const previousCardPanResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gestureState) =>
+      currentIndex > 0 &&
+      !submitting &&
+      gestureState.dx > 35 &&
+      Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25,
+    onPanResponderRelease: (_, gestureState) => {
+      if (
+        currentIndex > 0 &&
+        !submitting &&
+        gestureState.dx > 80 &&
+        Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25
+      ) {
+        goPrev();
+      }
+    },
+  });
+
   function goPrev() {
     if (currentIndex > 0 && !submitting) {
       setCurrentIndex((i) => i - 1);
-      setShowAnswer(false);
-    }
-  }
-
-  function goNext() {
-    if (currentIndex < cards.length - 1 && !submitting) {
-      setCurrentIndex((i) => i + 1);
       setShowAnswer(false);
     }
   }
@@ -362,28 +373,8 @@ export default function FlashcardPractice() {
 
         {/* Card */}
         <View className="flex-1 px-4 pb-4">
-          <Pressable
-            onPress={goPrev}
-            disabled={currentIndex === 0 || submitting}
-            className="absolute left-4 top-4 z-10 w-11 h-11 items-center justify-center rounded-full"
-            style={{
-              backgroundColor: currentIndex === 0 || submitting ? "#F5F5F5" : "#FFFFFF",
-              opacity: currentIndex === 0 || submitting ? 0.9 : 1,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: currentIndex === 0 || submitting ? 0.04 : 0.08,
-              shadowRadius: 8,
-              elevation: 3,
-            }}
-          >
-            <Ionicons
-              name="arrow-back"
-              size={22}
-              color={currentIndex === 0 || submitting ? "#B8B8B8" : "#1A1A1A"}
-            />
-          </Pressable>
-
           <View
+            {...previousCardPanResponder.panHandlers}
             className="bg-card rounded-3xl"
             style={{
               flex: 1,
