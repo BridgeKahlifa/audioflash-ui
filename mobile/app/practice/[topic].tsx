@@ -1,10 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ElementRef } from "react";
 import {
   View,
   Text,
   Pressable,
   PanResponder,
-  Animated,
   LayoutChangeEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -72,6 +71,9 @@ export default function FlashcardPractice() {
   const shownAtRef = useRef(Date.now());
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionStartedAt = useRef(Date.now());
+  const sliderRef = useRef<ElementRef<typeof View>>(null);
+  const sliderPageXRef = useRef(0);
+  const sliderMeasuredWidthRef = useRef(0);
   const isResumeSession = resumeSession === "true";
   const initialResumeIndex = Number(initialCurrentIndex ?? 0);
 
@@ -96,9 +98,6 @@ export default function FlashcardPractice() {
     language,
     languageLabel,
   });
-
-  // ── Swipe animation ────────────────────────────────────────────────────────
-  const translateX = useRef(new Animated.Value(0)).current;
 
   // ── Load cards ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -244,55 +243,57 @@ export default function FlashcardPractice() {
       ? ((playbackSpeed - minPlaybackSpeed) / (maxPlaybackSpeed - minPlaybackSpeed)) * sliderUsableWidth
       : 0;
 
-  function clampSliderPosition(position: number) {
-    return Math.min(sliderUsableWidth, Math.max(0, position));
-  }
-
-  function updatePlaybackSpeedFromPosition(position: number) {
-    if (sliderUsableWidth <= 0) return;
-    const ratio = clampSliderPosition(position) / sliderUsableWidth;
+  function updatePlaybackSpeedFromPosition(position: number, usableWidth: number) {
+    if (usableWidth <= 0) return;
+    const clampedPosition = Math.min(usableWidth, Math.max(0, position));
+    const ratio = clampedPosition / usableWidth;
     const rawValue = minPlaybackSpeed + ratio * (maxPlaybackSpeed - minPlaybackSpeed);
     setPlaybackSpeed(rawValue);
   }
 
-  function updatePlaybackSpeedFromTouch(locationX: number) {
-    updatePlaybackSpeedFromPosition(locationX - sliderThumbSize / 2);
+  function updatePlaybackSpeedFromPageX(
+    pageX: number,
+    measuredPageX = sliderPageXRef.current,
+    measuredWidth = sliderMeasuredWidthRef.current,
+  ) {
+    const usableWidth = Math.max(measuredWidth - sliderThumbSize, 0);
+    updatePlaybackSpeedFromPosition(pageX - measuredPageX - sliderThumbSize / 2, usableWidth);
+  }
+
+  function measureSlider(pageX?: number) {
+    sliderRef.current?.measureInWindow((x, _y, width) => {
+      sliderPageXRef.current = x;
+      sliderMeasuredWidthRef.current = width;
+      if (width > 0) setSliderWidth(width);
+      if (typeof pageX === "number") {
+        updatePlaybackSpeedFromPageX(pageX, x, width);
+      }
+    });
   }
 
   function handleSliderLayout(event: LayoutChangeEvent) {
-    setSliderWidth(event.nativeEvent.layout.width);
+    const width = event.nativeEvent.layout.width;
+    sliderMeasuredWidthRef.current = width;
+    setSliderWidth(width);
+    requestAnimationFrame(() => measureSlider());
   }
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
-  const panResponder = useRef(
+  // ── Slider gestures ────────────────────────────────────────────────────────
+  const sliderPanResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 8,
-      onPanResponderMove: (_, gs) => translateX.setValue(gs.dx),
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dx < -100) {
-          Animated.timing(translateX, { toValue: -400, duration: 200, useNativeDriver: true })
-            .start(() => { translateX.setValue(0); goNext(); });
-        } else if (gs.dx > 100) {
-          Animated.timing(translateX, { toValue: 400, duration: 200, useNativeDriver: true })
-            .start(() => { translateX.setValue(0); goPrev(); });
-        } else {
-          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
-        }
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (event, gestureState) => {
+        const pageX = event.nativeEvent.pageX || gestureState.x0;
+        measureSlider(pageX);
+        updatePlaybackSpeedFromPageX(pageX);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        updatePlaybackSpeedFromPageX(gestureState.moveX);
       },
     })
   ).current;
-
-  const sliderPanResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderTerminationRequest: () => false,
-    onPanResponderGrant: (event) => {
-      updatePlaybackSpeedFromTouch(event.nativeEvent.locationX);
-    },
-    onPanResponderMove: (event) => {
-      updatePlaybackSpeedFromTouch(event.nativeEvent.locationX);
-    },
-  });
 
   function goPrev() {
     if (currentIndex > 0 && !submitting) {
@@ -382,11 +383,9 @@ export default function FlashcardPractice() {
             />
           </Pressable>
 
-          <Animated.View
-            {...panResponder.panHandlers}
+          <View
             className="bg-card rounded-3xl"
             style={{
-              transform: [{ translateX }],
               flex: 1,
               flexDirection: "column",
               alignItems: "center",
@@ -425,6 +424,7 @@ export default function FlashcardPractice() {
                   <Text className="text-sm text-muted">Normal</Text>
                 </View>
                 <View
+                  ref={sliderRef}
                   onLayout={handleSliderLayout}
                   className="justify-center"
                   style={{ height: sliderThumbSize }}
@@ -464,7 +464,7 @@ export default function FlashcardPractice() {
                 </Text>
               </View>
             )}
-          </Animated.View>
+          </View>
         </View>
 
         {/* Actions */}
@@ -536,7 +536,6 @@ export default function FlashcardPractice() {
             </>
           ) : null}
 
-          <Text className="text-center text-xs text-muted">Swipe left or right to navigate</Text>
         </View>
       </View>
     </SafeAreaView>
