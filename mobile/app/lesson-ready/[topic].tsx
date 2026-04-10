@@ -10,14 +10,6 @@ import { useAuth } from "../../lib/auth-context";
 import { buildErrorProperties, useAnalytics } from "../../lib/analytics";
 import { LanguageFlag } from "../../components/LanguageFlag";
 
-const DIFFICULTY_LABELS: Record<number, string> = {
-  1: "Easy",
-  2: "Easy+",
-  3: "Medium",
-  4: "Hard",
-  5: "Expert",
-};
-
 const DEFAULT_CARD_COUNT = 5;
 const MIN_CARD_COUNT = 5;
 const MAX_CARD_COUNT = 50;
@@ -219,34 +211,34 @@ export default function LessonReady() {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, padding: 18 }}
+        contentContainerStyle={{ flexGrow: 1, padding: 14 }}
       >
-        <View className="w-full max-w-md mx-auto flex-1 justify-center py-4">
+        <View className="w-full max-w-md mx-auto flex-1 justify-center py-2">
           <View
-            className="bg-card rounded-3xl px-7 pt-5 pb-8"
+            className="bg-card rounded-3xl px-6 pt-5 pb-6"
             style={{
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.06,
-              shadowRadius: 20,
-              elevation: 4,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.04,
+              shadowRadius: 14,
+              elevation: 2,
             }}
           >
             <View className="items-center">
-              <View className="w-16 h-16 bg-accent rounded-full items-center justify-center mb-6">
+              <View className="w-14 h-14 bg-accent rounded-full items-center justify-center mb-4">
                 {starting ? (
                   <ActivityIndicator size="large" color="#E86A4A" />
                 ) : (
-                  <Ionicons name="headset" size={34} color="#E86A4A" />
+                  <Ionicons name="headset" size={30} color="#E86A4A" />
                 )}
               </View>
 
-              <Text className="text-3xl font-semibold text-foreground mb-4 text-center">
+              <Text className="text-2xl font-semibold text-foreground mb-3 text-center">
                 {topicTitle ?? topic}
               </Text>
 
-              <View className="flex-row items-center justify-center gap-3">
-                <View className="h-9 px-4 rounded-xl bg-background border border-border flex-row items-center">
+              <View className="flex-row items-center justify-center gap-2">
+                <View className="h-8 px-3 rounded-full bg-background border border-border flex-row items-center">
                   <LanguageFlag name={languageLabel ?? language ?? "Language"} size="sm" />
                   <Text className="ml-2 text-sm font-semibold text-foreground">
                     {languageLabel ?? "Language"}
@@ -255,7 +247,7 @@ export default function LessonReady() {
                 <Pressable
                   onPress={() => setShuffleEnabled((current) => !current)}
                   disabled={starting}
-                  className={`w-10 h-10 rounded-xl border items-center justify-center ${
+                  className={`w-8 h-8 rounded-full border items-center justify-center ${
                     shuffleEnabled ? "bg-primary border-primary" : "bg-background border-border"
                   }`}
                   accessibilityRole="button"
@@ -263,18 +255,18 @@ export default function LessonReady() {
                 >
                   <Ionicons
                     name="shuffle"
-                    size={17}
+                    size={15}
                     color={shuffleEnabled ? "#FFFFFF" : "#2F1E19"}
                   />
                 </Pressable>
               </View>
             </View>
 
-            <View className="h-px bg-border mt-8 mb-7" />
+            <View className="h-px bg-border mt-6 mb-5" />
 
             <View className="items-center">
-              <Text className="text-xl font-medium text-muted mb-5">Select Difficulty</Text>
-              <View className="flex-row justify-center gap-2">
+              <Text className="text-base font-medium text-muted mb-4">Select Difficulty</Text>
+              <View className="flex-row justify-center gap-3">
                 {availableDifficulties.map((value) => {
                   const selected = selectedDifficulty === value;
                   return (
@@ -285,24 +277,17 @@ export default function LessonReady() {
                         setStatus("ready");
                         setErrorMessage("");
                       }}
-                      className={`w-14 h-16 rounded-xl border items-center justify-center ${
+                      className={`w-11 h-11 rounded-full border items-center justify-center ${
                         selected ? "bg-accent border-primary" : "bg-background border-border"
                       }`}
                       disabled={starting || availableDifficulties.length === 0}
                     >
                       <Text
-                        className={`text-xl font-semibold ${
+                        className={`text-base font-semibold ${
                           selected ? "text-primary" : "text-foreground"
                         }`}
                       >
                         {value}
-                      </Text>
-                      <Text
-                        className={`text-xs mt-1 ${
-                          selected ? "text-primary" : "text-muted"
-                        }`}
-                      >
-                        {DIFFICULTY_LABELS[value] ?? `Level ${value}`}
                       </Text>
                     </Pressable>
                   );
@@ -310,31 +295,31 @@ export default function LessonReady() {
               </View>
             </View>
 
-            <View className="h-px bg-border mt-8 mb-7" />
+            <View className="h-px bg-border mt-6 mb-5" />
 
             <View className="flex-row items-center justify-between">
-              <Text className="text-xl font-medium text-foreground">Number of Cards</Text>
+              <Text className="text-base font-medium text-foreground">Number of Cards</Text>
               <View className="flex-row items-center">
-                <Text className="w-10 text-center text-2xl font-semibold text-foreground">
+                <Text className="w-9 text-center text-xl font-semibold text-foreground">
                   {cardCount}
                 </Text>
-                <View className="ml-3 rounded-xl border border-border bg-background overflow-hidden">
+                <View className="ml-2 rounded-xl border border-border bg-background overflow-hidden">
                   <Pressable
                     onPress={() => updateCardCount(1)}
                     disabled={starting || cardCount >= MAX_CARD_COUNT}
-                    className="w-9 h-8 items-center justify-center"
+                    className="w-8 h-7 items-center justify-center"
                     style={{ opacity: cardCount >= MAX_CARD_COUNT ? 0.4 : 1 }}
                   >
-                    <Ionicons name="chevron-up" size={18} color="#2F1E19" />
+                    <Ionicons name="chevron-up" size={16} color="#2F1E19" />
                   </Pressable>
                   <View className="h-px bg-border" />
                   <Pressable
                     onPress={() => updateCardCount(-1)}
                     disabled={starting || cardCount <= MIN_CARD_COUNT}
-                    className="w-9 h-8 items-center justify-center"
+                    className="w-8 h-7 items-center justify-center"
                     style={{ opacity: cardCount <= MIN_CARD_COUNT ? 0.4 : 1 }}
                   >
-                    <Ionicons name="chevron-down" size={18} color="#2F1E19" />
+                    <Ionicons name="chevron-down" size={16} color="#2F1E19" />
                   </Pressable>
                 </View>
               </View>
@@ -353,16 +338,16 @@ export default function LessonReady() {
             <Pressable
               onPress={handleStart}
               disabled={!canStart}
-              className={`mt-9 w-full py-5 rounded-2xl flex-row items-center justify-center ${
+              className={`mt-7 w-full py-4 rounded-2xl flex-row items-center justify-center ${
                 canStart ? "bg-primary" : "bg-secondary"
               }`}
               style={
                 canStart
                   ? {
                       shadowColor: "#E86A4A",
-                      shadowOffset: { width: 0, height: 8 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 14,
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 10,
                       elevation: 4,
                     }
                   : undefined
@@ -373,7 +358,7 @@ export default function LessonReady() {
               ) : (
                 <>
                   <Text
-                    className={`text-xl font-semibold ${
+                    className={`text-base font-semibold ${
                       canStart ? "text-primary-foreground" : "text-muted"
                     }`}
                   >
@@ -381,9 +366,9 @@ export default function LessonReady() {
                   </Text>
                   <Ionicons
                     name="arrow-forward"
-                    size={24}
+                    size={20}
                     color={canStart ? "#FFFFFF" : "#8B6E66"}
-                    style={{ marginLeft: 12 }}
+                    style={{ marginLeft: 10 }}
                   />
                 </>
               )}
