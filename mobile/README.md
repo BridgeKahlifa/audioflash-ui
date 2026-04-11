@@ -83,7 +83,7 @@ Swap models in `.env` any time — no code changes needed.
 
 For a local mobile UI talking to a dev-backed API, set `EXPO_PUBLIC_AUTH_MODE=dev`
 and point `EXPO_PUBLIC_API_BASE_URL` at that API. The app will skip the Supabase
-sign-in screens, fetch `/api/profile` without a bearer token, and rely on the
+sign-in screens, fetch `/profile` without a bearer token, and rely on the
 API's existing `AUTH_MODE=dev` behavior.
 
 ## Screens
