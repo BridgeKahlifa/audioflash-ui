@@ -1,30 +1,30 @@
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  ScrollView,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "../lib/auth-context";
+import { useAnalytics } from "../lib/analytics";
 import {
+  commitGeneratedLesson,
   createLessonSession,
   fetchLanguages,
   generateLesson,
   generateReplacements,
-  saveLesson,
+  type ApiEphemeralCard,
   type ApiLanguage,
-  type ApiLessonCard,
 } from "../lib/api";
+import { useAuth } from "../lib/auth-context";
 import { setCurrentCards } from "../lib/storage";
 import type { Flashcard } from "../lib/types";
-import { useAnalytics } from "../lib/analytics";
 
 const TOPIC_SUGGESTIONS = [
   "Ordering coffee",
@@ -40,20 +40,28 @@ const TOPIC_SUGGESTIONS = [
 const CARD_COUNT_OPTIONS = [5, 10, 15, 20, 25, 30];
 
 const DIFFICULTY_OPTIONS = [
-  { level: 1, label: "A1" },
-  { level: 2, label: "A2" },
-  { level: 3, label: "B1" },
-  { level: 4, label: "B2" },
-  { level: 5, label: "C1+" },
+  { level: 1, label: "1" },
+  { level: 2, label: "2" },
+  { level: 3, label: "3" },
+  { level: 4, label: "4" },
+  { level: 5, label: "5" },
 ];
 
 interface GeneratedResult {
-  categoryId: string;
+  /** The original user-typed topic — used for the commit hash. */
+  topic: string;
   categoryName: string;
   languageId: string;
   languageSlug: string;
   languageLabel: string;
-  cards: ApiLessonCard[];
+}
+
+/** Cards committed to the DB. Stored so a second action (save → start) skips re-commit. */
+interface CommittedResult {
+  categoryId: string;
+  categoryName: string;
+  /** DB card IDs in the same order as previewCards at commit time. */
+  cardIds: string[];
 }
 
 export default function Generate() {
@@ -71,9 +79,10 @@ export default function Generate() {
 
   // Preview step
   const [generatedResult, setGeneratedResult] = useState<GeneratedResult | null>(null);
-  const [previewCards, setPreviewCards] = useState<ApiLessonCard[]>([]);
+  const [previewCards, setPreviewCards] = useState<ApiEphemeralCard[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [replacingIds, setReplacingIds] = useState<Set<string>>(new Set());
+  const [committedResult, setCommittedResult] = useState<CommittedResult | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -112,7 +121,7 @@ export default function Generate() {
     const selectedLang = languages.find((l) => l.id === selectedLanguageId);
     posthog?.capture("lesson_generate_started", {
       language: selectedLang?.language,
-      difficulty: DIFFICULTY_OPTIONS.find((d) => d.level === difficultyLevel)?.label,
+      difficulty: difficultyLevel,
       card_count: cardCount,
       topic: topic.trim(),
     });
@@ -126,17 +135,18 @@ export default function Generate() {
       });
 
       setGeneratedResult({
-        categoryId: String(result.category.id),
-        categoryName: result.category.name,
+        topic: topic.trim(),
+        categoryName: result.category_name,
         languageId: selectedLanguageId!,
         languageSlug: selectedLang?.language.toLowerCase().replace(/\s+/g, "-") ?? "unknown",
         languageLabel: selectedLang?.language ?? "",
-        cards: result.flashcards,
       });
       setPreviewCards(result.flashcards);
+      setCommittedResult(null);
+      setIsSaved(false);
       posthog?.capture("lesson_generated", {
         language: selectedLang?.language,
-        difficulty: DIFFICULTY_OPTIONS.find((d) => d.level === difficultyLevel)?.label,
+        difficulty: difficultyLevel,
         card_count: result.flashcards.length,
         topic: topic.trim(),
       });
@@ -162,6 +172,30 @@ export default function Generate() {
     }
   }
 
+  /**
+   * Persist the current previewCards to the DB if not already done.
+   * Returns the committed result, or null on failure.
+   */
+  async function ensureCommitted(): Promise<CommittedResult | null> {
+    if (committedResult) return committedResult;
+    if (!generatedResult || !session?.access_token || previewCards.length === 0) return null;
+
+    const committed = await commitGeneratedLesson(session.access_token, {
+      language_id: generatedResult.languageId,
+      topic: generatedResult.topic,
+      difficulty_level: difficultyLevel,
+      cards: previewCards.map(({ _clientId: _omit, ...card }) => card),
+    });
+
+    const result: CommittedResult = {
+      categoryId: String(committed.category_id),
+      categoryName: committed.category_name,
+      cardIds: committed.flashcards.map((f) => String(f.id)),
+    };
+    setCommittedResult(result);
+    return result;
+  }
+
   async function handleStartLesson() {
     if (!generatedResult || !session?.access_token || previewCards.length === 0) return;
 
@@ -171,36 +205,46 @@ export default function Generate() {
     setStatus("starting");
 
     try {
-      const topicKey = `generated-${generatedResult.categoryId}`;
-      const mappedCards: Flashcard[] = previewCards.map((card, index) => ({
+      const committed = await ensureCommitted();
+      if (!committed) throw new Error("Commit failed");
+
+      const topicKey = `generated-${committed.categoryId}`;
+      const mappedCards: Flashcard[] = committed.cardIds.map((dbId, index) => ({
         id: index + 1,
-        dbId: String(card.id),
-        sourceText: card.source_text,
-        romanization: card.romanization ?? "",
-        translation: card.translation,
+        dbId,
+        sourceText: previewCards[index]?.source_text ?? "",
+        romanization: previewCards[index]?.romanization ?? "",
+        translation: previewCards[index]?.translation ?? "",
       }));
       await setCurrentCards(topicKey, mappedCards);
 
       const lessonSession = await createLessonSession(session.access_token, {
         profile_id: profileId,
-        category_id: generatedResult.categoryId,
+        category_id: committed.categoryId,
         difficulty: difficultyLevel,
         started_at: new Date().toISOString(),
-        card_ids: previewCards.map((card) => String(card.id)),
+        card_ids: committed.cardIds,
         current_index: 0,
         status: "in_progress",
         completed: false,
+      });
+
+      posthog?.capture("lesson_started", {
+        language: generatedResult.languageLabel,
+        topic: generatedResult.categoryName,
+        difficulty: difficultyLevel,
+        card_count: mappedCards.length,
       });
 
       router.replace({
         pathname: "/practice/[topic]",
         params: {
           topic: topicKey,
-          topicTitle: generatedResult.categoryName,
+          topicTitle: committed.categoryName,
           language: generatedResult.languageSlug,
           languageLabel: generatedResult.languageLabel,
           apiLanguageId: generatedResult.languageId,
-          apiCategoryId: generatedResult.categoryId,
+          apiCategoryId: committed.categoryId,
           difficulty: String(difficultyLevel),
           apiLoaded: "true",
           lessonSessionId: lessonSession.session_id,
@@ -213,16 +257,19 @@ export default function Generate() {
     }
   }
 
-  function handleRemoveCard(cardId: string) {
-    setPreviewCards((prev) => prev.filter((c) => String(c.id) !== cardId));
-    setSelectedIds((prev) => { const s = new Set(prev); s.delete(cardId); return s; });
+  function handleRemoveCard(clientId: string) {
+    setPreviewCards((prev) => prev.filter((c) => c._clientId !== clientId));
+    setSelectedIds((prev) => { const s = new Set(prev); s.delete(clientId); return s; });
+    // Card list changed — any commit is now stale
+    setCommittedResult(null);
+    setIsSaved(false);
   }
 
-  function toggleSelected(cardId: string) {
+  function toggleSelected(clientId: string) {
     setSelectedIds((prev) => {
       const s = new Set(prev);
-      if (s.has(cardId)) s.delete(cardId);
-      else s.add(cardId);
+      if (s.has(clientId)) s.delete(clientId);
+      else s.add(clientId);
       return s;
     });
   }
@@ -233,24 +280,22 @@ export default function Generate() {
     const idsToReplace = Array.from(selectedIds);
     setReplacingIds(new Set(idsToReplace));
     setSelectedIds(new Set());
+    // Replacements invalidate any commit
+    setCommittedResult(null);
+    setIsSaved(false);
 
     try {
-      const excludeIds = previewCards
-        .filter((c) => !idsToReplace.includes(String(c.id)))
-        .map((c) => String(c.id));
-
       const result = await generateReplacements(session.access_token, {
         language_id: generatedResult.languageId,
-        topic: generatedResult.categoryName,
+        topic: generatedResult.topic,
         difficulty_level: difficultyLevel,
         count: idsToReplace.length,
-        exclude_ids: excludeIds,
       });
 
       setPreviewCards((prev) => {
         const replacements = [...result.flashcards];
         return prev.map((card) => {
-          if (idsToReplace.includes(String(card.id))) {
+          if (idsToReplace.includes(card._clientId)) {
             return replacements.shift() ?? card;
           }
           return card;
@@ -267,15 +312,15 @@ export default function Generate() {
     if (!generatedResult || !session?.access_token || saving) return;
     setSaving(true);
     try {
-      await saveLesson(session.access_token, generatedResult.categoryId);
+      await ensureCommitted();
       setIsSaved(true);
       posthog?.capture("lesson_saved", {
         language: generatedResult.languageLabel,
         card_count: previewCards.length,
-        topic: generatedResult.categoryName,
+        topic: generatedResult.topic,
       });
     } catch {
-      // ignore
+      // ignore — user can still start the lesson
     } finally {
       setSaving(false);
     }
@@ -286,6 +331,7 @@ export default function Generate() {
     setPreviewCards([]);
     setSelectedIds(new Set());
     setReplacingIds(new Set());
+    setCommittedResult(null);
     setIsSaved(false);
     setStatus("idle");
     setErrorMessage("");
@@ -338,18 +384,16 @@ export default function Generate() {
             showsVerticalScrollIndicator={false}
           >
             {previewCards.map((card) => {
-              const cardId = String(card.id);
-              const isSelected = selectedIds.has(cardId);
-              const isReplacing = replacingIds.has(cardId);
+              const isSelected = selectedIds.has(card._clientId);
+              const isReplacing = replacingIds.has(card._clientId);
               return (
                 <Pressable
-                  key={cardId}
-                  onPress={() => !isReplacing && toggleSelected(cardId)}
-                  className={`border rounded-2xl px-4 py-4 mb-3 ${
-                    isSelected
-                      ? "bg-primary/10 border-primary"
-                      : "bg-card border-border"
-                  }`}
+                  key={card._clientId}
+                  onPress={() => !isReplacing && toggleSelected(card._clientId)}
+                  className={`border rounded-2xl px-4 py-4 mb-3 ${isSelected
+                    ? "bg-primary/10 border-primary"
+                    : "bg-card border-border"
+                    }`}
                   style={{
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 1 },
@@ -383,16 +427,12 @@ export default function Generate() {
                       ) : (
                         <View className="bg-secondary rounded-lg px-2 py-0.5">
                           <Text className="text-xs font-semibold text-muted">
-                            {card.difficulty === 1 ? "A1"
-                              : card.difficulty === 2 ? "A2"
-                              : card.difficulty === 3 ? "B1"
-                              : card.difficulty === 4 ? "B2"
-                              : "C1+"}
+                            {card.difficulty}
                           </Text>
                         </View>
                       )}
                       <Pressable
-                        onPress={() => handleRemoveCard(cardId)}
+                        onPress={() => handleRemoveCard(card._clientId)}
                         hitSlop={8}
                         className="w-7 h-7 rounded-full bg-secondary items-center justify-center"
                       >
@@ -519,9 +559,8 @@ export default function Generate() {
                   <Pressable
                     key={lang.id}
                     onPress={() => setSelectedLanguageId(lang.id)}
-                    className={`rounded-xl px-4 py-2 border ${
-                      selected ? "bg-primary border-primary" : "bg-card border-border"
-                    }`}
+                    className={`rounded-xl px-4 py-2 border ${selected ? "bg-primary border-primary" : "bg-card border-border"
+                      }`}
                   >
                     <Text className={`font-medium text-sm ${selected ? "text-primary-foreground" : "text-foreground"}`}>
                       {lang.language}
@@ -556,9 +595,8 @@ export default function Generate() {
                   <Pressable
                     key={level}
                     onPress={() => setDifficultyLevel(level)}
-                    className={`flex-1 py-2.5 rounded-xl border items-center ${
-                      selected ? "bg-primary border-primary" : "bg-card border-border"
-                    }`}
+                    className={`flex-1 py-2.5 rounded-xl border items-center ${selected ? "bg-primary border-primary" : "bg-card border-border"
+                      }`}
                   >
                     <Text className={`text-xs font-bold ${selected ? "text-primary-foreground" : "text-muted"}`}>
                       {label}
@@ -577,9 +615,8 @@ export default function Generate() {
                   <Pressable
                     key={count}
                     onPress={() => setCardCount(count)}
-                    className={`flex-1 py-2.5 rounded-xl border items-center ${
-                      selected ? "bg-primary border-primary" : "bg-card border-border"
-                    }`}
+                    className={`flex-1 py-2.5 rounded-xl border items-center ${selected ? "bg-primary border-primary" : "bg-card border-border"
+                      }`}
                   >
                     <Text className={`text-xs font-bold ${selected ? "text-primary-foreground" : "text-muted"}`}>
                       {count}
@@ -632,12 +669,12 @@ export default function Generate() {
               style={
                 canGenerate
                   ? {
-                      shadowColor: "#FF6B4A",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }
+                    shadowColor: "#FF6B4A",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }
                   : undefined
               }
             >

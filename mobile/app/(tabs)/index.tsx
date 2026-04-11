@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { View, Text, Pressable, ScrollView, Image, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ScrollView, Image, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,6 +27,13 @@ export default function Home() {
   } = useInProgressLesson();
   const inProgressLessonName = useInProgressLessonName();
   const [continuingLesson, setContinuingLesson] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await Promise.all([refetchSRS(), refetchLesson()]);
+    setRefreshing(false);
+  }
   const loadError =
     srsError || lessonError
       ? "We had trouble loading part of your home screen. Please try again in a moment."
@@ -98,6 +105,7 @@ export default function Home() {
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B4A" />}
       >
         <View className="max-w-md w-full mx-auto">
           {/* Header */}

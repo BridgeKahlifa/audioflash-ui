@@ -423,6 +423,16 @@ export async function createFlashcardAttempt(
 
 // ── Generation ──────────────────────────────────────────────────────────────
 
+/** A card returned from /generate or /generate/replace — not yet in the DB. */
+export interface ApiEphemeralCard {
+  source_text: string;
+  romanization: string | null;
+  translation: string;
+  difficulty: number;
+  /** Client-assigned key for UI tracking — never sent to the server. */
+  _clientId: string;
+}
+
 export interface ApiGenerateRequest {
   language_id: string;
   topic: string;
@@ -431,9 +441,8 @@ export interface ApiGenerateRequest {
 }
 
 export interface ApiGeneratedLesson {
-  category: ApiCategory;
-  flashcards: ApiLessonCard[];
-  cached: boolean;
+  category_name: string;
+  flashcards: ApiEphemeralCard[];
 }
 
 export async function generateLesson(
@@ -445,7 +454,11 @@ export async function generateLesson(
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
-  return parseJson<ApiGeneratedLesson>(res);
+  const data = await parseJson<{ category_name: string; flashcards: Omit<ApiEphemeralCard, "_clientId">[] }>(res);
+  return {
+    category_name: data.category_name,
+    flashcards: data.flashcards.map((c) => ({ ...c, _clientId: Math.random().toString(36).slice(2) })),
+  };
 }
 
 export interface ApiReplaceRequest {
@@ -453,11 +466,10 @@ export interface ApiReplaceRequest {
   topic: string;
   difficulty_level?: number;
   count: number;
-  exclude_ids: string[];
 }
 
 export interface ApiReplaceResponse {
-  flashcards: ApiLessonCard[];
+  flashcards: ApiEphemeralCard[];
 }
 
 export async function generateReplacements(
@@ -469,7 +481,35 @@ export async function generateReplacements(
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
-  return parseJson<ApiReplaceResponse>(res);
+  const data = await parseJson<{ flashcards: Omit<ApiEphemeralCard, "_clientId">[] }>(res);
+  return {
+    flashcards: data.flashcards.map((c) => ({ ...c, _clientId: Math.random().toString(36).slice(2) })),
+  };
+}
+
+export interface ApiCommitRequest {
+  language_id: string;
+  topic: string;
+  difficulty_level: number;
+  cards: Omit<ApiEphemeralCard, "_clientId">[];
+}
+
+export interface ApiCommitResponse {
+  category_id: string;
+  category_name: string;
+  flashcards: ApiLessonCard[];
+}
+
+export async function commitGeneratedLesson(
+  token: string | null | undefined,
+  body: ApiCommitRequest,
+): Promise<ApiCommitResponse> {
+  const res = await fetch(`${API_BASE_URL}/generate/commit`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiCommitResponse>(res);
 }
 
 // ── Library ──────────────────────────────────────────────────────────────────
