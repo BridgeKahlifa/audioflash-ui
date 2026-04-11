@@ -6,8 +6,9 @@ import {
   PanResponder,
   Animated,
   LayoutChangeEvent,
+  Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Flashcard } from "../../lib/types";
@@ -19,6 +20,7 @@ import { useAnalytics } from "../../lib/analytics";
 import { useSessionManager } from "../../lib/use-session-manager";
 
 export default function FlashcardPractice() {
+  const insets = useSafeAreaInsets();
   const {
     topic,
     topicTitle,
@@ -78,6 +80,7 @@ export default function FlashcardPractice() {
   const translateX = useRef(new Animated.Value(0)).current;
   const isResumeSession = resumeSession === "true";
   const initialResumeIndex = Number(initialCurrentIndex ?? 0);
+  const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
 
   // ── Session manager (all API orchestration) ────────────────────────────────
   const { submitting, submittingResult, attemptError, results, handleResult } = useSessionManager({
@@ -487,7 +490,7 @@ export default function FlashcardPractice() {
         </View>
 
         {/* Actions */}
-        <View className="px-4 pb-6 gap-3">
+        <View className="px-4 gap-3" style={{ paddingBottom: actionBarPaddingBottom }}>
           {shouldShowRevealButton ? (
             <Pressable
               onPress={() => setShowAnswer(true)}
