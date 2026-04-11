@@ -39,17 +39,53 @@ function formatChartDateTime(dateInput: string | number): string {
   });
 }
 
+function getLocalDayStart(dateInput: string | number): number {
+  const date = new Date(dateInput);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function getLocalDayKey(dateInput: string | number): string {
+  const date = new Date(dateInput);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
 function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
   const chartHeight = 160;
   const labelWidth = 52;
   const yMin = 0;
   const yMax = 100;
   const yTicks = [100, 50, 0];
+  const dayMs = 24 * 60 * 60 * 1000;
   const [chartAreaWidth, setChartAreaWidth] = useState(240);
-  const sortedPoints = [...points].sort(
-    (a, b) => new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime(),
-  );
-  const times = sortedPoints.map((point) => new Date(point.endedAt).getTime());
+  const sortedPoints = [...points]
+    .map((point, index) => ({ ...point, originalIndex: index }))
+    .sort((a, b) => {
+      const timeDiff = new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime();
+      return timeDiff !== 0 ? timeDiff : a.originalIndex - b.originalIndex;
+    });
+  const dayKeys = Array.from(new Set(sortedPoints.map((point) => getLocalDayKey(point.endedAt))));
+  const spansMultipleDays = dayKeys.length > 1;
+  const pointsPerDay = new Map<string, number>();
+
+  sortedPoints.forEach((point) => {
+    const dayKey = getLocalDayKey(point.endedAt);
+    pointsPerDay.set(dayKey, (pointsPerDay.get(dayKey) ?? 0) + 1);
+  });
+
+  const seenPerDay = new Map<string, number>();
+  const times = sortedPoints.map((point) => {
+    if (!spansMultipleDays) {
+      return new Date(point.endedAt).getTime();
+    }
+
+    const dayKey = getLocalDayKey(point.endedAt);
+    const countForDay = pointsPerDay.get(dayKey) ?? 1;
+    const indexWithinDay = seenPerDay.get(dayKey) ?? 0;
+    seenPerDay.set(dayKey, indexWithinDay + 1);
+
+    const fractionOfDay = countForDay === 1 ? 0.5 : (indexWithinDay + 1) / (countForDay + 1);
+    return getLocalDayStart(point.endedAt) + fractionOfDay * dayMs;
+  });
   const minTime = Math.min(...times);
   const maxTime = Math.max(...times);
   const timeRange = Math.max(maxTime - minTime, 1);
@@ -59,7 +95,7 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
   const gridColor = "#E7DDD6";
 
   const normalizedPoints = sortedPoints.map((point, index) => {
-    const timestamp = new Date(point.endedAt).getTime();
+    const timestamp = times[index];
     const x = 16 + ((timestamp - minTime) / timeRange) * (chartWidth - 32);
     const y =
       chartHeight - ((point.grade - yMin) / Math.max(yMax - yMin, 1)) * (chartHeight - 24) - 12;
@@ -68,8 +104,6 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
   const activePoint = activeIndex == null ? null : normalizedPoints[activeIndex];
   const polylinePoints = normalizedPoints.map((point) => `${point.x},${point.y}`).join(" ");
   const tickCount = Math.min(6, Math.max(4, normalizedPoints.length > 1 ? 5 : 1));
-  const spansMultipleDays =
-    new Date(minTime).toDateString() !== new Date(maxTime).toDateString();
   const timeTicks = Array.from({ length: tickCount }, (_, index) => {
     const ratio = tickCount === 1 ? 0 : index / (tickCount - 1);
     const tickTime = minTime + timeRange * ratio;
