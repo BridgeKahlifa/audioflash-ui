@@ -14,6 +14,7 @@ interface Topic {
   icon: keyof typeof Ionicons.glyphMap;
   apiCategoryId?: string;
   supportedDifficulties: number[];
+  availableCardCount?: number;
 }
 
 const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
@@ -63,6 +64,8 @@ export default function Categories() {
     icon: CATEGORY_ICONS[index % CATEGORY_ICONS.length],
     apiCategoryId: String(category.id),
     supportedDifficulties: category.supported_difficulties ?? [],
+    availableCardCount:
+      typeof category.total_cards === "number" ? category.total_cards : undefined,
   }));
 
   async function handleSelectLanguage(lang: ApiLanguage) {
@@ -97,6 +100,10 @@ export default function Categories() {
         apiLoaded: "true",
         apiCategoryId: topic?.apiCategoryId ?? "",
         supportedDifficulties: (topic?.supportedDifficulties ?? []).join(","),
+        availableCardCount:
+          typeof topic?.availableCardCount === "number"
+            ? String(topic.availableCardCount)
+            : "",
       },
     });
   }

@@ -9,20 +9,51 @@ import { createLessonSession, fetchLessonsByCategory } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { buildErrorProperties, useAnalytics } from "../../lib/analytics";
 import { LanguageFlag } from "../../components/LanguageFlag";
+import { useCategories } from "../../lib/queries";
 
 const DEFAULT_CARD_COUNT = 5;
 const MIN_CARD_COUNT = 5;
 const MAX_CARD_COUNT = 50;
 const CARD_COUNT_STEP = 5;
 
-function clampCardCount(value: number) {
-  return Math.min(MAX_CARD_COUNT, Math.max(MIN_CARD_COUNT, value));
+function resolveAvailableCardCount(value?: string) {
+  if (typeof value !== "string" || value.trim() === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function resolveCardCountBounds(availableCardCount: number | null) {
+  if (availableCardCount === null) {
+    return { min: MIN_CARD_COUNT, max: MAX_CARD_COUNT };
+  }
+
+  const max = Math.min(MAX_CARD_COUNT, availableCardCount);
+  const min = max < MIN_CARD_COUNT ? max : MIN_CARD_COUNT;
+  return { min, max };
+}
+
+function clampCardCount(value: number, availableCardCount: number | null) {
+  const { min, max } = resolveCardCountBounds(availableCardCount);
+  return Math.min(max, Math.max(min, value));
 }
 
 export default function LessonReady() {
   const { profile, session } = useAuth();
   const posthog = useAnalytics();
-  const { topic, topicTitle, language, languageLabel, apiLanguageId, apiCategoryId, apiLoaded, supportedDifficulties } =
+  const { data: categories = [] } = useCategories();
+  const {
+    topic,
+    topicTitle,
+    language,
+    languageLabel,
+    apiLanguageId,
+    apiCategoryId,
+    apiLoaded,
+    supportedDifficulties,
+    availableCardCount: availableCardCountParam,
+  } =
     useLocalSearchParams<{
       topic: string;
       topicTitle: string;
@@ -32,6 +63,7 @@ export default function LessonReady() {
       apiCategoryId?: string;
       apiLoaded?: string;
       supportedDifficulties?: string;
+      availableCardCount?: string;
     }>();
 
   const [status, setStatus] = useState<"ready" | "empty" | "error">("ready");
@@ -40,6 +72,14 @@ export default function LessonReady() {
   const [shuffleEnabled, setShuffleEnabled] = useState(false);
   const [cardCount, setCardCount] = useState(profile?.cards_per_session ?? DEFAULT_CARD_COUNT);
   const startLockRef = useRef(false);
+  const routeAvailableCardCount = resolveAvailableCardCount(availableCardCountParam);
+  const categoryAvailableCardCount = categories.find(
+    (category) => String(category.id) === String(apiCategoryId),
+  )?.total_cards;
+  const availableCardCount =
+    routeAvailableCardCount ??
+    (typeof categoryAvailableCardCount === "number" ? categoryAvailableCardCount : null);
+  const { min: minCardCount, max: maxCardCount } = resolveCardCountBounds(availableCardCount);
   const availableDifficulties = (supportedDifficulties ?? "")
     .split(",")
     .map((value) => Number(value))
@@ -48,7 +88,11 @@ export default function LessonReady() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<number | null>(
     availableDifficulties[0] ?? null
   );
-  const canStart = Boolean(apiCategoryId) && selectedDifficulty !== null && !starting;
+  const canStart =
+    Boolean(apiCategoryId) &&
+    selectedDifficulty !== null &&
+    !starting &&
+    maxCardCount > 0;
 
   useEffect(() => {
     setSelectedDifficulty(availableDifficulties[0] ?? null);
@@ -59,13 +103,13 @@ export default function LessonReady() {
 
     async function loadCardCount() {
       if (typeof profile?.cards_per_session === "number") {
-        setCardCount(clampCardCount(profile.cards_per_session));
+        setCardCount(clampCardCount(profile.cards_per_session, availableCardCount));
         return;
       }
 
       const settings = await getSettings();
       if (mounted) {
-        setCardCount(clampCardCount(settings.cardsPerSession));
+        setCardCount(clampCardCount(settings.cardsPerSession, availableCardCount));
       }
     }
 
@@ -74,7 +118,7 @@ export default function LessonReady() {
     return () => {
       mounted = false;
     };
-  }, [profile?.cards_per_session]);
+  }, [availableCardCount, profile?.cards_per_session]);
 
   useEffect(() => {
     if (!apiCategoryId) {
@@ -87,12 +131,17 @@ export default function LessonReady() {
       setErrorMessage("No difficulty options are available for this category yet.");
       return;
     }
+    if (availableCardCount === 0) {
+      setStatus("empty");
+      setErrorMessage("No flashcards are available for this category yet.");
+      return;
+    }
     setStatus("ready");
     setErrorMessage("");
-  }, [apiCategoryId, supportedDifficulties]);
+  }, [apiCategoryId, availableCardCount, supportedDifficulties]);
 
   function updateCardCount(direction: 1 | -1) {
-    setCardCount((current) => clampCardCount(current + direction * CARD_COUNT_STEP));
+    setCardCount((current) => clampCardCount(current + direction * CARD_COUNT_STEP, availableCardCount));
   }
 
   const handleStart = async () => {
@@ -198,6 +247,7 @@ export default function LessonReady() {
                 apiLanguageId: apiLanguageId ?? "",
                 apiLoaded: apiLoaded ?? "",
                 supportedDifficulties: supportedDifficulties ?? "",
+                availableCardCount: availableCardCountParam ?? "",
               },
             })
           }
@@ -306,24 +356,30 @@ export default function LessonReady() {
                 <View className="ml-1.5 rounded-xl border border-border bg-background overflow-hidden">
                   <Pressable
                     onPress={() => updateCardCount(1)}
-                    disabled={starting || cardCount >= MAX_CARD_COUNT}
+                    disabled={starting || cardCount >= maxCardCount}
                     className="w-8 h-7 items-center justify-center"
-                    style={{ opacity: cardCount >= MAX_CARD_COUNT ? 0.4 : 1 }}
+                    style={{ opacity: cardCount >= maxCardCount ? 0.4 : 1 }}
                   >
                     <Ionicons name="chevron-up" size={16} color="#2F1E19" />
                   </Pressable>
                   <View className="h-px bg-border" />
                   <Pressable
                     onPress={() => updateCardCount(-1)}
-                    disabled={starting || cardCount <= MIN_CARD_COUNT}
+                    disabled={starting || cardCount <= minCardCount}
                     className="w-8 h-7 items-center justify-center"
-                    style={{ opacity: cardCount <= MIN_CARD_COUNT ? 0.4 : 1 }}
+                    style={{ opacity: cardCount <= minCardCount ? 0.4 : 1 }}
                   >
                     <Ionicons name="chevron-down" size={16} color="#2F1E19" />
                   </Pressable>
                 </View>
               </View>
             </View>
+
+            {availableCardCount !== null ? (
+              <Text className="text-center text-xs text-muted mt-2">
+                {availableCardCount} cards available in this category
+              </Text>
+            ) : null}
 
             {errorMessage ? (
               <Text

@@ -3,6 +3,7 @@ import type { components } from "./generated/api-types";
 export type ApiLanguage = components["schemas"]["LanguageResponse"];
 export type ApiCategory = components["schemas"]["CategoryResponse"] & {
   supported_difficulties?: number[];
+  total_cards?: number;
 };
 export type ApiLessonCard = components["schemas"]["FlashcardResponse"];
 export type ApiProfile = components["schemas"]["ProfileResponse"];
@@ -144,7 +145,7 @@ export interface ApiUpdateFlashcardAttempt {
 }
 
 export const API_BASE_URL =
-  (process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090/api").replace(/\/$/, "");
+  (process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090").replace(/\/$/, "");
 
 const SHOULD_LOG_API = typeof __DEV__ !== "undefined" && __DEV__;
 
