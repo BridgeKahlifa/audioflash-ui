@@ -143,14 +143,13 @@ export default function SettingsScreen() {
     (localSettings.notifications_enabled ?? false) !== normalizedProfileNotifications;
 
   useEffect(() => {
-    if (!profile) return;
     setLocalSettings({
-      cards_per_session: profile.cards_per_session,
-      audio_speed: profile.audio_speed,
-      notifications_enabled: profile.notifications_enabled,
+      cards_per_session: profile?.cards_per_session ?? 20,
+      audio_speed: profile?.audio_speed ?? 1.0,
+      notifications_enabled: profile?.notifications_enabled ?? false,
     });
-    setName(profile.name ?? "");
-    setTargetLanguageIds(profile.target_language_ids?.slice(0, 1).map(String) ?? []);
+    setName(profile?.name ?? "");
+    setTargetLanguageIds(profile?.target_language_ids?.slice(0, 1).map(String) ?? []);
   }, [profile]);
 
   useEffect(() => {
