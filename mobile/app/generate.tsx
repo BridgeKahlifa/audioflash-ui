@@ -9,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../lib/auth-context";
@@ -59,6 +59,7 @@ interface GeneratedResult {
 export default function Generate() {
   const { session, profile } = useAuth();
   const posthog = useAnalytics();
+  const insets = useSafeAreaInsets();
   const [topic, setTopic] = useState("");
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(null);
@@ -100,6 +101,7 @@ export default function Generate() {
 
   const canGenerate =
     topic.trim().length >= 2 && selectedLanguageId !== null && status === "idle";
+  const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
 
   async function handleGenerate() {
     if (!canGenerate || !session?.access_token) return;
@@ -622,7 +624,7 @@ export default function Generate() {
           </ScrollView>
 
           {/* Generate button */}
-          <View className="px-6 pb-6 pt-3">
+          <View className="px-6 pt-3" style={{ paddingBottom: actionBarPaddingBottom }}>
             <Pressable
               onPress={handleGenerate}
               disabled={!canGenerate}

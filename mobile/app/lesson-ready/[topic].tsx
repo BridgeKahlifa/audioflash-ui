@@ -412,21 +412,13 @@ export default function LessonReady() {
               {starting ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <>
-                  <Text
-                    className={`text-base font-semibold ${
-                      canStart ? "text-primary-foreground" : "text-muted"
-                    }`}
-                  >
-                    Start Practice
-                  </Text>
-                  <Ionicons
-                    name="arrow-forward"
-                    size={20}
-                    color={canStart ? "#FFFFFF" : "#8B6E66"}
-                    style={{ marginLeft: 10 }}
-                  />
-                </>
+                <Text
+                  className={`text-base font-semibold ${
+                    canStart ? "text-primary-foreground" : "text-muted"
+                  }`}
+                >
+                  Start Practice
+                </Text>
               )}
             </Pressable>
           </View>
