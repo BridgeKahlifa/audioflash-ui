@@ -19,6 +19,7 @@ import { useAuth } from "../../lib/auth-context";
 import { ApiUpdateProfile, ApiLanguage } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
 import { useLanguages } from "../../lib/queries";
+import { AuthModeSettingsCard } from "../../components/AuthModeBadge";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -502,6 +503,9 @@ export default function SettingsScreen() {
             <Text className="text-primary-foreground font-semibold">Save Settings</Text>
           </Pressable>
           {saved && <Text className="text-center text-muted mt-2 text-sm">Saved</Text>}
+
+          <SectionLabel>Environment</SectionLabel>
+          <AuthModeSettingsCard />
 
           {/* ── Account ── */}
           <SectionLabel>Account</SectionLabel>

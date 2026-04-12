@@ -9,6 +9,9 @@ import {
   fetchSessions,
   fetchSessionStats,
   fetchReviews,
+  fetchDecks,
+  fetchDeck,
+  fetchDeckCards,
 } from "./api";
 import { queryKeys } from "./query-keys";
 
@@ -114,6 +117,44 @@ export function useInProgressLessonName(): string | null {
     () => categories?.find((c) => String(c.id) === String(lesson?.category_id))?.name ?? null,
     [lesson, categories],
   );
+}
+
+// ── Deck hooks ─────────────────────────────────────────────────────────────────
+
+export function useDecks() {
+  const { session, isDevAuth } = useAuth();
+  const token = session?.access_token;
+  const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
+  return useQuery({
+    queryKey: queryKeys.decks(userId),
+    queryFn:  () => fetchDecks(token ?? null),
+    enabled:  !!(token || isDevAuth),
+    staleTime: STALE.user,
+  });
+}
+
+export function useDeck(deckId: string) {
+  const { session, isDevAuth } = useAuth();
+  const token = session?.access_token;
+  const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
+  return useQuery({
+    queryKey: queryKeys.deck(userId, deckId),
+    queryFn:  () => fetchDeck(token ?? null, deckId),
+    enabled:  !!(token || isDevAuth) && !!deckId,
+    staleTime: STALE.user,
+  });
+}
+
+export function useDeckCards(deckId: string) {
+  const { session, isDevAuth } = useAuth();
+  const token = session?.access_token;
+  const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
+  return useQuery({
+    queryKey: queryKeys.deckCards(userId, deckId),
+    queryFn:  () => fetchDeckCards(token ?? null, deckId),
+    enabled:  !!(token || isDevAuth) && !!deckId,
+    staleTime: STALE.user,
+  });
 }
 
 // ── Invalidation helper ────────────────────────────────────────────────────────

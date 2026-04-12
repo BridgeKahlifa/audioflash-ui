@@ -264,7 +264,31 @@ export default function Home() {
               <View className="flex-1">
                 <Text className="text-foreground font-semibold text-base">My Library</Text>
                 <Text className="text-muted text-sm mt-0.5">
-                  Saved lessons and AI-generated packs
+                  Saved lessons and AI-generated decks
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
+            </Pressable>
+
+            {/* My Decks */}
+            <Pressable
+              onPress={() => { posthog?.capture("home_action_tapped", { action: "my_decks" }); router.push("/decks"); }}
+              className="rounded-2xl p-5 bg-card border border-border flex-row items-center"
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                elevation: 2,
+              }}
+            >
+              <View className="w-12 h-12 rounded-xl bg-accent items-center justify-center mr-4">
+                <Ionicons name="albums" size={24} color="#FF6B4A" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-foreground font-semibold text-base">My Decks</Text>
+                <Text className="text-muted text-sm mt-0.5">
+                  Custom flashcard decks you've built
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
