@@ -76,6 +76,40 @@ function createDevSession(): Session {
   };
 }
 
+function looksLikeEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function getEmailAuthErrorMessage(error: unknown, email?: string): string {
+  const raw = typeof (error as any)?.message === "string"
+    ? (error as any).message
+    : typeof error === "string"
+      ? error
+      : "";
+  const message = raw.toLowerCase();
+
+  if (email && !looksLikeEmail(email.trim())) {
+    return "Enter a valid email address.";
+  }
+  if (message.includes("database error saving new user")) {
+    return "We couldn't create an account with that email. Check the address and try again.";
+  }
+  if (message.includes("email rate limit exceeded") || message.includes("over_email_send_rate_limit")) {
+    return "Too many email attempts. Wait a minute and try again.";
+  }
+  if (message.includes("invalid email")) {
+    return "Enter a valid email address.";
+  }
+  if (message.includes("signup is disabled")) {
+    return "Email sign-up is currently unavailable. Try again later.";
+  }
+  if (message.includes("network") || message.includes("failed to fetch") || message.includes("offline")) {
+    return "We couldn't reach the server. Check your connection and try again.";
+  }
+
+  return "We couldn't send a sign-in code right now. Please try again.";
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -135,11 +169,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Auth methods ───────────────────────────────────────────────────────────
   async function sendOtp(email: string) {
     if (DEV_AUTH_MODE) return { error: "Email sign-in is disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
+    if (!looksLikeEmail(email.trim())) {
+      return { error: "Enter a valid email address." };
+    }
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { shouldCreateUser: true },
     });
-    if (error) return { error: error.message };
+    if (error) return { error: getEmailAuthErrorMessage(error, email) };
     return { error: null };
   }
 
@@ -234,8 +271,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function updateEmail(email: string) {
     if (DEV_AUTH_MODE) return { error: "Email changes are unavailable while EXPO_PUBLIC_AUTH_MODE=dev." };
+    if (!looksLikeEmail(email.trim())) return { error: "Enter a valid email address." };
     const { error } = await supabase.auth.updateUser({ email });
-    if (error) return { error: error.message };
+    if (error) return { error: getEmailAuthErrorMessage(error, email) };
     return { error: null };
   }
 

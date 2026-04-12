@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { AuthModeBadge } from "../components/AuthModeBadge";
+import { DarkModeToggle } from "../components/DarkModeToggle";
+import { MatrixRain } from "../components/MatrixRain";
+import { ThemeProvider } from "../components/ThemeProvider";
 import { PostHogProvider } from "./providers";
 import "./globals.css";
 
@@ -39,23 +42,17 @@ export default function RootLayout({
   const dbEnv = process.env.DB_ENV;
 
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className="bg-background text-foreground font-sans antialiased">
         <PostHogProvider>
-          <AuthModeBadge authMode={dbEnv} />
-          {children}
+          <ThemeProvider>
+            <MatrixRain />
+            <DarkModeToggle />
+            <div className="matrix-shell relative z-10 min-h-screen">
+              <AuthModeBadge authMode={dbEnv} />
+              {children}
+            </div>
+          </ThemeProvider>
         </PostHogProvider>
       </body>
     </html>

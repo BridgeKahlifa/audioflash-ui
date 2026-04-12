@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 export function FAQItem({ question, answer }: { question: string; answer: ReactNode }) {
   return (
-    <details className="group rounded-2xl border border-border bg-white p-5">
+    <details className="group matrix-panel rounded-2xl border border-border bg-card p-5">
       <summary className="cursor-pointer list-none font-semibold text-foreground pr-8 relative">
         {question}
         <span className="absolute right-0 top-0 text-muted transition-transform group-open:rotate-45">+</span>

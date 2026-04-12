@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from "../lib/auth-context";
 import { ConfigProvider } from "../lib/config-context";
 import { AppDataProvider, useAppData } from "../lib/app-data-context";
 import { SplashScreen } from "../components/SplashScreen";
+import { AppThemeProvider, useAppTheme } from "../lib/theme-context";
 import {
   buildExceptionProperties,
   POSTHOG_ENABLE_ERROR_TRACKING,
@@ -204,21 +205,21 @@ function RootNavigator() {
   );
 }
 
-export default function RootLayout() {
+function ThemedAppShell() {
+  const { statusBarStyle } = useAppTheme();
+
   if (SUPABASE_CONFIG_ERROR) {
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <StatusBar style="dark" />
+      <>
+        <StatusBar style={statusBarStyle} />
         <ConfigurationErrorScreen message={SUPABASE_CONFIG_ERROR} />
-      </GestureHandlerRootView>
+      </>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="dark" />
-      {/* PersistQueryClientProvider is at the root so AuthProvider (which uses
-          TanStack Query for profile) sits inside it. */}
+    <>
+      <StatusBar style={statusBarStyle} />
       <PersistQueryClientProvider
         client={queryClient}
         persistOptions={{ persister, maxAge: DAY_MS }}
@@ -261,6 +262,16 @@ export default function RootLayout() {
           </PostHogErrorBoundary>
         </PostHogProvider>
       </PersistQueryClientProvider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppThemeProvider>
+        <ThemedAppShell />
+      </AppThemeProvider>
     </GestureHandlerRootView>
   );
 }

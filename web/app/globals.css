@@ -1,13 +1,67 @@
+@import "../styles/fonts.css";
+@import "../styles/theme.css";
+@import "../styles/matrix.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-color: rgb(var(--border-rgb) / 1);
+    outline-color: rgb(var(--ring-rgb) / 0.5);
+    transition-property: color, background-color, border-color, text-shadow, box-shadow;
+    transition-duration: 300ms;
+    transition-timing-function: ease-in-out;
+  }
 
-* {
-  box-sizing: border-box;
-}
+  html {
+    font-size: var(--font-size);
+    scroll-behavior: smooth;
+  }
 
-html {
-  scroll-behavior: smooth;
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: "Share Tech Mono", monospace;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4,
+  label,
+  button,
+  input {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  h4,
+  label,
+  button {
+    font-weight: var(--font-weight-medium);
+  }
+
+  input {
+    font-weight: var(--font-weight-normal);
+  }
 }

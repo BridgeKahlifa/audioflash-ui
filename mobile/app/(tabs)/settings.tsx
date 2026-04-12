@@ -19,6 +19,7 @@ import { useAuth } from "../../lib/auth-context";
 import { ApiUpdateProfile, ApiLanguage } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
 import { useLanguages } from "../../lib/queries";
+import { useAppTheme } from "../../lib/theme-context";
 import { AuthModeSettingsCard } from "../../components/AuthModeBadge";
 
 function clamp(value: number, min: number, max: number): number {
@@ -110,6 +111,7 @@ export default function SettingsScreen() {
   const { data: languages = [] } = useLanguages();
   const posthog = useAnalytics();
   const navigation = useNavigation();
+  const { matrixMode, setMatrixMode } = useAppTheme();
   const [errorMessage, setErrorMessage] = useState("");
 
   const [localSettings, setLocalSettings] = useState<ApiUpdateProfile>({
@@ -169,13 +171,15 @@ export default function SettingsScreen() {
   async function saveSettings() {
     setErrorMessage("");
     const { error } = await updateProfileData(localSettings);
+
     if (!error) {
       setSaved(true);
       setTimeout(() => setSaved(false), 1600);
       posthog?.capture("settings_practice_saved", {
-        cards_per_session: localSettings.cards_per_session,
-        audio_speed: localSettings.audio_speed,
-        notifications_enabled: localSettings.notifications_enabled,
+        cards_per_session: localSettings.cards_per_session ?? 20,
+        audio_speed: localSettings.audio_speed ?? 1,
+        notifications_enabled: localSettings.notifications_enabled ?? false,
+        matrix_mode: matrixMode,
       });
     } else {
       setErrorMessage("We couldn't save your settings right now. Please try again.");
@@ -246,9 +250,10 @@ export default function SettingsScreen() {
       setSaved(true);
       setTimeout(() => setSaved(false), 1600);
       posthog?.capture("settings_practice_saved", {
-        cards_per_session: localSettings.cards_per_session,
-        audio_speed: localSettings.audio_speed,
-        notifications_enabled: localSettings.notifications_enabled,
+        cards_per_session: localSettings.cards_per_session ?? 20,
+        audio_speed: localSettings.audio_speed ?? 1,
+        notifications_enabled: localSettings.notifications_enabled ?? false,
+        matrix_mode: matrixMode,
       });
     }
 
@@ -266,7 +271,7 @@ export default function SettingsScreen() {
       setErrorMessage("We couldn't save your language selection right now. Please try again.");
     } else {
       const lang = languages.find((l) => String(l.id) === id);
-      posthog?.capture("settings_target_language_selected", { language: lang?.language });
+      posthog?.capture("settings_target_language_selected", { language: lang?.language ?? "unknown" });
     }
   }
 
@@ -482,6 +487,28 @@ export default function SettingsScreen() {
                 </Pressable>
               </View>
             </View>
+          </View>
+
+          <SectionLabel>Appearance</SectionLabel>
+          <View className="bg-card border border-border rounded-2xl overflow-hidden">
+            <Pressable
+              onPress={async () => {
+                const nextValue = !matrixMode;
+                await setMatrixMode(nextValue);
+                posthog?.capture("settings_matrix_mode_toggled", { matrix_mode: nextValue });
+              }}
+              className="flex-row items-center justify-between p-4"
+            >
+              <View className="flex-1 mr-4">
+                <Text className="text-foreground font-medium">Matrix Mode</Text>
+                <Text className="text-xs text-muted mt-1">
+                  Pure black surfaces with orange accents and animated rain on supported screens.
+                </Text>
+              </View>
+              <View className={`h-8 w-14 rounded-full px-1 justify-center ${matrixMode ? "bg-primary" : "bg-secondary"}`}>
+                <View className={`h-6 w-6 rounded-full ${matrixMode ? "bg-black self-end" : "bg-white self-start"}`} />
+              </View>
+            </Pressable>
           </View>
 
           {/*

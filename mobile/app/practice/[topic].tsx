@@ -11,13 +11,25 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Flashcard } from "../../lib/types";
-import { getCurrentCards } from "../../lib/storage";
+import { Flashcard, FlashcardDisplayMode } from "../../lib/types";
+import { getCurrentCards, getLessonDisplayMode } from "../../lib/storage";
 import { speakText } from "../../lib/audio";
 import { useAuth } from "../../lib/auth-context";
 import { fetchLessonSession, fetchLessonSessionFlashcards } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
 import { useSessionManager } from "../../lib/use-session-manager";
+import { MatrixRainOverlay } from "../../components/MatrixRainOverlay";
+import { useAppTheme } from "../../lib/theme-context";
+import {
+  DEFAULT_FLASHCARD_DISPLAY_MODE,
+  normalizeFlashcardDisplayMode,
+} from "../../lib/flashcard-display-mode";
+import {
+  DEFAULT_TRADITIONAL_FLASHCARD_FRONT,
+  normalizeTraditionalFlashcardFront,
+  type TraditionalFlashcardFront,
+} from "../../lib/traditional-flashcard-front";
+import { getLessonTraditionalFlashcardFront } from "../../lib/lesson-card-preferences";
 
 export default function FlashcardPractice() {
   const insets = useSafeAreaInsets();
@@ -38,6 +50,8 @@ export default function FlashcardPractice() {
     resumeSession,
     initialCurrentIndex,
     lessonStatus,
+    displayMode: displayModeParam,
+    traditionalFront: traditionalFrontParam,
   } = useLocalSearchParams<{
     topic: string;
     topicTitle?: string;
@@ -55,16 +69,54 @@ export default function FlashcardPractice() {
     resumeSession?: string;
     initialCurrentIndex?: string;
     lessonStatus?: string;
+    displayMode?: string;
+    traditionalFront?: string;
   }>();
 
   const { session } = useAuth();
   const posthog = useAnalytics();
+  const { matrixMode } = useAppTheme();
+
+  const palette = matrixMode
+    ? {
+        screenBackground: "#000000",
+        cardBackground: "#121212",
+        cardBorder: "rgba(255, 107, 74, 0.45)",
+        cardShadow: "#ff6b4a",
+        secondarySurface: "#242424",
+        secondaryBorder: "rgba(255, 107, 74, 0.18)",
+        primary: "#ff6b4a",
+        primaryForeground: "#000000",
+        foreground: "#ff8c42",
+        muted: "#c9714d",
+        icon: "#ff8c42",
+      }
+    : {
+        screenBackground: "#FFF7F2",
+        cardBackground: "#FFFDFC",
+        cardBorder: "transparent",
+        cardShadow: "#000000",
+        secondarySurface: "#FBE7DE",
+        secondaryBorder: "transparent",
+        primary: "#E86A4A",
+        primaryForeground: "#FFFFFF",
+        foreground: "#2F1E19",
+        muted: "#8B6E66",
+        icon: "#1A1A1A",
+      };
 
   // ── Card state ─────────────────────────────────────────────────────────────
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [canRevealAnswer, setCanRevealAnswer] = useState(false);
+  const [displayMode, setDisplayMode] = useState<FlashcardDisplayMode>(
+    DEFAULT_FLASHCARD_DISPLAY_MODE,
+  );
+  const [displayModeResolved, setDisplayModeResolved] = useState(false);
+  const [traditionalFront, setTraditionalFront] = useState<TraditionalFlashcardFront>(
+    DEFAULT_TRADITIONAL_FLASHCARD_FRONT,
+  );
   const [selectedConfidence, setSelectedConfidence] = useState<number | null>(null);
   const [audioPlayCount, setAudioPlayCount] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
@@ -83,6 +135,7 @@ export default function FlashcardPractice() {
   const sliderMeasuredWidthRef = useRef(0);
   const translateX = useRef(new Animated.Value(0)).current;
   const isResumeSession = resumeSession === "true";
+  const isTraditionalMode = displayMode === "traditional";
   const initialResumeIndex = Number(initialCurrentIndex ?? 0);
   const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
 
@@ -94,6 +147,7 @@ export default function FlashcardPractice() {
     categoryId: apiCategoryId,
     deckId,
     difficulty: resolvedDifficulty,
+    displayMode,
     selectedConfidence,
     audioPlayCount,
     shownAtRef,
@@ -119,6 +173,16 @@ export default function FlashcardPractice() {
             fetchLessonSession(session.access_token, lessonSessionId),
             fetchLessonSessionFlashcards(session.access_token, lessonSessionId),
           ]);
+          const resolvedDisplayMode = normalizeFlashcardDisplayMode(
+            lessonSession.session_mode ??
+              displayModeParam ??
+              (await getLessonDisplayMode(lessonSessionId)) ??
+              DEFAULT_FLASHCARD_DISPLAY_MODE,
+          );
+          const resolvedTraditionalFront = normalizeTraditionalFlashcardFront(
+            traditionalFrontParam ??
+              (await getLessonTraditionalFlashcardFront(lessonSessionId)),
+          );
           const flashcardsById = new Map(
             sessionFlashcards.map((card) => [String(card.id), card]),
           );
@@ -133,6 +197,9 @@ export default function FlashcardPractice() {
             translation: card.translation,
           }));
 
+          setDisplayMode(resolvedDisplayMode);
+          setTraditionalFront(resolvedTraditionalFront);
+          setDisplayModeResolved(true);
           setCards(mappedCards);
           setResolvedActivityId(lessonSession.activity_id ?? lessonSession.session_id);
           setResumeCardsSeen(lessonSession.cards_seen ?? lessonSession.current_index ?? 0);
@@ -156,19 +223,35 @@ export default function FlashcardPractice() {
             ),
           );
           posthog?.capture("session_started", {
-            language: languageLabel,
+            language: languageLabel ?? null,
             card_count: mappedCards.length,
             topic: topicTitle ?? topic,
             is_review: Boolean(reviewId),
+            display_mode: resolvedDisplayMode,
             resumed: true,
-            lesson_status: lessonSession.status ?? lessonStatus,
+            lesson_status: lessonSession.status ?? lessonStatus ?? null,
             current_index: lessonSession.current_index ?? initialResumeIndex,
           });
         } catch {
+          setDisplayModeResolved(true);
           setCards([]);
         }
         return;
       }
+
+      const resolvedDisplayMode = normalizeFlashcardDisplayMode(
+        displayModeParam ??
+          (lessonSessionId ? (await getLessonDisplayMode(lessonSessionId)) : null) ??
+          DEFAULT_FLASHCARD_DISPLAY_MODE,
+      );
+      const resolvedTraditionalFront = normalizeTraditionalFlashcardFront(
+        traditionalFrontParam ??
+          (lessonSessionId ? await getLessonTraditionalFlashcardFront(lessonSessionId) : null),
+      );
+
+      setDisplayMode(resolvedDisplayMode);
+      setTraditionalFront(resolvedTraditionalFront);
+      setDisplayModeResolved(true);
 
       const stored = await getCurrentCards(topic);
       if (stored && stored.length > 0) {
@@ -179,10 +262,11 @@ export default function FlashcardPractice() {
         setResolvedDifficulty(difficulty != null ? Number(difficulty) : null);
         setCurrentIndex(0);
         posthog?.capture("session_started", {
-          language: languageLabel,
+          language: languageLabel ?? null,
           card_count: stored.length,
           topic: topicTitle ?? topic,
           is_review: Boolean(reviewId),
+          display_mode: resolvedDisplayMode,
         });
       } else {
         setCards([]);
@@ -192,6 +276,7 @@ export default function FlashcardPractice() {
   }, [
     activityId,
     difficulty,
+    displayModeParam,
     initialResumeIndex,
     isResumeSession,
     languageLabel,
@@ -200,12 +285,17 @@ export default function FlashcardPractice() {
     lessonStatus,
     reviewId,
     session?.access_token,
+    traditionalFrontParam,
     topic,
     topicTitle,
   ]);
 
   // ── Per-card setup ─────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!displayModeResolved) {
+      return;
+    }
+
     shownAtRef.current = Date.now();
     setAudioPlayCount(0);
 
@@ -221,16 +311,23 @@ export default function FlashcardPractice() {
     }
 
     const card = cards[currentIndex];
-    if (card?.sourceText && !existingResult) {
-      revealTimerRef.current = setTimeout(() => {
-        setCanRevealAnswer(true);
-        revealTimerRef.current = null;
-      }, 1500);
-      speakText(card.sourceText, language ?? "chinese", playbackSpeed);
+    if (!card?.sourceText || existingResult) {
+      return;
     }
+
+    if (isTraditionalMode) {
+      setCanRevealAnswer(true);
+      return;
+    }
+
+    revealTimerRef.current = setTimeout(() => {
+      setCanRevealAnswer(true);
+      revealTimerRef.current = null;
+    }, 1500);
+    speakText(card.sourceText, language ?? "chinese", playbackSpeed);
   // `results` is a dep because we read results[currentIndex] to restore state
   // when the user navigates back to a card they already answered.
-  }, [currentIndex, cards, results]);
+  }, [currentIndex, cards, displayModeResolved, isTraditionalMode, results]);
 
   useEffect(() => {
     return () => {
@@ -243,6 +340,7 @@ export default function FlashcardPractice() {
   const progress = cards.length > 0 ? (currentIndex + 1) / cards.length : 0;
   const shouldShowRevealButton = canRevealAnswer && !showAnswer;
   const shouldShowAnswerActions = canRevealAnswer && showAnswer;
+  const showMatrixRain = matrixMode && displayModeResolved && cards.length > 0;
 
   // ── Playback speed slider ──────────────────────────────────────────────────
   const minPlaybackSpeed = 0.5;
@@ -364,20 +462,45 @@ export default function FlashcardPractice() {
     setShowAnswer(false);
   }
 
+  function revealAnswer() {
+    if (!canRevealAnswer || submitting) {
+      return;
+    }
+    setShowAnswer(true);
+  }
+
+  function playCurrentCardAudio() {
+    setAudioPlayCount((count) => count + 1);
+    speakText(currentCard.sourceText, language ?? "chinese", playbackSpeed);
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
-  if (cards.length === 0 || !currentCard) {
+  if (!displayModeResolved || cards.length === 0 || !currentCard) {
     return (
-      <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        className="flex-1 bg-background"
+        style={{ backgroundColor: palette.screenBackground }}
+      >
         <View className="flex-1 items-center justify-center max-w-md w-full mx-auto">
-          <Text className="text-muted">Loading cards...</Text>
+          <Text className="text-muted" style={{ color: palette.muted }}>Loading cards...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  const traditionalPromptText =
+    traditionalFront === "target" ? currentCard.sourceText : currentCard.translation;
+
   return (
-    <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
-      <View className="flex-1 max-w-md w-full mx-auto">
+    <>
+      <MatrixRainOverlay enabled={showMatrixRain} />
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        className="flex-1 bg-background"
+        style={{ backgroundColor: palette.screenBackground }}
+      >
+        <View className="flex-1 max-w-md w-full mx-auto" style={{ position: "relative", zIndex: 1 }}>
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
           <Pressable
@@ -394,18 +517,29 @@ export default function FlashcardPractice() {
               })
             }
             className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+            style={{
+              backgroundColor: palette.secondarySurface,
+              borderWidth: matrixMode ? 1 : 0,
+              borderColor: palette.secondaryBorder,
+            }}
           >
-            <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+            <Ionicons name="chevron-back" size={22} color={palette.icon} />
           </Pressable>
           <View className="w-10 h-10" />
         </View>
-        <Text className="text-sm text-muted text-center mb-2">
+        <Text className="text-sm text-muted text-center mb-2" style={{ color: palette.muted }}>
           {currentIndex + 1} / {cards.length}
         </Text>
 
         {/* Progress bar */}
-        <View className="mx-4 mb-4 h-1.5 bg-secondary rounded-full overflow-hidden">
-          <View className="h-full bg-primary rounded-full" style={{ width: `${progress * 100}%` }} />
+        <View
+          className="mx-4 mb-4 h-1.5 bg-secondary rounded-full overflow-hidden"
+          style={{ backgroundColor: palette.secondarySurface }}
+        >
+          <View
+            className="h-full bg-primary rounded-full"
+            style={{ width: `${progress * 100}%`, backgroundColor: palette.primary }}
+          />
         </View>
 
         {/* Card */}
@@ -420,75 +554,121 @@ export default function FlashcardPractice() {
               alignItems: "center",
               justifyContent: "center",
               padding: 32,
-              shadowColor: "#000",
+              backgroundColor: palette.cardBackground,
+              borderWidth: matrixMode ? 1 : 0,
+              borderColor: palette.cardBorder,
+              shadowColor: matrixMode ? palette.cardShadow : "#000",
               shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.08,
-              shadowRadius: 16,
-              elevation: 4,
+              shadowOpacity: matrixMode ? 0.22 : 0.08,
+              shadowRadius: matrixMode ? 22 : 16,
+              elevation: matrixMode ? 8 : 4,
             }}
           >
-            <Pressable
-              onPress={() => {
-                setAudioPlayCount((c) => c + 1);
-                speakText(currentCard.sourceText, language ?? "chinese", playbackSpeed);
-              }}
-              hitSlop={10}
-              className="w-20 h-20 bg-primary rounded-full items-center justify-center"
-              style={{
-                shadowColor: "#FF6B4A",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.35,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
-            >
-              <Ionicons name="volume-high" size={36} color="#FFFFFF" />
-            </Pressable>
-
             {!showAnswer ? (
-              <View className="mt-4 w-full px-3">
-                <View className="mb-1 flex-row items-center justify-between">
-                  <Text className="text-sm text-muted">Slow</Text>
-                  <Text className="text-sm font-semibold text-primary">{playbackSpeed.toFixed(1)}x</Text>
-                  <Text className="text-sm text-muted">Normal</Text>
-                </View>
-                <View
-                  ref={sliderRef}
-                  onLayout={handleSliderLayout}
-                  className="justify-center"
-                  style={{ height: sliderThumbSize }}
-                  {...sliderPanResponder.panHandlers}
+              isTraditionalMode ? (
+                <Pressable
+                  onPress={revealAnswer}
+                  disabled={!canRevealAnswer || submitting}
+                  className="w-full flex-1 items-center justify-center"
+                  style={{ opacity: canRevealAnswer ? 1 : 0.7 }}
                 >
-                  <View
-                    className="rounded-full bg-primary"
-                    style={{ height: sliderTrackHeight, marginHorizontal: sliderThumbSize / 2 }}
-                  />
-                  <View
-                    className="absolute rounded-full bg-primary"
+                  <Text
+                    className="text-4xl text-foreground text-center"
+                    style={{ alignSelf: "stretch", color: palette.foreground }}
+                  >
+                    {traditionalPromptText}
+                  </Text>
+                </Pressable>
+              ) : (
+                <>
+                  <Pressable
+                    onPress={playCurrentCardAudio}
+                    hitSlop={10}
+                    className="w-20 h-20 bg-primary rounded-full items-center justify-center"
                     style={{
-                      width: sliderThumbSize,
-                      height: sliderThumbSize,
-                      left: sliderPosition,
-                      shadowColor: "#FF6B4A",
+                      backgroundColor: palette.primary,
+                      shadowColor: palette.primary,
                       shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 8,
-                      elevation: 4,
+                      shadowOpacity: matrixMode ? 0.55 : 0.35,
+                      shadowRadius: matrixMode ? 16 : 8,
+                      elevation: matrixMode ? 8 : 4,
                     }}
-                  />
-                </View>
-              </View>
+                  >
+                    <Ionicons name="volume-high" size={36} color={palette.primaryForeground} />
+                  </Pressable>
+
+                  <View className="mt-4 w-full px-3">
+                    <View className="mb-1 flex-row items-center justify-between">
+                      <Text className="text-sm text-muted" style={{ color: palette.muted }}>Slow</Text>
+                      <Text className="text-sm font-semibold text-primary" style={{ color: palette.primary }}>
+                        {playbackSpeed.toFixed(1)}x
+                      </Text>
+                      <Text className="text-sm text-muted" style={{ color: palette.muted }}>Normal</Text>
+                    </View>
+                    <View
+                      ref={sliderRef}
+                      onLayout={handleSliderLayout}
+                      className="justify-center"
+                      style={{ height: sliderThumbSize }}
+                      {...sliderPanResponder.panHandlers}
+                    >
+                      <View
+                        className="rounded-full bg-primary"
+                        style={{
+                          height: sliderTrackHeight,
+                          marginHorizontal: sliderThumbSize / 2,
+                          backgroundColor: palette.primary,
+                        }}
+                      />
+                      <View
+                        className="absolute rounded-full bg-primary"
+                        style={{
+                          width: sliderThumbSize,
+                          height: sliderThumbSize,
+                          left: sliderPosition,
+                          backgroundColor: palette.primary,
+                          shadowColor: palette.primary,
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: matrixMode ? 0.45 : 0.25,
+                          shadowRadius: matrixMode ? 14 : 8,
+                          elevation: matrixMode ? 7 : 4,
+                        }}
+                      />
+                    </View>
+                  </View>
+                </>
+              )
             ) : null}
 
             {showAnswer && (
               <View className="mt-8 items-center" style={{ alignSelf: "stretch" }}>
-                <Text className="text-4xl text-foreground text-center mb-3" style={{ alignSelf: "stretch" }}>
+                {isTraditionalMode ? (
+                  <Pressable
+                    onPress={playCurrentCardAudio}
+                    hitSlop={10}
+                    className="mb-6 w-16 h-16 bg-primary rounded-full items-center justify-center"
+                    style={{
+                      alignSelf: "center",
+                      backgroundColor: palette.primary,
+                      shadowColor: palette.primary,
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: matrixMode ? 0.5 : 0.3,
+                      shadowRadius: matrixMode ? 14 : 8,
+                      elevation: matrixMode ? 7 : 4,
+                    }}
+                  >
+                    <Ionicons name="volume-high" size={28} color={palette.primaryForeground} />
+                  </Pressable>
+                ) : null}
+                <Text className="text-4xl text-foreground text-center mb-3" style={{ alignSelf: "stretch", color: palette.foreground }}>
                   {currentCard.sourceText}
                 </Text>
-                <Text className="text-xl text-muted text-center mb-6" style={{ alignSelf: "stretch" }}>
-                  {currentCard.romanization}
-                </Text>
-                <Text className="text-xl text-foreground text-center" style={{ alignSelf: "stretch" }}>
+                {currentCard.romanization ? (
+                  <Text className="text-xl text-muted text-center mb-6" style={{ alignSelf: "stretch", color: palette.muted }}>
+                    {currentCard.romanization}
+                  </Text>
+                ) : null}
+                <Text className="text-xl text-foreground text-center" style={{ alignSelf: "stretch", color: palette.foreground }}>
                   {currentCard.translation}
                 </Text>
               </View>
@@ -500,18 +680,23 @@ export default function FlashcardPractice() {
         <View className="px-4 gap-3" style={{ paddingBottom: actionBarPaddingBottom }}>
           {shouldShowRevealButton ? (
             <Pressable
-              onPress={() => setShowAnswer(true)}
+              onPress={revealAnswer}
               className="py-4 bg-secondary rounded-2xl items-center"
+              style={{
+                backgroundColor: palette.secondarySurface,
+                borderWidth: matrixMode ? 1 : 0,
+                borderColor: palette.secondaryBorder,
+              }}
               disabled={submitting}
             >
-              <Text className="text-base font-medium text-muted">Reveal Answer</Text>
+              <Text className="text-base font-medium text-muted" style={{ color: palette.foreground }}>Reveal Answer</Text>
             </Pressable>
           ) : null}
 
           {shouldShowAnswerActions ? (
             <>
               <View className="items-center gap-3">
-                <Text className="text-sm font-medium text-muted">How confident were you?</Text>
+                <Text className="text-sm font-medium text-muted" style={{ color: palette.muted }}>How confident were you?</Text>
                 <View className="flex-row gap-2">
                   {[1, 2, 3, 4, 5].map((value) => {
                     const selected = selectedConfidence === value;
@@ -522,9 +707,16 @@ export default function FlashcardPractice() {
                         className={`w-11 h-11 rounded-full items-center justify-center border ${
                           selected ? "bg-primary border-primary" : "bg-secondary border-border"
                         }`}
+                        style={{
+                          backgroundColor: selected ? palette.primary : palette.secondarySurface,
+                          borderColor: selected ? palette.primary : palette.secondaryBorder,
+                        }}
                         disabled={submitting}
                       >
-                        <Text className={`font-semibold ${selected ? "text-primary-foreground" : "text-foreground"}`}>
+                        <Text
+                          className={`font-semibold ${selected ? "text-primary-foreground" : "text-foreground"}`}
+                          style={{ color: selected ? palette.primaryForeground : palette.foreground }}
+                        >
                           {value}
                         </Text>
                       </Pressable>
@@ -537,8 +729,13 @@ export default function FlashcardPractice() {
                   onPress={() => void onResult(false)}
                   disabled={submitting}
                   className="flex-1 py-4 bg-secondary rounded-2xl items-center"
+                  style={{
+                    backgroundColor: palette.secondarySurface,
+                    borderWidth: matrixMode ? 1 : 0,
+                    borderColor: palette.secondaryBorder,
+                  }}
                 >
-                  <Text className="text-base font-medium text-foreground">
+                  <Text className="text-base font-medium text-foreground" style={{ color: palette.foreground }}>
                     {submittingResult === "didnt-know" ? "Saving..." : "Didn't Know"}
                   </Text>
                 </Pressable>
@@ -547,14 +744,15 @@ export default function FlashcardPractice() {
                   disabled={submitting}
                   className="flex-1 py-4 bg-primary rounded-2xl items-center"
                   style={{
-                    shadowColor: "#FF6B4A",
+                    backgroundColor: palette.primary,
+                    shadowColor: palette.primary,
                     shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 8,
-                    elevation: 4,
+                    shadowOpacity: matrixMode ? 0.45 : 0.25,
+                    shadowRadius: matrixMode ? 14 : 8,
+                    elevation: matrixMode ? 7 : 4,
                   }}
                 >
-                  <Text className="text-base font-semibold text-primary-foreground">
+                  <Text className="text-base font-semibold text-primary-foreground" style={{ color: palette.primaryForeground }}>
                     {submittingResult === "knew" ? "Saving..." : "I Knew It"}
                   </Text>
                 </Pressable>
@@ -566,7 +764,8 @@ export default function FlashcardPractice() {
           ) : null}
 
         </View>
-      </View>
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
+    </>
   );
 }

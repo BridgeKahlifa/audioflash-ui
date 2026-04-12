@@ -1,3 +1,5 @@
+export type FlashcardDisplayMode = "audio-first" | "traditional";
+
 export interface Flashcard {
   id: string | number;
   dbId?: string;
@@ -39,6 +41,7 @@ export interface SessionHistoryItem {
   languageLabel: string;
   categoryId?: string;
   difficulty?: number;
+  displayMode?: FlashcardDisplayMode;
   correct: number;
   total: number;
   missedCount?: number;
@@ -66,4 +69,5 @@ export interface AppSettings {
   audioRate: number;
   remindersEnabled: boolean;
   dailyGoalCards: number;
+  matrixMode: boolean;
 }

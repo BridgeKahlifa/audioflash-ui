@@ -289,6 +289,7 @@ export default function SessionSummary() {
       : Number.isFinite(parsedDifficulty)
         ? parsedDifficulty
         : undefined;
+  const effectiveDisplayMode = session?.displayMode;
 
   useEffect(() => {
     getLastSession().then(setSession);
@@ -314,6 +315,7 @@ export default function SessionSummary() {
       authSession.access_token,
       effectiveCategoryId,
       effectiveDifficulty,
+      effectiveDisplayMode,
     )
       .then((response) => {
         if (cancelled) return;
@@ -336,7 +338,7 @@ export default function SessionSummary() {
     return () => {
       cancelled = true;
     };
-  }, [authSession?.access_token, effectiveCategoryId, effectiveDifficulty]);
+  }, [authSession?.access_token, effectiveCategoryId, effectiveDifficulty, effectiveDisplayMode]);
 
   const missed = useMemo(
     () => session?.cards.filter((card) => !card.knew) ?? [],
@@ -400,6 +402,7 @@ export default function SessionSummary() {
             languageLabel: "Review",
             reviewId: startedReview.id,
             activityId: startedReview.activity_id,
+            displayMode: session.displayMode,
           },
         });
         return;
@@ -418,6 +421,7 @@ export default function SessionSummary() {
         topicTitle: `${session.topicTitle} (Retry)`,
         language: session.language,
         languageLabel: session.languageLabel,
+        displayMode: session.displayMode,
       },
     });
   }
