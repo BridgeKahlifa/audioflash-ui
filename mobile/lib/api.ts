@@ -426,6 +426,16 @@ export async function createFlashcardAttempt(
 
 // ── Generation ──────────────────────────────────────────────────────────────
 
+/** A card returned from /generate or /generate/replace — not yet in the DB. */
+export interface ApiEphemeralCard {
+  source_text: string;
+  romanization: string | null;
+  translation: string;
+  difficulty: number;
+  /** Client-assigned key for UI tracking — never sent to the server. */
+  _clientId: string;
+}
+
 export interface ApiGenerateRequest {
   language_id: string;
   topic: string;
@@ -434,9 +444,8 @@ export interface ApiGenerateRequest {
 }
 
 export interface ApiGeneratedLesson {
-  category: ApiCategory;
-  flashcards: ApiLessonCard[];
-  cached: boolean;
+  category_name: string;
+  flashcards: ApiEphemeralCard[];
 }
 
 export async function generateLesson(
@@ -448,7 +457,11 @@ export async function generateLesson(
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
-  return parseJson<ApiGeneratedLesson>(res);
+  const data = await parseJson<{ category_name: string; flashcards: Omit<ApiEphemeralCard, "_clientId">[] }>(res);
+  return {
+    category_name: data.category_name,
+    flashcards: data.flashcards.map((c) => ({ ...c, _clientId: Math.random().toString(36).slice(2) })),
+  };
 }
 
 export interface ApiReplaceRequest {
@@ -456,11 +469,10 @@ export interface ApiReplaceRequest {
   topic: string;
   difficulty_level?: number;
   count: number;
-  exclude_ids: string[];
 }
 
 export interface ApiReplaceResponse {
-  flashcards: ApiLessonCard[];
+  flashcards: ApiEphemeralCard[];
 }
 
 export async function generateReplacements(
@@ -472,7 +484,35 @@ export async function generateReplacements(
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
-  return parseJson<ApiReplaceResponse>(res);
+  const data = await parseJson<{ flashcards: Omit<ApiEphemeralCard, "_clientId">[] }>(res);
+  return {
+    flashcards: data.flashcards.map((c) => ({ ...c, _clientId: Math.random().toString(36).slice(2) })),
+  };
+}
+
+export interface ApiCommitRequest {
+  language_id: string;
+  topic: string;
+  difficulty_level: number;
+  cards: Omit<ApiEphemeralCard, "_clientId">[];
+}
+
+export interface ApiCommitResponse {
+  category_id: string;
+  category_name: string;
+  flashcards: ApiLessonCard[];
+}
+
+export async function commitGeneratedLesson(
+  token: string | null | undefined,
+  body: ApiCommitRequest,
+): Promise<ApiCommitResponse> {
+  const res = await fetch(`${API_BASE_URL}/generate/commit`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiCommitResponse>(res);
 }
 
 // ── Library ──────────────────────────────────────────────────────────────────
@@ -593,4 +633,257 @@ export async function updateFlashcardAttempt(
     body: JSON.stringify(body),
   });
   return parseJson<ApiFlashcardAttempt>(res);
+}
+
+// ── Decks ─────────────────────────────────────────────────────────────────────
+
+export interface ApiDeck {
+  id: string;
+  profile_id: string;
+  name: string;
+  language_id: string;
+  icon: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+  card_count?: number;
+}
+
+export interface ApiDeckCard {
+  id: string;
+  deck_id: string;
+  source_text: string;
+  translation: string;
+  romanization: string | null;
+  difficulty: number | null;
+  created_by: "manual" | "ai";
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+}
+
+/** Ephemeral card returned from deck generate preview — not yet in the DB. */
+export interface ApiEphemeralDeckCard {
+  source_text: string;
+  translation: string;
+  romanization: string | null;
+  difficulty: number;
+  /** Client-assigned key for UI tracking — never sent to the server. */
+  _clientId: string;
+}
+
+export interface ApiCreateDeck {
+  name: string;
+  language_id: string;
+  icon?: string | null;
+  description?: string | null;
+}
+
+export interface ApiUpdateDeck {
+  name?: string;
+  icon?: string | null;
+  description?: string | null;
+}
+
+export interface ApiCreateDeckCard {
+  source_text: string;
+  translation: string;
+  romanization?: string | null;
+  difficulty?: number | null;
+}
+
+export interface ApiUpdateDeckCard {
+  source_text?: string;
+  translation?: string;
+  romanization?: string | null;
+  difficulty?: number | null;
+}
+
+export interface ApiGenerateDeckPreviewResponse {
+  flashcards: ApiEphemeralDeckCard[];
+}
+
+export interface ApiBulkCreateDeckCardsRequest {
+  cards: Omit<ApiEphemeralDeckCard, "_clientId">[];
+}
+
+export interface ApiStartDeckPracticeRequest {
+  profile_id: string;
+}
+
+export interface ApiDeckPracticeSession {
+  session_id: string;
+  activity_id: string;
+  deck_id: string;
+  profile_id: string;
+  started_at: string;
+  ended_at: string | null;
+  cards_seen: number;
+  cards_correct: number;
+}
+
+export interface ApiCompleteDeckPracticeRequest {
+  profile_id: string;
+  session_id: string;
+}
+
+export async function fetchDecks(token: string | null | undefined): Promise<ApiDeck[]> {
+  const res = await apiFetch(`${API_BASE_URL}/decks`, {
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiDeck[]>(res);
+}
+
+export async function fetchDeck(
+  token: string | null | undefined,
+  deckId: string,
+): Promise<ApiDeck> {
+  const res = await apiFetch(`${API_BASE_URL}/decks/${deckId}`, {
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiDeck>(res);
+}
+
+export async function createDeck(
+  token: string | null | undefined,
+  body: ApiCreateDeck,
+): Promise<ApiDeck> {
+  const res = await fetch(`${API_BASE_URL}/decks`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiDeck>(res);
+}
+
+export async function updateDeck(
+  token: string | null | undefined,
+  deckId: string,
+  body: ApiUpdateDeck,
+): Promise<ApiDeck> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiDeck>(res);
+}
+
+export async function deleteDeck(
+  token: string | null | undefined,
+  deckId: string,
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok && res.status !== 404) throw await buildApiError(res);
+}
+
+export async function fetchDeckCards(
+  token: string | null | undefined,
+  deckId: string,
+): Promise<ApiDeckCard[]> {
+  const res = await apiFetch(`${API_BASE_URL}/decks/${deckId}/cards`, {
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiDeckCard[]>(res);
+}
+
+export async function createDeckCard(
+  token: string | null | undefined,
+  deckId: string,
+  body: ApiCreateDeckCard,
+): Promise<ApiDeckCard> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/cards`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiDeckCard>(res);
+}
+
+export async function updateDeckCard(
+  token: string | null | undefined,
+  deckId: string,
+  cardId: string,
+  body: ApiUpdateDeckCard,
+): Promise<ApiDeckCard> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/cards/${cardId}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiDeckCard>(res);
+}
+
+export async function deleteDeckCard(
+  token: string | null | undefined,
+  deckId: string,
+  cardId: string,
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/cards/${cardId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok && res.status !== 404) throw await buildApiError(res);
+}
+
+export async function generateDeckPreview(
+  token: string | null | undefined,
+  deckId: string,
+  body: { topic: string; card_count?: number; difficulty_level?: number },
+): Promise<ApiGenerateDeckPreviewResponse> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/generate`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  const data = await parseJson<{ flashcards: Omit<ApiEphemeralDeckCard, "_clientId">[] }>(res);
+  return {
+    flashcards: data.flashcards.map((c) => ({
+      ...c,
+      _clientId: Math.random().toString(36).slice(2),
+    })),
+  };
+}
+
+export async function bulkCreateDeckCards(
+  token: string | null | undefined,
+  deckId: string,
+  body: ApiBulkCreateDeckCardsRequest,
+): Promise<ApiDeckCard[]> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/cards/bulk`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiDeckCard[]>(res);
+}
+
+export async function startDeckPractice(
+  token: string | null | undefined,
+  deckId: string,
+  body: ApiStartDeckPracticeRequest,
+): Promise<ApiDeckPracticeSession> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/start`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiDeckPracticeSession>(res);
+}
+
+export async function completeDeckPractice(
+  token: string | null | undefined,
+  deckId: string,
+  body: ApiCompleteDeckPracticeRequest,
+): Promise<ApiDeckPracticeSession> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/complete`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiDeckPracticeSession>(res);
 }

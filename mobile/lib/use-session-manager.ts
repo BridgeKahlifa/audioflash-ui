@@ -4,6 +4,7 @@ import { useAuth } from "./auth-context";
 import { useAnalytics } from "./analytics";
 import { useInvalidateAppData } from "./queries";
 import {
+  completeDeckPractice,
   completeReviewLifecycle,
   createFlashcardAttempt,
   createReview,
@@ -19,6 +20,7 @@ interface SessionManagerParams {
   currentIndex: number;
   resolvedActivityId: string | null;
   categoryId?: string;
+  deckId?: string;
   difficulty?: number | null;
   displayMode: FlashcardDisplayMode;
   selectedConfidence: number | null;
@@ -29,6 +31,7 @@ interface SessionManagerParams {
   resumeCardsSeen?: number;
   resumeCardsCorrect?: number;
   lessonSessionId?: string;
+  deckSessionId?: string;
   reviewId?: string;
   topic: string;
   topicTitle?: string;
@@ -71,10 +74,10 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
   async function handleResult(knew: boolean): Promise<SubmitOutcome | null> {
     // Read all params at call time — they reflect the current render's values
     const {
-      cards, currentIndex, resolvedActivityId, categoryId, difficulty, displayMode, selectedConfidence, audioPlayCount,
+      cards, currentIndex, resolvedActivityId, categoryId, deckId, difficulty, displayMode, selectedConfidence, audioPlayCount,
       shownAtRef, sessionStartedAt, isResumeSession,
       resumeCardsSeen = 0, resumeCardsCorrect = 0,
-      lessonSessionId, reviewId, topic, topicTitle, language, languageLabel,
+      lessonSessionId, deckSessionId, reviewId, topic, topicTitle, language, languageLabel,
     } = params;
 
     const currentCard = cards[currentIndex];
@@ -195,8 +198,17 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
             cardsCorrect: endedLesson.cards_correct,
             cardsSeen: endedLesson.cards_seen,
           };
+        } else if (deckId && deckSessionId) {
+          const endedDeckPractice = await completeDeckPractice(session?.access_token, deckId, {
+            profile_id: profileId,
+            session_id: deckSessionId,
+          });
+          endedLessonSummary = {
+            cardsCorrect: endedDeckPractice.cards_correct,
+            cardsSeen: endedDeckPractice.cards_seen,
+          };
         } else if (!reviewId) {
-          setAttemptError("We couldn't finish this lesson because the lesson session is missing.");
+          setAttemptError("We couldn't finish this lesson because the session is missing.");
           setSubmitting(false);
           setSubmittingResult(null);
           submitLockRef.current = false;

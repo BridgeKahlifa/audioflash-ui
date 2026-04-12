@@ -1,29 +1,10 @@
-import { Platform, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useConfig } from "../lib/config-context";
 import { useAuth } from "../lib/auth-context";
 import { clearQueryCache } from "../lib/query-client";
 
-function badgeStyle(
-  pressed: boolean,
-  colors: { border: string; background: string; pressedBackground: string }
-) {
-  return {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: pressed ? colors.pressedBackground : colors.background,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    shadowColor: "#000000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  } as const;
-}
-
-export function AuthModeBadge() {
+export function AuthModeSettingsCard() {
   const { dbEnv } = useConfig();
   const { updateProfileData } = useAuth();
 
@@ -32,94 +13,53 @@ export function AuthModeBadge() {
   }
 
   return (
-    <View
-      style={{
-        position: "absolute",
-        top: Platform.OS === "ios" ? 56 : 18,
-        right: 16,
-        zIndex: 1000,
-        alignItems: "flex-end",
-        gap: 6,
-      }}
-    >
-      <View
-        pointerEvents="none"
-        style={badgeStyle(false, {
-          border: "#FED7AA",
-          background: "#FFF7ED",
-          pressedBackground: "#FFF7ED",
-        })}
-      >
-        <Text
-          style={{
-            color: "#C2410C",
-            fontSize: 10,
-            fontWeight: "700",
-            letterSpacing: 0.9,
-            textTransform: "uppercase",
-          }}
-        >
-          {dbEnv}
-        </Text>
+    <View className="bg-card border border-border rounded-2xl p-4 gap-4">
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1 pr-4">
+          <Text className="text-foreground font-medium">Environment Tools</Text>
+          <Text className="text-xs text-muted mt-1">
+            Debug actions for local and non-production builds.
+          </Text>
+        </View>
+        <View className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1">
+          <Text className="text-[11px] font-bold uppercase tracking-[1px] text-orange-700">
+            {dbEnv}
+          </Text>
+        </View>
       </View>
 
-      <Pressable
-        onPress={() => {
-          void clearQueryCache({ coldStart: true });
-        }}
-      >
-        <View
-          pointerEvents="none"
-          style={badgeStyle(false, {
-            border: "#93C5FD",
-            background: "#DBEAFE",
-            pressedBackground: "#BFDBFE",
-          })}
+      <View className="gap-3">
+        <Pressable
+          onPress={() => {
+            void clearQueryCache({ coldStart: true });
+          }}
+          className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3"
         >
-          <Text
-            style={{
-              color: "#1D4ED8",
-              fontSize: 10,
-              fontWeight: "700",
-              letterSpacing: 0.9,
-              textTransform: "uppercase",
-            }}
-          >
+          <Text className="text-sm font-semibold text-blue-700">
             Clear Cache
           </Text>
-
-        </View>
-      </Pressable>
-
-      <Pressable
-        onPress={() => {
-          void updateProfileData({ onboarding_completed: false }).then(({ error }) => {
-            if (error) return;
-            router.replace("/(onboarding)");
-          });
-        }}
-      >
-        <View
-          pointerEvents="none"
-          style={badgeStyle(false, {
-            border: "#86EFAC",
-            background: "#DCFCE7",
-            pressedBackground: "#BBF7D0",
-          })}
-        >
-          <Text
-            style={{
-              color: "#15803D",
-              fontSize: 10,
-              fontWeight: "700",
-              letterSpacing: 0.9,
-              textTransform: "uppercase",
-            }}
-          >
-            Onboard
+          <Text className="mt-1 text-xs text-blue-700/80">
+            Reset persisted query state and force a clean app reload path.
           </Text>
-        </View>
-      </Pressable>
+        </Pressable>
+
+        <Pressable
+          onPress={() => {
+            void updateProfileData({ onboarding_completed: false }).then(({ error }) => {
+              if (error) return;
+              router.replace("/(onboarding)");
+            });
+          }}
+          className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3"
+        >
+          <Text className="text-sm font-semibold text-emerald-700">
+            Restart Onboarding
+          </Text>
+          <Text className="mt-1 text-xs text-emerald-700/80">
+            Mark onboarding as incomplete and jump back into the onboarding flow.
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }

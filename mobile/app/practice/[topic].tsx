@@ -40,9 +40,11 @@ export default function FlashcardPractice() {
     languageLabel,
     apiLanguageId,
     apiCategoryId,
+    deckId,
     difficulty,
     apiLoaded,
     lessonSessionId,
+    deckSessionId,
     activityId,
     reviewId,
     resumeSession,
@@ -57,9 +59,11 @@ export default function FlashcardPractice() {
     languageLabel?: string;
     apiLanguageId?: string;
     apiCategoryId?: string;
+    deckId?: string;
     difficulty?: string;
     apiLoaded?: string;
     lessonSessionId?: string;
+    deckSessionId?: string;
     activityId?: string;
     reviewId?: string;
     resumeSession?: string;
@@ -141,6 +145,7 @@ export default function FlashcardPractice() {
     currentIndex,
     resolvedActivityId,
     categoryId: apiCategoryId,
+    deckId,
     difficulty: resolvedDifficulty,
     displayMode,
     selectedConfidence,
@@ -151,6 +156,7 @@ export default function FlashcardPractice() {
     resumeCardsSeen,
     resumeCardsCorrect,
     lessonSessionId,
+    deckSessionId,
     reviewId,
     topic,
     topicTitle,
@@ -275,6 +281,7 @@ export default function FlashcardPractice() {
     isResumeSession,
     languageLabel,
     lessonSessionId,
+    deckSessionId,
     lessonStatus,
     reviewId,
     session?.access_token,

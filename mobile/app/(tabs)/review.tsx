@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,6 +27,13 @@ export default function ReviewQueue() {
   const [startingSRS, setStartingSRS] = useState(false);
   const [startingReviewId, setStartingReviewId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await Promise.all([refetchSRS(), refetchReviews()]);
+    setRefreshing(false);
+  }
 
   const isSRSStaleRef = useRef(false);
   isSRSStaleRef.current = isSRSStale;
@@ -52,7 +59,15 @@ export default function ReviewQueue() {
 
     try {
       const topicKey = "srs-review";
-      const mappedCards: Flashcard[] = queue.cards.map((card, index) => ({
+      // The server validates that every flashcard attempt belongs to the session's
+      // category. SRS queues can span multiple categories, so filter to only the
+      // first card's category. Remaining cards from other categories will appear
+      // in the next SRS session.
+      const categoryId = String(queue.cards[0].category_id);
+      const categoryCards = queue.cards.filter(
+        (card) => String(card.category_id) === categoryId,
+      );
+      const mappedCards: Flashcard[] = categoryCards.map((card, index) => ({
         id: index + 1,
         dbId: String(card.id),
         sourceText: card.source_text,
@@ -62,10 +77,10 @@ export default function ReviewQueue() {
 
       await setCurrentCards(topicKey, mappedCards);
 
-      const categoryId = String(queue.cards[0].category_id);
       const lessonSession = await startLesson(session.access_token, {
         profile_id: profileId,
         category_id: categoryId,
+        difficulty: categoryCards[0].difficulty,
         started_at: new Date().toISOString(),
       });
 
@@ -150,7 +165,7 @@ export default function ReviewQueue() {
           <Text className="text-muted mt-1">Spaced repetition &amp; saved reviews</Text>
         </View>
 
-        <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 24 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B4A" />}>
           <>
             {error ? (
               <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">

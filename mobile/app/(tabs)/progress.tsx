@@ -1,5 +1,5 @@
-import { useCallback, useRef } from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { View, Text, Pressable, ScrollView, RefreshControl } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -60,6 +60,14 @@ export default function ProgressDashboard() {
       ? "We couldn't refresh your progress right now. Showing the latest available data."
       : "";
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await Promise.all([refetchSessions(), refetchStats()]);
+    setRefreshing(false);
+  }
+
   const isSessionsStaleRef = useRef(false);
   isSessionsStaleRef.current = isSessionsStale;
   const isStatsStaleRef = useRef(false);
@@ -100,6 +108,7 @@ export default function ProgressDashboard() {
           className="flex-1 px-6"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B4A" />}
         >
           {errorMessage ? (
             <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
