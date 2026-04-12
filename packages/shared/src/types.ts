@@ -70,4 +70,5 @@ export interface AppSettings {
   remindersEnabled: boolean;
   dailyGoalCards: number;
   matrixMode: boolean;
+  defaultDisplayMode: FlashcardDisplayMode;
 }

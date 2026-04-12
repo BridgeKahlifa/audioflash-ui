@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  Animated,
   ScrollView,
   View,
   Text,
   Pressable,
   TextInput,
   ActivityIndicator,
-  Modal,
   Alert,
   Linking,
 } from "react-native";
@@ -16,11 +14,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { useAuth } from "../../lib/auth-context";
-import { ApiUpdateProfile, ApiLanguage } from "../../lib/api";
+import { ApiUpdateProfile } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
 import { useLanguages } from "../../lib/queries";
 import { useAppTheme } from "../../lib/theme-context";
 import { AuthModeSettingsCard } from "../../components/AuthModeBadge";
+import { LanguagePickerModal } from "../../components/LanguagePickerModal";
+import { getSettings, setSettings } from "../../lib/storage";
+import { DEFAULT_FLASHCARD_DISPLAY_MODE, normalizeFlashcardDisplayMode } from "../../lib/flashcard-display-mode";
+import type { FlashcardDisplayMode } from "../../lib/types";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -28,82 +30,6 @@ function clamp(value: number, min: number, max: number): number {
 
 function SectionLabel({ children }: { children: string }) {
   return <Text className="text-xs text-muted font-medium uppercase tracking-wide mb-2 mt-5 px-1">{children}</Text>;
-}
-
-function LanguagePickerModal({
-  visible,
-  languages,
-  selectedIds,
-  multiSelect = false,
-  onToggle,
-  onClose,
-}: {
-  visible: boolean;
-  languages: ApiLanguage[];
-  selectedIds: string[];
-  multiSelect?: boolean;
-  onToggle: (id: string) => void;
-  onClose: () => void;
-}) {
-  const translateY = useRef(new Animated.Value(400)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-  const [modalVisible, setModalVisible] = useState(false);
-
-  useEffect(() => {
-    if (visible) {
-      setModalVisible(true);
-      Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.spring(translateY, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 280, mass: 0.8 }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(opacity, { toValue: 0, duration: 160, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: 400, duration: 160, useNativeDriver: true }),
-      ]).start(() => setModalVisible(false));
-    }
-  }, [visible]);
-
-  return (
-    <Modal visible={modalVisible} animationType="none" transparent onRequestClose={onClose}>
-      <View style={{ flex: 1, overflow: "hidden" }}>
-        <Animated.View style={{ flex: 1, opacity }}>
-          <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }} onPress={onClose} />
-        </Animated.View>
-        <Animated.View style={{ transform: [{ translateY }], maxHeight: 420 }} className="bg-background rounded-t-3xl p-6">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-lg font-semibold text-foreground">Select Language</Text>
-            <Pressable onPress={onClose}>
-              <Ionicons name="close" size={22} color="#6B7280" />
-            </Pressable>
-          </View>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {languages.map((lang) => {
-              const isSelected = selectedIds.includes(String(lang.id));
-              return (
-                <Pressable
-                  key={String(lang.id)}
-                  onPress={() => {
-                    onToggle(String(lang.id));
-                    if (!multiSelect) onClose();
-                  }}
-                  className={`flex-row items-center justify-between py-3 px-4 rounded-xl mb-2 ${isSelected ? "bg-accent border border-primary" : "bg-secondary"}`}
-                >
-                  <Text className="text-foreground font-medium">{lang.language}</Text>
-                  {isSelected && <Ionicons name="checkmark" size={18} color="#FF6B4A" />}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-          {multiSelect && (
-            <Pressable onPress={onClose} className="py-3 rounded-xl items-center bg-primary mt-3">
-              <Text className="text-primary-foreground font-semibold">Done</Text>
-            </Pressable>
-          )}
-        </Animated.View>
-      </View>
-    </Modal>
-  );
 }
 
 export default function SettingsScreen() {
@@ -128,6 +54,9 @@ export default function SettingsScreen() {
   );
   const [showTargetPicker, setShowTargetPicker] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [defaultDisplayMode, setDefaultDisplayMode] = useState<FlashcardDisplayMode>(
+    DEFAULT_FLASHCARD_DISPLAY_MODE,
+  );
   const appVersion = Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? "unknown";
   const buildVersion = Constants.nativeBuildVersion;
   const versionLabel = buildVersion ? `Version ${appVersion} (${buildVersion})` : `Version ${appVersion}`;
@@ -168,17 +97,30 @@ export default function SettingsScreen() {
     setEmailStatus("idle");
   }, [user?.email]);
 
+  useEffect(() => {
+    if (profile?.default_display_mode) {
+      setDefaultDisplayMode(normalizeFlashcardDisplayMode(profile.default_display_mode));
+    }
+  }, [profile?.default_display_mode]);
+
+  async function saveDefaultDisplayMode(mode: FlashcardDisplayMode) {
+    setDefaultDisplayMode(mode);
+    const current = await getSettings();
+    await setSettings({ ...current, defaultDisplayMode: mode });
+    await updateProfileData({ default_display_mode: mode });
+    posthog?.capture("settings_default_display_mode_changed", { mode });
+  }
+
   async function saveSettings() {
     setErrorMessage("");
     const { error } = await updateProfileData(localSettings);
-
     if (!error) {
       setSaved(true);
       setTimeout(() => setSaved(false), 1600);
       posthog?.capture("settings_practice_saved", {
-        cards_per_session: localSettings.cards_per_session ?? 20,
-        audio_speed: localSettings.audio_speed ?? 1,
-        notifications_enabled: localSettings.notifications_enabled ?? false,
+        cards_per_session: localSettings.cards_per_session,
+        audio_speed: localSettings.audio_speed,
+        notifications_enabled: localSettings.notifications_enabled,
         matrix_mode: matrixMode,
       });
     } else {
@@ -250,9 +192,9 @@ export default function SettingsScreen() {
       setSaved(true);
       setTimeout(() => setSaved(false), 1600);
       posthog?.capture("settings_practice_saved", {
-        cards_per_session: localSettings.cards_per_session ?? 20,
-        audio_speed: localSettings.audio_speed ?? 1,
-        notifications_enabled: localSettings.notifications_enabled ?? false,
+        cards_per_session: localSettings.cards_per_session,
+        audio_speed: localSettings.audio_speed,
+        notifications_enabled: localSettings.notifications_enabled,
         matrix_mode: matrixMode,
       });
     }
@@ -468,7 +410,7 @@ export default function SettingsScreen() {
 
           {/* ── Practice ── */}
           <SectionLabel>Practice</SectionLabel>
-          <View className="bg-card border border-border rounded-2xl p-5">
+          <View className="bg-card border border-border rounded-2xl p-5 gap-5">
             <View>
               <Text className="text-foreground font-medium mb-3">Cards Per Session</Text>
               <View className="flex-row items-center justify-between">
@@ -484,6 +426,61 @@ export default function SettingsScreen() {
                   className="w-10 h-10 rounded-full bg-secondary items-center justify-center"
                 >
                   <Ionicons name="add" size={20} color="#1A1A1A" />
+                </Pressable>
+              </View>
+            </View>
+
+            <View className="border-t border-border pt-5">
+              <Text className="text-foreground font-medium mb-3">Default Lesson Mode</Text>
+              <View className="gap-2">
+                <Pressable
+                  onPress={() => void saveDefaultDisplayMode("audio-first")}
+                  className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
+                    defaultDisplayMode === "audio-first" ? "bg-accent border-primary" : "bg-secondary border-transparent"
+                  }`}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: defaultDisplayMode === "audio-first" }}
+                >
+                  <View
+                    className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
+                      defaultDisplayMode === "audio-first" ? "border-primary bg-primary" : "border-muted bg-background"
+                    }`}
+                  >
+                    {defaultDisplayMode === "audio-first" ? (
+                      <View className="w-2 h-2 rounded-full bg-white" />
+                    ) : null}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-foreground font-medium text-sm">Audio only</Text>
+                    <Text className="text-muted text-xs mt-0.5">
+                      Hear the audio first, then reveal the written answer.
+                    </Text>
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => void saveDefaultDisplayMode("traditional")}
+                  className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
+                    defaultDisplayMode === "traditional" ? "bg-accent border-primary" : "bg-secondary border-transparent"
+                  }`}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: defaultDisplayMode === "traditional" }}
+                >
+                  <View
+                    className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
+                      defaultDisplayMode === "traditional" ? "border-primary bg-primary" : "border-muted bg-background"
+                    }`}
+                  >
+                    {defaultDisplayMode === "traditional" ? (
+                      <View className="w-2 h-2 rounded-full bg-white" />
+                    ) : null}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-foreground font-medium text-sm">Traditional flashcards</Text>
+                    <Text className="text-muted text-xs mt-0.5">
+                      Read the card text and flip to reveal the answer.
+                    </Text>
+                  </View>
                 </Pressable>
               </View>
             </View>

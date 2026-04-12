@@ -10,7 +10,7 @@ import {
   SessionHistoryItem,
 } from "./types";
 import type { ApiProfile, ApiSession, ApiSessionStats } from "./api";
-import { normalizeFlashcardDisplayMode } from "./flashcard-display-mode";
+import { normalizeFlashcardDisplayMode, DEFAULT_FLASHCARD_DISPLAY_MODE } from "./flashcard-display-mode";
 
 const KEYS = {
   PROGRESS: "audioflash:progress",
@@ -138,6 +138,7 @@ const defaultSettings: AppSettings = {
   remindersEnabled: false,
   dailyGoalCards: 25,
   matrixMode: true,
+  defaultDisplayMode: "audio-first",
 };
 
 export async function getProgress(): Promise<ProgressData> {
@@ -252,6 +253,7 @@ export async function syncSettingsFromProfile(profile: ApiProfile): Promise<void
       audioRate: profile.audio_speed,
       remindersEnabled: profile.notifications_enabled,
       dailyGoalCards: profile.daily_goal,
+      defaultDisplayMode: normalizeFlashcardDisplayMode(profile.default_display_mode),
     });
   } catch {
     // Non-critical

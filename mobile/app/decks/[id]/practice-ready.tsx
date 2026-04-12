@@ -3,78 +3,35 @@ import { View, Text, Pressable, ActivityIndicator, ScrollView } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { setCurrentCards, getSettings, setLessonDisplayMode } from "../../lib/storage";
-import { Flashcard, FlashcardDisplayMode } from "../../lib/types";
-import { createLessonSession, fetchLessonsByCategory } from "../../lib/api";
-import { useAuth } from "../../lib/auth-context";
-import { buildErrorProperties, useAnalytics } from "../../lib/analytics";
-import { LanguageFlag } from "../../components/LanguageFlag";
-import { useCategories } from "../../lib/queries";
-import { DEFAULT_FLASHCARD_DISPLAY_MODE } from "../../lib/flashcard-display-mode";
+import { getSettings, setCurrentCards, setLessonDisplayMode } from "../../../lib/storage";
+import { setLessonTraditionalFlashcardFront } from "../../../lib/lesson-card-preferences";
+import type { Flashcard, FlashcardDisplayMode } from "../../../lib/types";
+import { startDeckPractice } from "../../../lib/api";
+import { useAuth } from "../../../lib/auth-context";
+import { useAnalytics } from "../../../lib/analytics";
+import { useDeck, useDeckCards, useLanguages } from "../../../lib/queries";
+import { DEFAULT_FLASHCARD_DISPLAY_MODE } from "../../../lib/flashcard-display-mode";
 import {
   DEFAULT_TRADITIONAL_FLASHCARD_FRONT,
   type TraditionalFlashcardFront,
-} from "../../lib/traditional-flashcard-front";
-import { setLessonTraditionalFlashcardFront } from "../../lib/lesson-card-preferences";
+} from "../../../lib/traditional-flashcard-front";
+import { LanguageFlag } from "../../../components/LanguageFlag";
 
-const DEFAULT_CARD_COUNT = 5;
-const MIN_CARD_COUNT = 5;
-const MAX_CARD_COUNT = 50;
+const MIN_CARD_COUNT = 1;
 const CARD_COUNT_STEP = 5;
 
-function resolveAvailableCardCount(value?: string) {
-  if (typeof value !== "string" || value.trim() === "") {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-}
-
-function resolveCardCountBounds(availableCardCount: number | null) {
-  if (availableCardCount === null) {
-    return { min: MIN_CARD_COUNT, max: MAX_CARD_COUNT };
-  }
-
-  const max = Math.min(MAX_CARD_COUNT, availableCardCount);
-  const min = max < MIN_CARD_COUNT ? max : MIN_CARD_COUNT;
-  return { min, max };
-}
-
-function clampCardCount(value: number, availableCardCount: number | null) {
-  const { min, max } = resolveCardCountBounds(availableCardCount);
-  return Math.min(max, Math.max(min, value));
-}
-
-export default function LessonReady() {
-  const { profile, session } = useAuth();
+export default function DeckPracticeReady() {
+  const { id: deckId } = useLocalSearchParams<{ id: string }>();
+  const { session, isDevAuth, profile } = useAuth();
   const posthog = useAnalytics();
-  const { data: categories = [] } = useCategories();
-  const {
-    topic,
-    topicTitle,
-    language,
-    languageLabel,
-    apiLanguageId,
-    apiCategoryId,
-    apiLoaded,
-    supportedDifficulties,
-    availableCardCount: availableCardCountParam,
-  } =
-    useLocalSearchParams<{
-      topic: string;
-      topicTitle: string;
-      language?: string;
-      languageLabel?: string;
-      apiLanguageId?: string;
-      apiCategoryId?: string;
-      apiLoaded?: string;
-      supportedDifficulties?: string;
-      availableCardCount?: string;
-    }>();
 
-  const [status, setStatus] = useState<"ready" | "empty" | "error">("ready");
-  const [starting, setStarting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const { data: deck, isLoading: deckLoading } = useDeck(deckId ?? "");
+  const { data: cards, isLoading: cardsLoading } = useDeckCards(deckId ?? "");
+  const { data: languages } = useLanguages();
+
+  const activeCards = cards?.filter((c) => !c.archived_at) ?? [];
+  const maxCardCount = activeCards.length;
+
   const [shuffleEnabled, setShuffleEnabled] = useState(false);
   const [displayMode, setDisplayMode] = useState<FlashcardDisplayMode>(
     DEFAULT_FLASHCARD_DISPLAY_MODE,
@@ -83,34 +40,14 @@ export default function LessonReady() {
   const [traditionalFront, setTraditionalFront] = useState<TraditionalFlashcardFront>(
     DEFAULT_TRADITIONAL_FLASHCARD_FRONT,
   );
-  const [cardCount, setCardCount] = useState(profile?.cards_per_session ?? DEFAULT_CARD_COUNT);
-  const startLockRef = useRef(false);
-  const routeAvailableCardCount = resolveAvailableCardCount(availableCardCountParam);
-  const categoryAvailableCardCount = categories.find(
-    (category) => String(category.id) === String(apiCategoryId),
-  )?.total_cards;
-  const availableCardCount =
-    routeAvailableCardCount ??
-    (typeof categoryAvailableCardCount === "number" ? categoryAvailableCardCount : null);
-  const { min: minCardCount, max: maxCardCount } = resolveCardCountBounds(availableCardCount);
-  const availableDifficulties = (supportedDifficulties ?? "")
-    .split(",")
-    .map((value) => Number(value))
-    .filter((value, index, values) => Number.isFinite(value) && !values.slice(0, index).includes(value))
-    .sort((a, b) => a - b);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<number | null>(
-    availableDifficulties[0] ?? null
+  const [cardCount, setCardCount] = useState(
+    profile?.cards_per_session ?? Math.min(10, maxCardCount || 10),
   );
-  const canStart =
-    Boolean(apiCategoryId) &&
-    selectedDifficulty !== null &&
-    !starting &&
-    maxCardCount > 0;
+  const [starting, setStarting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const startLockRef = useRef(false);
 
-  useEffect(() => {
-    setSelectedDifficulty(availableDifficulties[0] ?? null);
-  }, [supportedDifficulties]);
-
+  // Clamp cardCount whenever the deck loads or maxCardCount changes
   useEffect(() => {
     if (displayModeInitializedRef.current) return;
     displayModeInitializedRef.current = true;
@@ -120,110 +57,81 @@ export default function LessonReady() {
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function loadCardCount() {
-      if (typeof profile?.cards_per_session === "number") {
-        setCardCount(clampCardCount(profile.cards_per_session, availableCardCount));
-        return;
-      }
-
-      const settings = await getSettings();
-      if (mounted) {
-        setCardCount(clampCardCount(settings.cardsPerSession, availableCardCount));
-      }
+    if (maxCardCount > 0) {
+      setCardCount((current) =>
+        Math.min(maxCardCount, Math.max(MIN_CARD_COUNT, current)),
+      );
     }
+  }, [maxCardCount]);
 
-    void loadCardCount();
-
-    return () => {
-      mounted = false;
-    };
-  }, [availableCardCount, profile?.cards_per_session]);
-
-  useEffect(() => {
-    if (!apiCategoryId) {
-      setStatus("error");
-      setErrorMessage("Lesson details are missing. Please choose a category again.");
-      return;
-    }
-    if (availableDifficulties.length === 0) {
-      setStatus("error");
-      setErrorMessage("No difficulty options are available for this category yet.");
-      return;
-    }
-    if (availableCardCount === 0) {
-      setStatus("empty");
-      setErrorMessage("No flashcards are available for this category yet.");
-      return;
-    }
-    setStatus("ready");
-    setErrorMessage("");
-  }, [apiCategoryId, availableCardCount, supportedDifficulties]);
+  const languageName = deck
+    ? (languages?.find((l) => l.id === deck.language_id)?.language ?? "")
+    : "";
+  const languageSlug = languageName.toLowerCase().replace(/\s+/g, "-");
 
   function updateCardCount(direction: 1 | -1) {
-    setCardCount((current) => clampCardCount(current + direction * CARD_COUNT_STEP, availableCardCount));
+    setCardCount((current) =>
+      Math.min(maxCardCount, Math.max(MIN_CARD_COUNT, current + direction * CARD_COUNT_STEP)),
+    );
   }
 
-  const handleStart = async () => {
-    if (!apiCategoryId || selectedDifficulty === null || starting || startLockRef.current) {
-      return;
-    }
+  const canStart = !starting && maxCardCount > 0 && !!deck;
 
-    const profileId = profile?.id ?? session?.user?.id;
-    if (!profileId) {
-      setErrorMessage("We couldn't find your learner profile. Please sign in again.");
-      return;
-    }
+  async function handleStart() {
+    if (!canStart || startLockRef.current || !deck) return;
 
     startLockRef.current = true;
     setStarting(true);
     setErrorMessage("");
 
     try {
-      const lessonCards = await fetchLessonsByCategory({
-        categoryId: apiCategoryId,
-        limit: cardCount,
-        difficulty: selectedDifficulty,
-        shuffle: shuffleEnabled,
-      });
+      const topicKey = `deck-${deckId}`;
 
-      if (lessonCards.length === 0) {
-        setStatus("empty");
-        setErrorMessage("No flashcards were returned for that difficulty. Try another level.");
-        return;
+      // Respect card count and shuffle settings
+      let selectedCards = [...activeCards];
+      if (shuffleEnabled) {
+        for (let i = selectedCards.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [selectedCards[i], selectedCards[j]] = [selectedCards[j], selectedCards[i]];
+        }
       }
+      selectedCards = selectedCards.slice(0, cardCount);
 
-      const mappedCards: Flashcard[] = lessonCards.map((card, index) => ({
+      const mappedCards: Flashcard[] = selectedCards.map((c, index) => ({
         id: index + 1,
-        dbId: String(card.id),
-        sourceText: card.source_text,
-        romanization: card.romanization ?? "",
-        translation: card.translation,
+        dbId: c.id,
+        sourceText: c.source_text,
+        romanization: c.romanization ?? "",
+        translation: c.translation,
       }));
 
-      const lessonSession = await createLessonSession(session?.access_token, {
-        profile_id: profileId,
-        category_id: apiCategoryId,
-        difficulty: selectedDifficulty,
-        display_mode: displayMode,
-        started_at: new Date().toISOString(),
-        card_ids: lessonCards.map((card) => String(card.id)),
-        current_index: 0,
-        status: "in_progress",
-        completed: false,
-      });
+      const profileId = profile?.id ?? session?.user?.id;
+      let deckSessionId: string | undefined;
+      let activityId: string | undefined;
+
+      if (profileId) {
+        try {
+          const started = await startDeckPractice(session?.access_token, deckId!, {
+            profile_id: profileId,
+          });
+          deckSessionId = started.session_id;
+          activityId = started.activity_id;
+        } catch {
+          // Fall back to local-only practice if the endpoint is unavailable.
+        }
+      }
 
       await Promise.all([
-        setCurrentCards(topic, mappedCards),
-        setLessonDisplayMode(lessonSession.session_id, displayMode),
-        setLessonTraditionalFlashcardFront(lessonSession.session_id, traditionalFront),
+        setCurrentCards(topicKey, mappedCards),
+        deckSessionId ? setLessonDisplayMode(deckSessionId, displayMode) : Promise.resolve(),
+        deckSessionId
+          ? setLessonTraditionalFlashcardFront(deckSessionId, traditionalFront)
+          : Promise.resolve(),
       ]);
 
-      posthog?.capture("lesson_started", {
-        language: languageLabel ?? language ?? null,
-        topic: topicTitle ?? topic,
-        difficulty: selectedDifficulty,
+      posthog?.capture("deck_practice_started", {
+        deck_id: deckId,
+        language: languageName,
         card_count: mappedCards.length,
         requested_card_count: cardCount,
         shuffle: shuffleEnabled,
@@ -234,58 +142,35 @@ export default function LessonReady() {
       router.push({
         pathname: "/practice/[topic]",
         params: {
-          topic,
-          topicTitle: topicTitle ?? topic,
-          language,
-          languageLabel,
-          apiLanguageId: apiLanguageId ?? "",
-          apiLoaded: apiLoaded ?? "",
-          apiCategoryId: apiCategoryId ?? "",
-          difficulty: String(selectedDifficulty),
-          lessonSessionId: lessonSession.session_id,
-          activityId: lessonSession.activity_id ?? lessonSession.session_id,
+          topic: topicKey,
+          topicTitle: deck.name,
+          language: languageSlug,
+          languageLabel: languageName,
+          apiLanguageId: deck.language_id,
+          deckId: deck.id,
+          deckSessionId,
+          activityId,
+          apiLoaded: activityId ? "true" : "",
           displayMode,
           traditionalFront,
         },
       });
     } catch (error) {
-      console.error("Failed to prepare lesson", error);
-      posthog?.capture(
-        "lesson_ready_start_failed",
-        buildErrorProperties(error, {
-          category_id: apiCategoryId ?? null,
-          difficulty: selectedDifficulty,
-          requested_card_count: cardCount,
-          topic,
-          display_mode: displayMode,
-          traditional_front: traditionalFront,
-        }) as Record<string, string | number | boolean | null>,
-      );
-      setStatus("error");
-      setErrorMessage("We couldn't start the lesson right now. Please try again.");
+      console.error("Failed to start deck practice", error);
+      setErrorMessage("Couldn't start practice right now. Please try again.");
     } finally {
       setStarting(false);
       startLockRef.current = false;
     }
-  };
+  }
+
+  const isLoading = deckLoading || cardsLoading;
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="px-6 pt-4 pb-2 max-w-md w-full mx-auto flex-row items-center justify-between">
         <Pressable
-          onPress={() =>
-            router.replace({
-              pathname: "/categories",
-              params: {
-                language,
-                languageLabel,
-                apiLanguageId: apiLanguageId ?? "",
-                apiLoaded: apiLoaded ?? "",
-                supportedDifficulties: supportedDifficulties ?? "",
-                availableCardCount: availableCardCountParam ?? "",
-              },
-            })
-          }
+          onPress={() => router.back()}
           className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
         >
           <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
@@ -309,28 +194,43 @@ export default function LessonReady() {
               elevation: 2,
             }}
           >
+            {/* Header */}
             <View className="items-center">
               <View className="w-14 h-14 bg-accent rounded-full items-center justify-center mb-4">
                 {starting ? (
                   <ActivityIndicator size="large" color="#E86A4A" />
+                ) : isLoading ? (
+                  <ActivityIndicator size="large" color="#E86A4A" />
+                ) : deck?.icon ? (
+                  <Text style={{ fontSize: 28 }}>{deck.icon}</Text>
                 ) : (
-                  <Ionicons name="headset" size={30} color="#E86A4A" />
+                  <Ionicons name="albums" size={28} color="#E86A4A" />
                 )}
               </View>
 
-              <Text className="text-2xl font-semibold text-foreground mb-3 text-center">
-                {topicTitle ?? topic}
-              </Text>
+              {isLoading ? (
+                <View className="h-7 w-40 bg-secondary rounded-lg mb-3" />
+              ) : (
+                <Text className="text-2xl font-semibold text-foreground mb-3 text-center">
+                  {deck?.name ?? "Deck"}
+                </Text>
+              )}
 
               <View className="flex-row items-center justify-center gap-2">
                 <View className="h-8 px-3 rounded-full bg-background border border-border flex-row items-center">
-                  <LanguageFlag name={languageLabel ?? language ?? "Language"} size="sm" />
-                  <Text className="ml-2 text-sm font-semibold text-foreground">
-                    {languageLabel ?? "Language"}
-                  </Text>
+                  {languageName ? (
+                    <>
+                      <LanguageFlag name={languageName} size="sm" />
+                      <Text className="ml-2 text-sm font-semibold text-foreground">
+                        {languageName}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text className="text-sm font-semibold text-foreground">Language</Text>
+                  )}
                 </View>
                 <Pressable
-                  onPress={() => setShuffleEnabled((current) => !current)}
+                  onPress={() => setShuffleEnabled((v) => !v)}
                   disabled={starting}
                   className={`w-8 h-8 rounded-full border items-center justify-center ${
                     shuffleEnabled ? "bg-primary border-primary" : "bg-background border-border"
@@ -349,39 +249,7 @@ export default function LessonReady() {
 
             <View className="h-px bg-border mt-6 mb-5" />
 
-            <View className="items-center">
-              <Text className="text-base font-medium text-muted mb-3">Difficulty</Text>
-              <View className="flex-row justify-center gap-3">
-                {availableDifficulties.map((value) => {
-                  const selected = selectedDifficulty === value;
-                  return (
-                    <Pressable
-                      key={value}
-                      onPress={() => {
-                        setSelectedDifficulty(value);
-                        setStatus("ready");
-                        setErrorMessage("");
-                      }}
-                      className={`w-11 h-11 rounded-full border items-center justify-center ${
-                        selected ? "bg-accent border-primary" : "bg-background border-border"
-                      }`}
-                      disabled={starting || availableDifficulties.length === 0}
-                    >
-                      <Text
-                        className={`text-base font-semibold ${
-                          selected ? "text-primary" : "text-foreground"
-                        }`}
-                      >
-                        {value}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View className="h-px bg-border mt-5 mb-4" />
-
+            {/* Card style */}
             <View>
               <Text className="text-base font-medium text-muted mb-3 text-center">Card Style</Text>
               <View className="gap-3">
@@ -408,9 +276,7 @@ export default function LessonReady() {
                     ) : null}
                   </View>
                   <View className="flex-1">
-                    <Text className="text-base font-semibold text-foreground">
-                      Audio only
-                    </Text>
+                    <Text className="text-base font-semibold text-foreground">Audio only</Text>
                     <Text className="text-sm text-muted mt-1">
                       Hear the target-language audio first, then reveal the written answer.
                     </Text>
@@ -451,6 +317,7 @@ export default function LessonReady() {
                   </View>
                 </Pressable>
               </View>
+
               {displayMode === "traditional" ? (
                 <View className="mt-3 rounded-2xl bg-accent/50 px-3 py-3">
                   <Text className="text-xs font-medium uppercase tracking-wide text-muted text-center mb-2">
@@ -487,11 +354,12 @@ export default function LessonReady() {
 
             <View className="h-px bg-border mt-5 mb-4" />
 
+            {/* Card count */}
             <View className="flex-row items-center justify-center">
               <Text className="text-base font-medium text-foreground mr-4">Cards</Text>
               <View className="flex-row items-center">
                 <Text className="w-9 text-center text-xl font-semibold text-foreground">
-                  {cardCount}
+                  {Math.min(cardCount, maxCardCount || cardCount)}
                 </Text>
                 <View className="ml-1.5 rounded-xl border border-border bg-background overflow-hidden">
                   <Pressable
@@ -505,9 +373,9 @@ export default function LessonReady() {
                   <View className="h-px bg-border" />
                   <Pressable
                     onPress={() => updateCardCount(-1)}
-                    disabled={starting || cardCount <= minCardCount}
+                    disabled={starting || cardCount <= MIN_CARD_COUNT}
                     className="w-8 h-7 items-center justify-center"
-                    style={{ opacity: cardCount <= minCardCount ? 0.4 : 1 }}
+                    style={{ opacity: cardCount <= MIN_CARD_COUNT ? 0.4 : 1 }}
                   >
                     <Ionicons name="chevron-down" size={16} color="#2F1E19" />
                   </Pressable>
@@ -515,24 +383,19 @@ export default function LessonReady() {
               </View>
             </View>
 
-            {availableCardCount !== null ? (
+            {maxCardCount > 0 ? (
               <Text className="text-center text-xs text-muted mt-2">
-                {availableCardCount} cards available in this category
+                {maxCardCount} card{maxCardCount !== 1 ? "s" : ""} in this deck
               </Text>
             ) : null}
 
             {errorMessage ? (
-              <Text
-                className={`mt-5 text-center text-sm ${
-                  status === "error" ? "text-primary" : "text-muted"
-                }`}
-              >
-                {errorMessage}
-              </Text>
+              <Text className="mt-5 text-center text-sm text-primary">{errorMessage}</Text>
             ) : null}
 
+            {/* Start button */}
             <Pressable
-              onPress={handleStart}
+              onPress={() => void handleStart()}
               disabled={!canStart}
               className={`mt-7 w-full py-4 rounded-2xl flex-row items-center justify-center ${
                 canStart ? "bg-primary" : "bg-secondary"

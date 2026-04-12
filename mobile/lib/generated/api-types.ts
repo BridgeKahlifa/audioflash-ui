@@ -308,6 +308,8 @@ export interface components {
             streak_count: number;
             /** Onboarding Completed */
             onboarding_completed: boolean;
+            /** Default Display Mode */
+            default_display_mode: string;
         };
         /** SessionResponse */
         SessionResponse: {
@@ -356,6 +358,8 @@ export interface components {
             notification_time?: string | null;
             /** Onboarding Completed */
             onboarding_completed?: boolean | null;
+            /** Default Display Mode */
+            default_display_mode?: string | null;
         };
         /** ValidationError */
         ValidationError: {

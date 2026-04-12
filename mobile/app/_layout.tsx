@@ -191,12 +191,13 @@ function RootNavigator() {
         <Stack.Screen name="history" options={{ animation: "none" }} />
         <Stack.Screen name="browse-languages" options={{ animation: "none" }} />
         <Stack.Screen name="my-library" options={{ animation: "none" }} />
-        <Stack.Screen name="decks" options={{ animation: "none" }} />
+        <Stack.Screen name="decks/index" options={{ animation: "none" }} />
         <Stack.Screen name="decks/new" options={{ animation: "none" }} />
         <Stack.Screen name="decks/[id]" options={{ animation: "none" }} />
         <Stack.Screen name="decks/[id]/edit" options={{ animation: "none" }} />
         <Stack.Screen name="decks/[id]/add-card" options={{ animation: "none" }} />
         <Stack.Screen name="decks/[id]/generate" options={{ animation: "none" }} />
+        <Stack.Screen name="decks/[id]/practice-ready" options={{ animation: "none" }} />
       </Stack>
       {effectiveSplashMounted && (
         <SplashScreen visible={showSplash} onHidden={() => setSplashMounted(false)} />

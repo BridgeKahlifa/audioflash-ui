@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -18,9 +18,10 @@ import { useLanguages } from "../../lib/queries";
 import { queryKeys } from "../../lib/query-keys";
 import { createDeck } from "../../lib/api";
 import { DeckEmojiInput } from "../../components/DeckEmojiInput";
+import { LanguagePickerModal } from "../../components/LanguagePickerModal";
 
 export default function NewDeck() {
-  const { session, isDevAuth } = useAuth();
+  const { session, isDevAuth, profile } = useAuth();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
@@ -29,13 +30,26 @@ export default function NewDeck() {
 
   const [name, setName] = useState("");
   const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(null);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [icon, setIcon] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  const availableLanguages = useMemo(
+    () => (languages ?? []).filter((language) => !language.language.toLowerCase().includes("coming soon")),
+    [languages],
+  );
+  const selectedLanguageLabel = availableLanguages.find((language) => language.id === selectedLanguageId)?.language ?? "Select a language";
   const canSubmit = name.trim().length >= 1 && selectedLanguageId !== null && !submitting;
   const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
+
+  useEffect(() => {
+    if (selectedLanguageId || availableLanguages.length === 0) return;
+    const preferredLanguageId = profile?.target_language_ids?.[0];
+    const preferredLanguage = availableLanguages.find((language) => language.id === preferredLanguageId);
+    setSelectedLanguageId(preferredLanguage?.id ?? availableLanguages[0]?.id ?? null);
+  }, [availableLanguages, profile?.target_language_ids, selectedLanguageId]);
 
   async function handleCreate() {
     if (!canSubmit || (!session && !isDevAuth)) return;
@@ -100,35 +114,20 @@ export default function NewDeck() {
 
             {/* Language */}
             <Text className="text-sm font-semibold text-foreground mb-2">Language</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="mb-5"
-              contentContainerStyle={{ gap: 8 }}
+            <Pressable
+              onPress={() => setShowLanguagePicker(true)}
+              className="bg-card border border-border rounded-2xl px-4 py-4 mb-5 flex-row items-center justify-between"
             >
-              {(languages ?? [])
-                .filter((l) => !l.language.toLowerCase().includes("coming soon"))
-                .map((lang) => {
-                  const selected = selectedLanguageId === lang.id;
-                  return (
-                    <Pressable
-                      key={lang.id}
-                      onPress={() => setSelectedLanguageId(lang.id)}
-                      className={`rounded-xl px-4 py-2 border ${
-                        selected ? "bg-primary border-primary" : "bg-card border-border"
-                      }`}
-                    >
-                      <Text
-                        className={`font-medium text-sm ${
-                          selected ? "text-primary-foreground" : "text-foreground"
-                        }`}
-                      >
-                        {lang.language}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-            </ScrollView>
+              <View className="flex-1 pr-3">
+                <Text className="text-base font-medium text-foreground">
+                  {selectedLanguageLabel}
+                </Text>
+                <Text className="text-xs text-muted mt-1">
+                  Choose the language for this deck.
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
+            </Pressable>
 
             {/* Icon */}
             <Text className="text-sm font-semibold text-foreground mb-2">
@@ -198,6 +197,13 @@ export default function NewDeck() {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <LanguagePickerModal
+        visible={showLanguagePicker}
+        languages={availableLanguages}
+        selectedIds={selectedLanguageId ? [selectedLanguageId] : []}
+        onToggle={setSelectedLanguageId}
+        onClose={() => setShowLanguagePicker(false)}
+      />
     </SafeAreaView>
   );
 }
