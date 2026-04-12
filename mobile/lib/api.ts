@@ -1,3 +1,4 @@
+import type { FlashcardDisplayMode } from "./types";
 import type { components } from "./generated/api-types";
 
 export type ApiLanguage = components["schemas"]["LanguageResponse"];
@@ -50,6 +51,7 @@ export interface ApiCreateLessonSession {
   profile_id: string;
   category_id: string;
   difficulty?: number;
+  display_mode?: FlashcardDisplayMode;
   started_at?: string | null;
   ended_at?: string | null;
   grade_percent?: number | null;
@@ -72,6 +74,7 @@ export interface ApiLessonSession {
   profile_id: string;
   category_id: string;
   difficulty?: number | null;
+  session_mode?: FlashcardDisplayMode | null;
   started_at: string;
   ended_at: string | null;
   duration_seconds: number | null;
@@ -564,8 +567,12 @@ export async function fetchCategoryGradeChart(
   token: string | null | undefined,
   categoryId: string,
   difficulty: number,
+  sessionMode?: FlashcardDisplayMode,
 ): Promise<ApiGradeChartResponse> {
   const query = new URLSearchParams({ difficulty: String(difficulty) });
+  if (sessionMode) {
+    query.set("session_mode", sessionMode);
+  }
   const res = await fetch(
     `${API_BASE_URL}/analytics/categories/${categoryId}/grade-chart?${query.toString()}`,
     {

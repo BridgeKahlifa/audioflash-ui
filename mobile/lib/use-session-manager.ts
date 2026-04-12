@@ -12,7 +12,7 @@ import {
   updateFlashcardAttempt,
 } from "./api";
 import { saveCompletedSession } from "./storage";
-import type { Flashcard, SessionCardResult } from "./types";
+import type { Flashcard, FlashcardDisplayMode, SessionCardResult } from "./types";
 
 interface SessionManagerParams {
   cards: Flashcard[];
@@ -20,6 +20,7 @@ interface SessionManagerParams {
   resolvedActivityId: string | null;
   categoryId?: string;
   difficulty?: number | null;
+  displayMode: FlashcardDisplayMode;
   selectedConfidence: number | null;
   audioPlayCount: number;
   shownAtRef: React.MutableRefObject<number>;
@@ -70,7 +71,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
   async function handleResult(knew: boolean): Promise<SubmitOutcome | null> {
     // Read all params at call time — they reflect the current render's values
     const {
-      cards, currentIndex, resolvedActivityId, categoryId, difficulty, selectedConfidence, audioPlayCount,
+      cards, currentIndex, resolvedActivityId, categoryId, difficulty, displayMode, selectedConfidence, audioPlayCount,
       shownAtRef, sessionStartedAt, isResumeSession,
       resumeCardsSeen = 0, resumeCardsCorrect = 0,
       lessonSessionId, reviewId, topic, topicTitle, language, languageLabel,
@@ -141,7 +142,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       response_time_ms: responseTimeMs,
       audio_play_count: audioPlayCount,
       card_index: currentIndex,
-      language: languageLabel,
+      language: languageLabel ?? null,
     });
 
     const nextIndex = isResumeSession && nextIndexFromServer != null
@@ -254,6 +255,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       languageLabel: languageLabel ?? "",
       categoryId,
       difficulty: typeof difficulty === "number" ? difficulty : undefined,
+      displayMode,
       cards: completedResults,
       total: aggregateTotal,
       correct: aggregateCorrect,
@@ -273,7 +275,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
     }
 
     posthog?.capture("session_completed", {
-      language: languageLabel,
+      language: languageLabel ?? null,
       card_count: aggregateTotal,
       cards_correct: aggregateCorrect,
       accuracy: aggregateTotal > 0
@@ -281,6 +283,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
         : 0,
       duration_ms: Date.now() - sessionStartedAt.current,
       is_review: Boolean(reviewId),
+      display_mode: displayMode,
       topic: topicTitle ?? topic,
     });
 

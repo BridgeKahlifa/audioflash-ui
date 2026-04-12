@@ -3,13 +3,14 @@ import { View, Text, Pressable, ActivityIndicator, ScrollView } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { setCurrentCards, getSettings } from "../../lib/storage";
-import { Flashcard } from "../../lib/types";
+import { setCurrentCards, getSettings, setLessonDisplayMode } from "../../lib/storage";
+import { Flashcard, FlashcardDisplayMode } from "../../lib/types";
 import { createLessonSession, fetchLessonsByCategory } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { buildErrorProperties, useAnalytics } from "../../lib/analytics";
 import { LanguageFlag } from "../../components/LanguageFlag";
 import { useCategories } from "../../lib/queries";
+import { DEFAULT_FLASHCARD_DISPLAY_MODE } from "../../lib/flashcard-display-mode";
 
 const DEFAULT_CARD_COUNT = 5;
 const MIN_CARD_COUNT = 5;
@@ -70,6 +71,9 @@ export default function LessonReady() {
   const [starting, setStarting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [shuffleEnabled, setShuffleEnabled] = useState(false);
+  const [displayMode, setDisplayMode] = useState<FlashcardDisplayMode>(
+    DEFAULT_FLASHCARD_DISPLAY_MODE,
+  );
   const [cardCount, setCardCount] = useState(profile?.cards_per_session ?? DEFAULT_CARD_COUNT);
   const startLockRef = useRef(false);
   const routeAvailableCardCount = resolveAvailableCardCount(availableCardCountParam);
@@ -185,6 +189,7 @@ export default function LessonReady() {
         profile_id: profileId,
         category_id: apiCategoryId,
         difficulty: selectedDifficulty,
+        display_mode: displayMode,
         started_at: new Date().toISOString(),
         card_ids: lessonCards.map((card) => String(card.id)),
         current_index: 0,
@@ -192,15 +197,19 @@ export default function LessonReady() {
         completed: false,
       });
 
-      await setCurrentCards(topic, mappedCards);
+      await Promise.all([
+        setCurrentCards(topic, mappedCards),
+        setLessonDisplayMode(lessonSession.session_id, displayMode),
+      ]);
 
       posthog?.capture("lesson_started", {
-        language: languageLabel,
+        language: languageLabel ?? language ?? null,
         topic: topicTitle ?? topic,
         difficulty: selectedDifficulty,
         card_count: mappedCards.length,
         requested_card_count: cardCount,
         shuffle: shuffleEnabled,
+        display_mode: displayMode,
       });
 
       router.push({
@@ -216,16 +225,21 @@ export default function LessonReady() {
           difficulty: String(selectedDifficulty),
           lessonSessionId: lessonSession.session_id,
           activityId: lessonSession.activity_id ?? lessonSession.session_id,
+          displayMode,
         },
       });
     } catch (error) {
       console.error("Failed to prepare lesson", error);
-      posthog?.capture("lesson_ready_start_failed", buildErrorProperties(error, {
-        category_id: apiCategoryId,
-        difficulty: selectedDifficulty,
-        requested_card_count: cardCount,
-        topic,
-      }));
+      posthog?.capture(
+        "lesson_ready_start_failed",
+        buildErrorProperties(error, {
+          category_id: apiCategoryId ?? null,
+          difficulty: selectedDifficulty,
+          requested_card_count: cardCount,
+          topic,
+          display_mode: displayMode,
+        }) as Record<string, string | number | boolean | null>,
+      );
       setStatus("error");
       setErrorMessage("We couldn't start the lesson right now. Please try again.");
     } finally {
@@ -343,6 +357,51 @@ export default function LessonReady() {
                   );
                 })}
               </View>
+            </View>
+
+            <View className="h-px bg-border mt-5 mb-4" />
+
+            <View>
+              <Text className="text-base font-medium text-muted mb-3 text-center">Card Style</Text>
+              <Pressable
+                onPress={() =>
+                  setDisplayMode((current) =>
+                    current === "traditional" ? DEFAULT_FLASHCARD_DISPLAY_MODE : "traditional",
+                  )
+                }
+                disabled={starting}
+                className={`rounded-2xl border px-4 py-4 flex-row items-center gap-3 ${
+                  displayMode === "traditional"
+                    ? "bg-accent border-primary"
+                    : "bg-background border-border"
+                }`}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  displayMode === "traditional"
+                    ? "Disable traditional flashcards"
+                    : "Enable traditional flashcards"
+                }
+              >
+                <View
+                  className={`w-6 h-6 rounded-full border items-center justify-center ${
+                    displayMode === "traditional"
+                      ? "bg-primary border-primary"
+                      : "bg-background border-border"
+                  }`}
+                >
+                  {displayMode === "traditional" ? (
+                    <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                  ) : null}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-foreground">
+                    Traditional flashcards
+                  </Text>
+                  <Text className="text-sm text-muted mt-1">
+                    Show your native-language text first, then reveal the target-language card.
+                  </Text>
+                </View>
+              </Pressable>
             </View>
 
             <View className="h-px bg-border mt-5 mb-4" />

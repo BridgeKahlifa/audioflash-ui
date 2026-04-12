@@ -3,18 +3,21 @@ import {
   AppSettings,
   DailySession,
   Flashcard,
+  FlashcardDisplayMode,
   ProgressData,
   ReviewCard,
   SessionCardResult,
   SessionHistoryItem,
 } from "./types";
 import type { ApiProfile, ApiSession, ApiSessionStats } from "./api";
+import { normalizeFlashcardDisplayMode } from "./flashcard-display-mode";
 
 const KEYS = {
   PROGRESS: "audioflash:progress",
   CURRENT_CARDS: "audioflash:cards:",
   SESSION_HISTORY: "audioflash:session-history",
   LAST_SESSION: "audioflash:last-session",
+  LESSON_DISPLAY_MODE: "audioflash:lesson-display-mode:",
   REVIEW_QUEUE: "audioflash:review-queue",
   SETTINGS: "audioflash:settings",
   PROFILE: "audioflash:profile",
@@ -191,6 +194,28 @@ export async function setCurrentCards(
   }
 }
 
+export async function getLessonDisplayMode(
+  lessonSessionId: string
+): Promise<FlashcardDisplayMode | null> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.LESSON_DISPLAY_MODE + lessonSessionId);
+    return raw ? normalizeFlashcardDisplayMode(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setLessonDisplayMode(
+  lessonSessionId: string,
+  mode: FlashcardDisplayMode
+): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.LESSON_DISPLAY_MODE + lessonSessionId, mode);
+  } catch {
+    // Non-critical
+  }
+}
+
 export async function getSettings(): Promise<AppSettings> {
   try {
     const raw = await AsyncStorage.getItem(KEYS.SETTINGS);
@@ -347,6 +372,7 @@ export async function saveCompletedSession(input: {
   languageLabel: string;
   categoryId?: string;
   difficulty?: number;
+  displayMode?: FlashcardDisplayMode;
   cards: SessionCardResult[];
   total?: number;
   correct?: number;
@@ -367,6 +393,7 @@ export async function saveCompletedSession(input: {
     languageLabel: input.languageLabel,
     categoryId: input.categoryId,
     difficulty: input.difficulty,
+    displayMode: input.displayMode,
     correct,
     total,
     missedCount: Math.max(total - correct, 0),
