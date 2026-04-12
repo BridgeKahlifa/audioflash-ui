@@ -69,4 +69,5 @@ export interface AppSettings {
   audioRate: number;
   remindersEnabled: boolean;
   dailyGoalCards: number;
+  matrixMode: boolean;
 }

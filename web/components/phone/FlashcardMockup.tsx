@@ -99,7 +99,7 @@ export function FlashcardMockup() {
         {/* Scale container: phone + badge shrink together */}
         <div className="relative" style={{ width: 300, transformOrigin: "top left", transform: `scale(${scale})` }}>
         <div
-          className="relative bg-background rounded-[40px] overflow-hidden"
+          className="matrix-panel matrix-scanlines relative overflow-hidden rounded-[40px] bg-background"
           style={{ width: 300, height: 600, boxShadow: "0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.08)" }}
         >
           <div className="flex flex-col h-full">
@@ -123,8 +123,8 @@ export function FlashcardMockup() {
                         onClick={() => { setSelectedLang(key); setPhonePulsing(false); setStartPulsing(true); }}
                         className="w-full text-left flex items-center gap-3 rounded-2xl px-4 py-3 border-2 transition-all"
                         style={{
-                          background: isSelected ? "#FFF0ED" : "#FFFFFF",
-                          borderColor: isSelected ? "#FF6B4A" : "transparent",
+                          background: isSelected ? "var(--accent)" : "var(--card)",
+                          borderColor: isSelected ? "var(--primary)" : "transparent",
                           boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                         }}
                       >
@@ -153,8 +153,8 @@ export function FlashcardMockup() {
                     disabled={selectedLang === null}
                     className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-all"
                     style={{
-                      background: selectedLang !== null ? "#FF6B4A" : "#F5F5F5",
-                      color: selectedLang !== null ? "#fff" : "#737373",
+                      background: selectedLang !== null ? "var(--primary)" : "var(--secondary)",
+                      color: selectedLang !== null ? "var(--primary-foreground)" : "var(--muted-foreground)",
                       animation: startPulsing ? "btnPulse 1.6s ease-out infinite" : "none",
                     }}
                   >
@@ -188,7 +188,7 @@ export function FlashcardMockup() {
                     style={{
                       width: 72,
                       height: 72,
-                      background: isPlaying ? "#e85c3e" : "#FF6B4A",
+                      background: isPlaying ? "#e85c3e" : "var(--primary)",
                       animation: audioPulsing && !isPlaying ? "audioPulse 1.6s ease-out infinite" : "none",
                       boxShadow: isPlaying ? "0 0 0 8px rgba(255,107,74,0.18), 0 8px 24px rgba(255,107,74,0.4)" : undefined,
                       transition: "background 0.15s",
@@ -211,7 +211,7 @@ export function FlashcardMockup() {
                       value={playbackSpeed}
                       onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
                       className="w-full"
-                      style={{ accentColor: "#FF6B4A", height: 3, cursor: "pointer" }}
+                      style={{ accentColor: "var(--primary)", height: 3, cursor: "pointer" }}
                     />
                   </div>
 
@@ -253,9 +253,9 @@ export function FlashcardMockup() {
                             style={{
                               width: 30,
                               height: 30,
-                              background: sel ? "#FF6B4A" : "#F5F5F5",
-                              borderColor: sel ? "#FF6B4A" : "#E5E5E5",
-                              color: sel ? "#fff" : "#737373",
+                              background: sel ? "var(--primary)" : "var(--secondary)",
+                              borderColor: sel ? "var(--primary)" : "var(--border)",
+                              color: sel ? "var(--primary-foreground)" : "var(--muted-foreground)",
                             }}
                           >
                             {v}
@@ -277,8 +277,8 @@ export function FlashcardMockup() {
                       </button>
                       <button
                         onClick={() => handleResult(true)}
-                        className="flex-1 py-3 rounded-2xl text-white text-sm font-semibold"
-                        style={{ background: "#FF6B4A", boxShadow: "0 4px 12px rgba(255,107,74,0.3)" }}
+                        className="flex-1 py-3 rounded-2xl text-sm font-semibold text-primary-foreground"
+                        style={{ background: "var(--primary)", boxShadow: "0 4px 12px rgba(255,107,74,0.3)" }}
                       >
                         I Knew It
                       </button>
@@ -306,7 +306,7 @@ export function FlashcardMockup() {
                   <span style={{ fontSize: 20 }}>🎉</span>
                 </div>
 
-                <div className="mx-4 rounded-2xl p-3 mb-2.5 flex-shrink-0" style={{ background: "#FF6B4A" }}>
+                <div className="mx-4 rounded-2xl p-3 mb-2.5 flex-shrink-0" style={{ background: "var(--primary)" }}>
                   <div className="flex items-center gap-2.5">
                     <div className="rounded-full flex items-center justify-center flex-shrink-0"
                       style={{ width: 38, height: 38, background: "rgba(255,255,255,0.2)" }}>
@@ -328,10 +328,10 @@ export function FlashcardMockup() {
                     { icon: "📈", value: `${accuracy}%`, label: "Accuracy" },
                     { icon: "🏆", value: 1, label: "Sessions" },
                   ].map(({ icon, value, label }) => (
-                    <div key={label} className="flex-1 bg-white border border-border rounded-2xl p-2.5"
+                    <div key={label} className="flex-1 bg-card border border-border rounded-2xl p-2.5"
                       style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
                       <div className="rounded-lg flex items-center justify-center mb-1.5"
-                        style={{ width: 28, height: 28, background: "#FFF0ED" }}>
+                        style={{ width: 28, height: 28, background: "var(--accent)" }}>
                         <span style={{ fontSize: 13 }}>{icon}</span>
                       </div>
                       <p className="text-foreground font-bold" style={{ fontSize: 16 }}>{value}</p>
@@ -340,7 +340,7 @@ export function FlashcardMockup() {
                   ))}
                 </div>
 
-                <div className="mx-4 bg-white border border-border rounded-2xl p-3 mb-2.5 flex-shrink-0"
+                <div className="mx-4 bg-card border border-border rounded-2xl p-3 mb-2.5 flex-shrink-0"
                   style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
                   <p className="text-foreground font-semibold mb-2.5" style={{ fontSize: 11 }}>This Week</p>
                   <WebBarChart data={getWeeklyData(results.length)} />
@@ -348,7 +348,7 @@ export function FlashcardMockup() {
                 </div>
 
                 {missed.length > 0 && (
-                  <div className="mx-4 bg-white border border-border rounded-2xl p-3 mb-2.5 flex-shrink-0"
+                  <div className="mx-4 bg-card border border-border rounded-2xl p-3 mb-2.5 flex-shrink-0"
                     style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
                     <p className="text-foreground font-semibold mb-1.5" style={{ fontSize: 11 }}>Review These</p>
                     <div className="flex flex-col gap-1">
@@ -367,8 +367,8 @@ export function FlashcardMockup() {
 
                 <div className="mx-4 flex flex-col gap-2 pb-5 flex-shrink-0">
                   <a href="#waitlist"
-                    className="w-full py-3 rounded-2xl text-white text-sm font-semibold text-center block"
-                    style={{ background: "#FF6B4A", boxShadow: "0 4px 12px rgba(255,107,74,0.3)" }}>
+                    className="block w-full rounded-2xl py-3 text-center text-sm font-semibold text-primary-foreground"
+                    style={{ background: "var(--primary)", boxShadow: "0 4px 12px rgba(255,107,74,0.3)" }}>
                     Get the Full App
                   </a>
                   <button onClick={handleRestart}
@@ -387,8 +387,8 @@ export function FlashcardMockup() {
           style={{ top: -14, right: -20, transform: "rotate(20deg)", transformOrigin: "center center" }}
         >
           <span
-            className="inline-block text-white text-xs font-semibold px-3 py-1.5 rounded-full"
-            style={{ background: "#FF6B4A", boxShadow: "0 2px 8px rgba(255,107,74,0.40)", letterSpacing: "0.04em" }}
+            className="inline-block rounded-full px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+            style={{ background: "var(--primary)", boxShadow: "0 2px 8px rgba(255,107,74,0.40)", letterSpacing: "0.04em" }}
           >
             Try it out
           </span>

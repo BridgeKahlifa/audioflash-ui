@@ -137,6 +137,7 @@ const defaultSettings: AppSettings = {
   audioRate: 0.8,
   remindersEnabled: false,
   dailyGoalCards: 25,
+  matrixMode: true,
 };
 
 export async function getProgress(): Promise<ProgressData> {

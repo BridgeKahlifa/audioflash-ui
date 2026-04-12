@@ -18,6 +18,7 @@ import { useAuth } from "../../lib/auth-context";
 import { fetchLessonSession, fetchLessonSessionFlashcards } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
 import { useSessionManager } from "../../lib/use-session-manager";
+import { useAppTheme } from "../../lib/theme-context";
 import {
   DEFAULT_FLASHCARD_DISPLAY_MODE,
   normalizeFlashcardDisplayMode,
@@ -61,6 +62,35 @@ export default function FlashcardPractice() {
 
   const { session } = useAuth();
   const posthog = useAnalytics();
+  const { matrixMode } = useAppTheme();
+
+  const palette = matrixMode
+    ? {
+        screenBackground: "#000000",
+        cardBackground: "#121212",
+        cardBorder: "rgba(255, 107, 74, 0.45)",
+        cardShadow: "#ff6b4a",
+        secondarySurface: "#242424",
+        secondaryBorder: "rgba(255, 107, 74, 0.18)",
+        primary: "#ff6b4a",
+        primaryForeground: "#000000",
+        foreground: "#ff8c42",
+        muted: "#c9714d",
+        icon: "#ff8c42",
+      }
+    : {
+        screenBackground: "#FFF7F2",
+        cardBackground: "#FFFDFC",
+        cardBorder: "transparent",
+        cardShadow: "#000000",
+        secondarySurface: "#FBE7DE",
+        secondaryBorder: "transparent",
+        primary: "#E86A4A",
+        primaryForeground: "#FFFFFF",
+        foreground: "#2F1E19",
+        muted: "#8B6E66",
+        icon: "#1A1A1A",
+      };
 
   // ── Card state ─────────────────────────────────────────────────────────────
   const [cards, setCards] = useState<Flashcard[]>([]);
@@ -416,16 +446,24 @@ export default function FlashcardPractice() {
   // ── Render ─────────────────────────────────────────────────────────────────
   if (!displayModeResolved || cards.length === 0 || !currentCard) {
     return (
-      <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        className="flex-1 bg-background"
+        style={{ backgroundColor: palette.screenBackground }}
+      >
         <View className="flex-1 items-center justify-center max-w-md w-full mx-auto">
-          <Text className="text-muted">Loading cards...</Text>
+          <Text className="text-muted" style={{ color: palette.muted }}>Loading cards...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      className="flex-1 bg-background"
+      style={{ backgroundColor: palette.screenBackground }}
+    >
       <View className="flex-1 max-w-md w-full mx-auto">
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
@@ -443,18 +481,29 @@ export default function FlashcardPractice() {
               })
             }
             className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+            style={{
+              backgroundColor: palette.secondarySurface,
+              borderWidth: matrixMode ? 1 : 0,
+              borderColor: palette.secondaryBorder,
+            }}
           >
-            <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+            <Ionicons name="chevron-back" size={22} color={palette.icon} />
           </Pressable>
           <View className="w-10 h-10" />
         </View>
-        <Text className="text-sm text-muted text-center mb-2">
+        <Text className="text-sm text-muted text-center mb-2" style={{ color: palette.muted }}>
           {currentIndex + 1} / {cards.length}
         </Text>
 
         {/* Progress bar */}
-        <View className="mx-4 mb-4 h-1.5 bg-secondary rounded-full overflow-hidden">
-          <View className="h-full bg-primary rounded-full" style={{ width: `${progress * 100}%` }} />
+        <View
+          className="mx-4 mb-4 h-1.5 bg-secondary rounded-full overflow-hidden"
+          style={{ backgroundColor: palette.secondarySurface }}
+        >
+          <View
+            className="h-full bg-primary rounded-full"
+            style={{ width: `${progress * 100}%`, backgroundColor: palette.primary }}
+          />
         </View>
 
         {/* Card */}
@@ -469,11 +518,14 @@ export default function FlashcardPractice() {
               alignItems: "center",
               justifyContent: "center",
               padding: 32,
-              shadowColor: "#000",
+              backgroundColor: palette.cardBackground,
+              borderWidth: matrixMode ? 1 : 0,
+              borderColor: palette.cardBorder,
+              shadowColor: matrixMode ? palette.cardShadow : "#000",
               shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.08,
-              shadowRadius: 16,
-              elevation: 4,
+              shadowOpacity: matrixMode ? 0.22 : 0.08,
+              shadowRadius: matrixMode ? 22 : 16,
+              elevation: matrixMode ? 8 : 4,
             }}
           >
             {!showAnswer ? (
@@ -484,17 +536,11 @@ export default function FlashcardPractice() {
                   className="w-full flex-1 items-center justify-center"
                   style={{ opacity: canRevealAnswer ? 1 : 0.7 }}
                 >
-                  <Text className="text-xs font-semibold text-muted tracking-wide uppercase mb-4">
-                    Your Language
-                  </Text>
                   <Text
                     className="text-4xl text-foreground text-center"
-                    style={{ alignSelf: "stretch" }}
+                    style={{ alignSelf: "stretch", color: palette.foreground }}
                   >
                     {currentCard.translation}
-                  </Text>
-                  <Text className="text-sm text-muted text-center mt-6">
-                    Tap the card or press Reveal Answer
                   </Text>
                 </Pressable>
               ) : (
@@ -504,23 +550,24 @@ export default function FlashcardPractice() {
                     hitSlop={10}
                     className="w-20 h-20 bg-primary rounded-full items-center justify-center"
                     style={{
-                      shadowColor: "#FF6B4A",
+                      backgroundColor: palette.primary,
+                      shadowColor: palette.primary,
                       shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.35,
-                      shadowRadius: 8,
-                      elevation: 4,
+                      shadowOpacity: matrixMode ? 0.55 : 0.35,
+                      shadowRadius: matrixMode ? 16 : 8,
+                      elevation: matrixMode ? 8 : 4,
                     }}
                   >
-                    <Ionicons name="volume-high" size={36} color="#FFFFFF" />
+                    <Ionicons name="volume-high" size={36} color={palette.primaryForeground} />
                   </Pressable>
 
                   <View className="mt-4 w-full px-3">
                     <View className="mb-1 flex-row items-center justify-between">
-                      <Text className="text-sm text-muted">Slow</Text>
-                      <Text className="text-sm font-semibold text-primary">
+                      <Text className="text-sm text-muted" style={{ color: palette.muted }}>Slow</Text>
+                      <Text className="text-sm font-semibold text-primary" style={{ color: palette.primary }}>
                         {playbackSpeed.toFixed(1)}x
                       </Text>
-                      <Text className="text-sm text-muted">Normal</Text>
+                      <Text className="text-sm text-muted" style={{ color: palette.muted }}>Normal</Text>
                     </View>
                     <View
                       ref={sliderRef}
@@ -531,7 +578,11 @@ export default function FlashcardPractice() {
                     >
                       <View
                         className="rounded-full bg-primary"
-                        style={{ height: sliderTrackHeight, marginHorizontal: sliderThumbSize / 2 }}
+                        style={{
+                          height: sliderTrackHeight,
+                          marginHorizontal: sliderThumbSize / 2,
+                          backgroundColor: palette.primary,
+                        }}
                       />
                       <View
                         className="absolute rounded-full bg-primary"
@@ -539,11 +590,12 @@ export default function FlashcardPractice() {
                           width: sliderThumbSize,
                           height: sliderThumbSize,
                           left: sliderPosition,
-                          shadowColor: "#FF6B4A",
+                          backgroundColor: palette.primary,
+                          shadowColor: palette.primary,
                           shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.25,
-                          shadowRadius: 8,
-                          elevation: 4,
+                          shadowOpacity: matrixMode ? 0.45 : 0.25,
+                          shadowRadius: matrixMode ? 14 : 8,
+                          elevation: matrixMode ? 7 : 4,
                         }}
                       />
                     </View>
@@ -561,25 +613,26 @@ export default function FlashcardPractice() {
                     className="mb-6 w-16 h-16 bg-primary rounded-full items-center justify-center"
                     style={{
                       alignSelf: "center",
-                      shadowColor: "#FF6B4A",
+                      backgroundColor: palette.primary,
+                      shadowColor: palette.primary,
                       shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 8,
-                      elevation: 4,
+                      shadowOpacity: matrixMode ? 0.5 : 0.3,
+                      shadowRadius: matrixMode ? 14 : 8,
+                      elevation: matrixMode ? 7 : 4,
                     }}
                   >
-                    <Ionicons name="volume-high" size={28} color="#FFFFFF" />
+                    <Ionicons name="volume-high" size={28} color={palette.primaryForeground} />
                   </Pressable>
                 ) : null}
-                <Text className="text-4xl text-foreground text-center mb-3" style={{ alignSelf: "stretch" }}>
+                <Text className="text-4xl text-foreground text-center mb-3" style={{ alignSelf: "stretch", color: palette.foreground }}>
                   {currentCard.sourceText}
                 </Text>
                 {currentCard.romanization ? (
-                  <Text className="text-xl text-muted text-center mb-6" style={{ alignSelf: "stretch" }}>
+                  <Text className="text-xl text-muted text-center mb-6" style={{ alignSelf: "stretch", color: palette.muted }}>
                     {currentCard.romanization}
                   </Text>
                 ) : null}
-                <Text className="text-xl text-foreground text-center" style={{ alignSelf: "stretch" }}>
+                <Text className="text-xl text-foreground text-center" style={{ alignSelf: "stretch", color: palette.foreground }}>
                   {currentCard.translation}
                 </Text>
               </View>
@@ -593,16 +646,21 @@ export default function FlashcardPractice() {
             <Pressable
               onPress={revealAnswer}
               className="py-4 bg-secondary rounded-2xl items-center"
+              style={{
+                backgroundColor: palette.secondarySurface,
+                borderWidth: matrixMode ? 1 : 0,
+                borderColor: palette.secondaryBorder,
+              }}
               disabled={submitting}
             >
-              <Text className="text-base font-medium text-muted">Reveal Answer</Text>
+              <Text className="text-base font-medium text-muted" style={{ color: palette.foreground }}>Reveal Answer</Text>
             </Pressable>
           ) : null}
 
           {shouldShowAnswerActions ? (
             <>
               <View className="items-center gap-3">
-                <Text className="text-sm font-medium text-muted">How confident were you?</Text>
+                <Text className="text-sm font-medium text-muted" style={{ color: palette.muted }}>How confident were you?</Text>
                 <View className="flex-row gap-2">
                   {[1, 2, 3, 4, 5].map((value) => {
                     const selected = selectedConfidence === value;
@@ -613,9 +671,16 @@ export default function FlashcardPractice() {
                         className={`w-11 h-11 rounded-full items-center justify-center border ${
                           selected ? "bg-primary border-primary" : "bg-secondary border-border"
                         }`}
+                        style={{
+                          backgroundColor: selected ? palette.primary : palette.secondarySurface,
+                          borderColor: selected ? palette.primary : palette.secondaryBorder,
+                        }}
                         disabled={submitting}
                       >
-                        <Text className={`font-semibold ${selected ? "text-primary-foreground" : "text-foreground"}`}>
+                        <Text
+                          className={`font-semibold ${selected ? "text-primary-foreground" : "text-foreground"}`}
+                          style={{ color: selected ? palette.primaryForeground : palette.foreground }}
+                        >
                           {value}
                         </Text>
                       </Pressable>
@@ -628,8 +693,13 @@ export default function FlashcardPractice() {
                   onPress={() => void onResult(false)}
                   disabled={submitting}
                   className="flex-1 py-4 bg-secondary rounded-2xl items-center"
+                  style={{
+                    backgroundColor: palette.secondarySurface,
+                    borderWidth: matrixMode ? 1 : 0,
+                    borderColor: palette.secondaryBorder,
+                  }}
                 >
-                  <Text className="text-base font-medium text-foreground">
+                  <Text className="text-base font-medium text-foreground" style={{ color: palette.foreground }}>
                     {submittingResult === "didnt-know" ? "Saving..." : "Didn't Know"}
                   </Text>
                 </Pressable>
@@ -638,14 +708,15 @@ export default function FlashcardPractice() {
                   disabled={submitting}
                   className="flex-1 py-4 bg-primary rounded-2xl items-center"
                   style={{
-                    shadowColor: "#FF6B4A",
+                    backgroundColor: palette.primary,
+                    shadowColor: palette.primary,
                     shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 8,
-                    elevation: 4,
+                    shadowOpacity: matrixMode ? 0.45 : 0.25,
+                    shadowRadius: matrixMode ? 14 : 8,
+                    elevation: matrixMode ? 7 : 4,
                   }}
                 >
-                  <Text className="text-base font-semibold text-primary-foreground">
+                  <Text className="text-base font-semibold text-primary-foreground" style={{ color: palette.primaryForeground }}>
                     {submittingResult === "knew" ? "Saving..." : "I Knew It"}
                   </Text>
                 </Pressable>

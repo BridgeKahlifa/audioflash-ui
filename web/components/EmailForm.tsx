@@ -43,12 +43,12 @@ export function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
 
   if (status === "success") {
     return (
-      <div className={`flex items-center gap-3 rounded-2xl px-5 py-4 ${variant === "hero" ? "bg-accent" : "bg-white/10"}`}>
+      <div className={`flex items-center gap-3 rounded-2xl px-5 py-4 ${variant === "hero" ? "matrix-panel border border-border bg-accent" : "border border-white/15 bg-white/10"}`}>
         <div>
-          <p className={`font-semibold text-sm ${variant === "cta" ? "text-white" : "text-foreground"}`}>
+          <p className={`text-sm font-semibold ${variant === "cta" ? "text-white" : "text-foreground"}`}>
             You are on the list.
           </p>
-          <p className={`text-xs mt-0.5 ${variant === "cta" ? "text-white/70" : "text-muted"}`}>
+          <p className={`mt-0.5 text-xs ${variant === "cta" ? "text-white/70" : "text-muted"}`}>
             We will email you when AudioFlash opens up early access.
           </p>
         </div>
@@ -67,15 +67,14 @@ export function EmailForm({ variant = "hero" }: { variant?: "hero" | "cta" }) {
           required
           className={`min-w-0 flex-1 basis-48 rounded-2xl px-4 py-3.5 text-sm outline-none transition-all ${
             variant === "hero"
-              ? "bg-white border border-border text-foreground placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/10"
+              ? "matrix-panel border border-border bg-card text-foreground placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/10"
               : "bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:border-white/50"
           }`}
         />
         <button
           type="submit"
           disabled={status === "loading"}
-          className="w-full rounded-2xl px-5 py-3.5 bg-primary text-white text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90 disabled:opacity-60 sm:w-auto"
-          style={{ boxShadow: "0 4px 14px rgba(255,107,74,0.35)" }}
+          className="matrix-glow w-full whitespace-nowrap rounded-2xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60 sm:w-auto"
         >
           {status === "loading" ? "..." : "Get Free Early Access"}
         </button>

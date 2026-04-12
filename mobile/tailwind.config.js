@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const cssVar = (name) => `rgb(var(${name}) / <alpha-value>)`;
+
 module.exports = {
   content: [
     "./app/**/*.{js,jsx,ts,tsx}",
@@ -9,15 +11,15 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "#E86A4A",
-        "primary-foreground": "#FFFFFF",
-        background: "#FFF7F2",
-        card: "#FFFDFC",
-        secondary: "#FBE7DE",
-        muted: "#8B6E66",
-        accent: "#FFD9CA",
-        border: "#F2CBBE",
-        foreground: "#2F1E19",
+        primary: cssVar("--primary"),
+        "primary-foreground": cssVar("--primary-foreground"),
+        background: cssVar("--background"),
+        card: cssVar("--card"),
+        secondary: cssVar("--secondary"),
+        muted: cssVar("--muted"),
+        accent: cssVar("--accent"),
+        border: cssVar("--border"),
+        foreground: cssVar("--foreground"),
       },
     },
   },

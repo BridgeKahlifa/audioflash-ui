@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ApiLanguage } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { useLanguages, useCategories } from "../../lib/queries";
+import { useAppTheme } from "../../lib/theme-context";
 import { LanguageFlag } from "../../components/LanguageFlag";
 
 interface Topic {
@@ -24,6 +25,7 @@ const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
 
 export default function Categories() {
   const { profile, profileLoading, updateProfileData } = useAuth();
+  const { matrixMode, fontFamily } = useAppTheme();
   const { data: languages = [], isPending: languagesLoading, error: languagesError } = useLanguages();
   const {
     data: contextCategories = [],
@@ -40,6 +42,26 @@ export default function Categories() {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [switchingLanguage, setSwitchingLanguage] = useState(false);
   const [resolvedLanguage, setResolvedLanguage] = useState<ApiLanguage | null>(null);
+
+  const palette = matrixMode
+    ? {
+        loadingBackground: "#000000",
+        iconContainer: "#202020",
+        iconSelectedContainer: "#2f140d",
+        iconColor: "#ff8c42",
+        iconSelectedColor: "#ff6b4a",
+        chevron: "#c9714d",
+        cardShadow: "#ff6b4a",
+      }
+    : {
+        loadingBackground: "#FAFAF8",
+        iconContainer: "#FBE7DE",
+        iconSelectedContainer: "#FF6B4A",
+        iconColor: "#1A1A1A",
+        iconSelectedColor: "#FFFFFF",
+        chevron: "#A0A0A0",
+        cardShadow: "#000000",
+      };
 
   useFocusEffect(
     useCallback(() => {
@@ -117,7 +139,7 @@ export default function Categories() {
 
   if (profile === null && profileLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#FAFAF8", alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flex: 1, backgroundColor: palette.loadingBackground, alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator size="large" color="#FF6B4A" />
       </View>
     );
@@ -128,8 +150,10 @@ export default function Categories() {
       <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
         <View className="flex-1 max-w-md w-full mx-auto">
           <View className="px-6 pt-8 pb-4">
-            <Text className="text-3xl font-semibold text-foreground tracking-tight">Choose Language</Text>
-            <Text className="text-muted text-sm mt-1">Pick the language you want to learn</Text>
+            <Text className="text-3xl font-semibold text-foreground tracking-tight" style={{ fontFamily }}>
+              Choose Language
+            </Text>
+            <Text className="text-muted text-sm mt-1" style={{ fontFamily }}>Pick the language you want to learn</Text>
           </View>
 
           <ScrollView
@@ -159,26 +183,29 @@ export default function Categories() {
                       }}
                       className={`rounded-2xl p-4 border-2 border-transparent flex-row items-center bg-card ${!available ? "opacity-60" : ""}`}
                       style={{
-                        shadowColor: "#000",
+                        shadowColor: palette.cardShadow,
                         shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.05,
-                        shadowRadius: 2,
-                        elevation: 1,
+                        shadowOpacity: matrixMode ? 0.15 : 0.05,
+                        shadowRadius: matrixMode ? 8 : 2,
+                        elevation: matrixMode ? 3 : 1,
                       }}
                     >
-                      <View className="w-12 h-12 rounded-xl items-center justify-center mr-4 bg-secondary">
+                      <View
+                        className="w-12 h-12 rounded-xl items-center justify-center mr-4 bg-secondary"
+                        style={{ backgroundColor: palette.iconContainer }}
+                      >
                         <LanguageFlag name={lang.language} size="lg" />
                       </View>
                       <View className="flex-1">
-                        <Text className="text-foreground font-medium">{lang.language}</Text>
-                        <Text className="text-xs text-muted">
+                        <Text className="text-foreground font-medium" style={{ fontFamily }}>{lang.language}</Text>
+                        <Text className="text-xs text-muted" style={{ fontFamily }}>
                           {available ? "Practice lessons available" : "Coming soon"}
                         </Text>
                       </View>
                       {savingLanguage ? (
                         <ActivityIndicator size="small" color="#FF6B4A" />
                       ) : (
-                        <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
+                        <Ionicons name="chevron-forward" size={18} color={palette.chevron} />
                       )}
                     </Pressable>
                   );
@@ -195,7 +222,7 @@ export default function Categories() {
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
         <View className="pt-8 pb-6 px-6">
-          <Text className="text-3xl font-semibold text-foreground tracking-tight">Browse</Text>
+          <Text className="text-3xl font-semibold text-foreground tracking-tight" style={{ fontFamily }}>Browse</Text>
           {resolvedLanguage ? (
             <Pressable
               onPress={() => {
@@ -207,9 +234,9 @@ export default function Categories() {
               <View style={{ marginRight: 4 }}>
                 <LanguageFlag name={resolvedLanguage.language} size="sm" />
               </View>
-              <Text className="text-muted">Language: </Text>
-              <Text className="text-foreground font-medium">{resolvedLanguage.language}</Text>
-              <Ionicons name="chevron-down" size={14} color="#A0A0A0" style={{ marginLeft: 2 }} />
+              <Text className="text-muted" style={{ fontFamily }}>Language: </Text>
+              <Text className="text-foreground font-medium" style={{ fontFamily }}>{resolvedLanguage.language}</Text>
+              <Ionicons name="chevron-down" size={14} color={palette.chevron} style={{ marginLeft: 2 }} />
             </Pressable>
           ) : null}
         </View>
@@ -231,7 +258,7 @@ export default function Categories() {
             </View>
           ) : topics.length === 0 ? (
             <View className="items-center justify-center py-16">
-              <Text className="text-muted text-center">No categories available</Text>
+              <Text className="text-muted text-center" style={{ fontFamily }}>No categories available</Text>
             </View>
           ) : null}
 
@@ -245,17 +272,28 @@ export default function Categories() {
                   className={`rounded-2xl p-4 border-2 ${isSelected ? "bg-accent border-primary" : "bg-card border-transparent"}`}
                   style={{
                     width: "47.5%",
-                    shadowColor: "#000",
+                    shadowColor: palette.cardShadow,
                     shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 2,
-                    elevation: 1,
+                    shadowOpacity: matrixMode ? 0.15 : 0.05,
+                    shadowRadius: matrixMode ? 8 : 2,
+                    elevation: matrixMode ? 3 : 1,
                   }}
                 >
-                  <View className={`w-10 h-10 rounded-xl items-center justify-center mb-3 ${isSelected ? "bg-primary" : "bg-secondary"}`}>
-                    <Ionicons name={topic.icon} size={20} color={isSelected ? "#FFFFFF" : "#1A1A1A"} />
+                  <View
+                    className={`w-10 h-10 rounded-xl items-center justify-center mb-3 ${isSelected ? "bg-primary" : "bg-secondary"}`}
+                    style={{
+                      backgroundColor: isSelected ? palette.iconSelectedContainer : palette.iconContainer,
+                      borderWidth: matrixMode ? 1 : 0,
+                      borderColor: matrixMode ? "rgba(255, 107, 74, 0.18)" : "transparent",
+                    }}
+                  >
+                    <Ionicons
+                      name={topic.icon}
+                      size={20}
+                      color={isSelected ? palette.iconSelectedColor : palette.iconColor}
+                    />
                   </View>
-                  <Text className="text-foreground font-medium mb-0.5">{topic.title}</Text>
+                  <Text className="text-foreground font-medium mb-0.5" style={{ fontFamily }}>{topic.title}</Text>
                 </Pressable>
               );
             })}
@@ -269,7 +307,10 @@ export default function Categories() {
             className={`py-4 rounded-2xl items-center ${selectedTopic ? "bg-primary" : "bg-secondary"}`}
             style={selectedTopic ? { shadowColor: "#FF6B4A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 } : undefined}
           >
-            <Text className={`text-base font-semibold ${selectedTopic ? "text-primary-foreground" : "text-muted"}`}>
+            <Text
+              className={`text-base font-semibold ${selectedTopic ? "text-primary-foreground" : "text-muted"}`}
+              style={{ fontFamily }}
+            >
               Start Lesson
             </Text>
           </Pressable>

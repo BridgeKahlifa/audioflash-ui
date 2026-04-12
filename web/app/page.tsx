@@ -1,5 +1,12 @@
 import Image from "next/image";
 import { BulletList } from "../components/BulletList";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/Card";
 import { EmailForm } from "../components/EmailForm";
 import { FAQItem } from "../components/FAQItem";
 import { SectionHeading } from "../components/SectionHeading";
@@ -14,16 +21,18 @@ import {
 
 function LearningProgressChart() {
   return (
-    <div
-      className="rounded-3xl border border-border bg-white p-6"
+    <Card
+      className="matrix-panel matrix-scanlines rounded-3xl border border-border bg-card p-6"
       style={{ boxShadow: "0 12px 30px rgba(15, 23, 42, 0.06)" }}
     >
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold text-foreground">Cards learned over time</p>
-          <p className="mt-1 text-xs text-muted">Steady review compounds into faster recognition.</p>
-        </div>
-      </div>
+      <CardHeader className="mb-5 px-0 pt-0">
+        <CardTitle className="text-sm font-semibold text-foreground">
+          Cards learned over time
+        </CardTitle>
+        <CardDescription className="mt-1 text-xs">
+          Steady review compounds into faster recognition.
+        </CardDescription>
+      </CardHeader>
 
       <div className="relative h-60 rounded-2xl bg-background pl-16 pr-6 pb-16 pt-4">
         <div className="absolute inset-y-4 left-10 w-px bg-border" />
@@ -93,7 +102,7 @@ function LearningProgressChart() {
           Time
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -111,7 +120,7 @@ export default function HomePage() {
               className="object-contain"
               priority
             />
-            <span className="text-lg font-semibold tracking-tight text-foreground">AudioFlash</span>
+            <span className="matrix-text-glow text-lg font-semibold tracking-tight text-foreground">AudioFlash</span>
           </a>
           <div className="hidden items-center gap-6 md:flex">
             {navLinks.map((link) => (
@@ -126,7 +135,7 @@ export default function HomePage() {
           </div>
           <a
             href="#waitlist"
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 whitespace-nowrap"
+            className="matrix-glow whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
           >
             <span className="sm:hidden">Join Free</span>
             <span className="hidden sm:inline">Get Free Early Access</span>
@@ -167,7 +176,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-border bg-white py-20">
+      <section className="border-y border-border bg-card py-20">
         <div className="mx-auto max-w-3xl px-6 text-center">
 
 
@@ -201,7 +210,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="how-it-works" className="border-y border-border bg-white py-20">
+      <section id="how-it-works" className="border-y border-border bg-card py-20">
         <div className="mx-auto max-w-6xl px-6">
           <SectionHeading
             title="How it works"
@@ -210,7 +219,7 @@ export default function HomePage() {
 
           <div className="grid gap-6 md:grid-cols-3">
             {steps.map((step) => (
-              <div key={step.number} className="relative">
+              <div key={step.number} className="matrix-panel relative rounded-3xl border border-border bg-background/60 p-6">
                 <div className="mb-4 text-5xl font-bold leading-none text-border">{step.number}</div>
                 <h3 className="mb-2 font-semibold text-foreground">{step.title}</h3>
                 <p className="text-sm leading-relaxed text-muted">{step.description}</p>
@@ -227,26 +236,28 @@ export default function HomePage() {
         />
         <div className="grid gap-6 md:grid-cols-2">
           {features.map((feature) => (
-            <div
+            <Card
               key={feature.title}
-              className="rounded-3xl border border-border bg-white p-8 transition-transform duration-300 hover:-translate-y-1"
+              className="matrix-panel rounded-3xl border border-border bg-card p-8 transition-transform duration-300 hover:-translate-y-1"
               style={{ boxShadow: "0 12px 30px rgba(15,23,42,0.06)" }}
             >
-              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-base font-semibold text-primary">
-                {feature.icon}
-              </div>
-              <h3 className="mb-3 max-w-sm text-2xl font-semibold tracking-tight text-foreground">
-                {feature.title}
-              </h3>
-              <p className="max-w-xl text-base leading-relaxed text-muted">
-                {feature.description}
-              </p>
-            </div>
+              <CardContent className="px-0 [&:last-child]:pb-0">
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-base font-semibold text-primary">
+                  {feature.icon}
+                </div>
+                <CardTitle className="mb-3 max-w-sm text-2xl font-semibold tracking-tight text-foreground">
+                  {feature.title}
+                </CardTitle>
+                <CardDescription className="max-w-xl text-base leading-relaxed">
+                  {feature.description}
+                </CardDescription>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
 
-      <section id="faq" className="border-y border-border bg-white py-20">
+      <section id="faq" className="border-y border-border bg-card py-20">
         <div className="mx-auto max-w-6xl px-6">
           <SectionHeading title="FAQ" description="" />
           <div className="mx-auto grid max-w-4xl gap-4">
@@ -276,7 +287,10 @@ export default function HomePage() {
       <section
         id="waitlist"
         className="py-24"
-        style={{ background: "linear-gradient(135deg, #FF6B4A 0%, #FF8F73 100%)" }}
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(255,107,74,0.88) 0%, rgba(255,140,66,0.78) 100%)",
+        }}
       >
         <div className="mx-auto max-w-2xl px-6 text-center">
           <h2 className="mb-4 text-4xl font-bold tracking-tight text-white">

@@ -5,16 +5,16 @@ export function WebBarChart({ data }: { data: { day: string; cards: number; isTo
       {data.map((item, i) => (
         <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
           {item.cards > 0 && (
-            <span style={{ fontSize: 9, color: "#FF6B4A", fontWeight: 600 }}>{item.cards}</span>
+            <span style={{ fontSize: 9, color: "var(--primary)", fontWeight: 600 }}>{item.cards}</span>
           )}
           <div style={{
             width: "100%",
             height: Math.max(item.cards > 0 ? (item.cards / max) * 56 : 3, 3),
-            background: item.cards > 0 ? "#FF6B4A" : "#F0F0F0",
+            background: item.cards > 0 ? "var(--primary)" : "var(--secondary)",
             borderRadius: 4,
             opacity: item.isToday ? 1 : 0.65,
           }} />
-          <span style={{ fontSize: 9, color: item.isToday ? "#FF6B4A" : "#A0A0A0", fontWeight: item.isToday ? 700 : 400 }}>
+          <span style={{ fontSize: 9, color: item.isToday ? "var(--primary)" : "var(--muted-foreground)", fontWeight: item.isToday ? 700 : 400 }}>
             {item.day}
           </span>
         </div>
