@@ -18,6 +18,7 @@ import { useAuth } from "../../lib/auth-context";
 import { fetchLessonSession, fetchLessonSessionFlashcards } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
 import { useSessionManager } from "../../lib/use-session-manager";
+import { MatrixRainOverlay } from "../../components/MatrixRainOverlay";
 import { useAppTheme } from "../../lib/theme-context";
 import {
   DEFAULT_FLASHCARD_DISPLAY_MODE,
@@ -310,6 +311,7 @@ export default function FlashcardPractice() {
   const progress = cards.length > 0 ? (currentIndex + 1) / cards.length : 0;
   const shouldShowRevealButton = canRevealAnswer && !showAnswer;
   const shouldShowAnswerActions = canRevealAnswer && showAnswer;
+  const showMatrixRain = matrixMode && displayModeResolved && cards.length > 0;
 
   // ── Playback speed slider ──────────────────────────────────────────────────
   const minPlaybackSpeed = 0.5;
@@ -459,12 +461,14 @@ export default function FlashcardPractice() {
   }
 
   return (
-    <SafeAreaView
-      edges={["top", "left", "right"]}
-      className="flex-1 bg-background"
-      style={{ backgroundColor: palette.screenBackground }}
-    >
-      <View className="flex-1 max-w-md w-full mx-auto">
+    <>
+      <MatrixRainOverlay enabled={showMatrixRain} />
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        className="flex-1 bg-background"
+        style={{ backgroundColor: palette.screenBackground }}
+      >
+        <View className="flex-1 max-w-md w-full mx-auto" style={{ position: "relative", zIndex: 1 }}>
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
           <Pressable
@@ -728,7 +732,8 @@ export default function FlashcardPractice() {
           ) : null}
 
         </View>
-      </View>
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
+    </>
   );
 }
