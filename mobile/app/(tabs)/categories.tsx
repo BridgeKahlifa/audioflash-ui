@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ScrollView, ActivityIndicator, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -42,6 +42,8 @@ export default function Categories() {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [switchingLanguage, setSwitchingLanguage] = useState(false);
   const [resolvedLanguage, setResolvedLanguage] = useState<ApiLanguage | null>(null);
+  const [topicQuery, setTopicQuery] = useState("");
+  const [langQuery, setLangQuery] = useState("");
 
   const palette = matrixMode
     ? {
@@ -156,6 +158,22 @@ export default function Categories() {
             <Text className="text-muted text-sm mt-1" style={{ fontFamily }}>Pick the language you want to learn</Text>
           </View>
 
+          <View className="px-6 pb-3">
+            <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-11 gap-2">
+              <Ionicons name="search" size={16} color="#A0A0A0" />
+              <TextInput
+                value={langQuery}
+                onChangeText={setLangQuery}
+                placeholder="Search languages…"
+                placeholderTextColor="#A0A0A0"
+                className="flex-1 text-foreground text-base"
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
+
           <ScrollView
             className="flex-1 px-6"
             showsVerticalScrollIndicator={false}
@@ -173,7 +191,12 @@ export default function Categories() {
               </View>
             ) : (
               <View className="gap-3">
-                {languages.map((lang) => {
+                {(langQuery.trim()
+                  ? languages.filter((l) =>
+                      l.language.toLowerCase().includes(langQuery.toLowerCase()),
+                    )
+                  : languages
+                ).map((lang) => {
                   const available = !lang.language.toLowerCase().includes("coming soon");
                   return (
                     <Pressable
@@ -210,6 +233,17 @@ export default function Categories() {
                     </Pressable>
                   );
                 })}
+                {langQuery.trim() &&
+                  languages.filter((l) =>
+                    l.language.toLowerCase().includes(langQuery.toLowerCase()),
+                  ).length === 0 && (
+                  <View className="items-center py-10 gap-2">
+                    <Ionicons name="search" size={28} color="#A0A0A0" />
+                    <Text className="text-muted text-sm text-center">
+                      No languages match "{langQuery}"
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           </ScrollView>
@@ -221,7 +255,7 @@ export default function Categories() {
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
-        <View className="pt-8 pb-6 px-6">
+        <View className="pt-8 pb-3 px-6">
           <Text className="text-3xl font-semibold text-foreground tracking-tight" style={{ fontFamily }}>Browse</Text>
           {resolvedLanguage ? (
             <Pressable
@@ -239,6 +273,22 @@ export default function Categories() {
               <Ionicons name="chevron-down" size={14} color={palette.chevron} style={{ marginLeft: 2 }} />
             </Pressable>
           ) : null}
+        </View>
+
+        <View className="px-6 pb-3">
+          <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-11 gap-2">
+            <Ionicons name="search" size={16} color="#A0A0A0" />
+            <TextInput
+              value={topicQuery}
+              onChangeText={setTopicQuery}
+              placeholder="Search categories…"
+              placeholderTextColor="#A0A0A0"
+              className="flex-1 text-foreground text-base"
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+              autoCorrect={false}
+            />
+          </View>
         </View>
 
         <ScrollView
@@ -263,7 +313,12 @@ export default function Categories() {
           ) : null}
 
           <View className="flex-row flex-wrap gap-3">
-            {topics.map((topic) => {
+            {(topicQuery.trim()
+              ? topics.filter((t) =>
+                  t.title.toLowerCase().includes(topicQuery.toLowerCase()),
+                )
+              : topics
+            ).map((topic) => {
               const isSelected = selectedTopic === topic.id;
               return (
                 <Pressable
@@ -297,6 +352,17 @@ export default function Categories() {
                 </Pressable>
               );
             })}
+            {topicQuery.trim() &&
+              topics.filter((t) =>
+                t.title.toLowerCase().includes(topicQuery.toLowerCase()),
+              ).length === 0 && (
+              <View className="w-full items-center py-10 gap-2">
+                <Ionicons name="search" size={28} color="#A0A0A0" />
+                <Text className="text-muted text-sm text-center" style={{ fontFamily }}>
+                  No categories match "{topicQuery}"
+                </Text>
+              </View>
+            )}
           </View>
         </ScrollView>
 

@@ -5,6 +5,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,18 +19,15 @@ import {
   deleteDeckCard,
   deleteDeck,
   type ApiDeckCard,
-  startDeckPractice,
 } from "../../lib/api";
-import { setCurrentCards } from "../../lib/storage";
-import type { Flashcard } from "../../lib/types";
 
 export default function DeckDetail() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
-  const { session, isDevAuth, profile } = useAuth();
+  const { session, isDevAuth } = useAuth();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
-  const [startingPractice, setStartingPractice] = useState(false);
+  const [cardQuery, setCardQuery] = useState("");
 
   const {
     data: deck,
@@ -115,53 +113,9 @@ export default function DeckDetail() {
     );
   }
 
-  async function handleStartPractice() {
-    if (activeCards.length === 0 || !deck || startingPractice) return;
-    setStartingPractice(true);
-    try {
-      const topicKey = `deck-${deckId}`;
-      const mappedCards: Flashcard[] = activeCards.map((c, index) => ({
-        id: index + 1,
-        dbId: c.id,
-        sourceText: c.source_text,
-        romanization: c.romanization ?? "",
-        translation: c.translation,
-      }));
-      await setCurrentCards(topicKey, mappedCards);
-
-      const profileId = profile?.id ?? session?.user?.id;
-      let deckSessionId: string | undefined;
-      let activityId: string | undefined;
-
-      if (profileId) {
-        try {
-          const started = await startDeckPractice(session?.access_token, deckId!, {
-            profile_id: profileId,
-          });
-          deckSessionId = started.session_id;
-          activityId = started.activity_id;
-        } catch {
-          // Fall back to local-only practice if the deck session endpoints are not available yet.
-        }
-      }
-
-      router.push({
-        pathname: "/practice/[topic]",
-        params: {
-          topic: topicKey,
-          topicTitle: deck.name,
-          language: languageSlug,
-          languageLabel: languageName,
-          apiLanguageId: deck.language_id,
-          deckId: deck.id,
-          deckSessionId,
-          activityId,
-          apiLoaded: activityId ? "true" : "",
-        },
-      });
-    } finally {
-      setStartingPractice(false);
-    }
+  function handleStartPractice() {
+    if (activeCards.length === 0 || !deckId) return;
+    router.push({ pathname: "/decks/[id]/practice-ready", params: { id: deckId } });
   }
 
   const activeCards = cards?.filter((c) => !c.archived_at) ?? [];
@@ -272,6 +226,25 @@ export default function DeckDetail() {
           </Pressable>
         </View>
 
+        {/* Card search */}
+        {activeCards.length > 0 && (
+          <View className="px-6 pb-3">
+            <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-11 gap-2">
+              <Ionicons name="search" size={16} color="#A0A0A0" />
+              <TextInput
+                value={cardQuery}
+                onChangeText={setCardQuery}
+                placeholder="Search cards…"
+                placeholderTextColor="#A0A0A0"
+                className="flex-1 text-foreground text-base"
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
+        )}
+
         {/* Card list */}
         <ScrollView
           className="flex-1 px-6"
@@ -298,7 +271,14 @@ export default function DeckDetail() {
             </View>
           ) : (
             <View className="gap-3">
-              {activeCards.map((card) => (
+              {(cardQuery.trim()
+                ? activeCards.filter((c) =>
+                    `${c.source_text} ${c.romanization ?? ""} ${c.translation}`
+                      .toLowerCase()
+                      .includes(cardQuery.toLowerCase()),
+                  )
+                : activeCards
+              ).map((card) => (
                 <View
                   key={card.id}
                   className="bg-card border border-border rounded-2xl px-4 py-4"
@@ -356,18 +336,28 @@ export default function DeckDetail() {
                   </View>
                 </View>
               ))}
+              {cardQuery.trim() &&
+                activeCards.filter((c) =>
+                  `${c.source_text} ${c.romanization ?? ""} ${c.translation}`
+                    .toLowerCase()
+                    .includes(cardQuery.toLowerCase()),
+                ).length === 0 && (
+                <View className="items-center py-10 gap-2">
+                  <Ionicons name="search" size={28} color="#A0A0A0" />
+                  <Text className="text-muted text-sm text-center">
+                    No cards match "{cardQuery}"
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </ScrollView>
 
         {/* Practice CTA */}
         {activeCards.length > 0 && (
-          <View
-            className="px-6 pb-6 pt-3 border-t border-border bg-background"
-          >
+          <View className="px-6 pb-6 pt-3 border-t border-border bg-background">
             <Pressable
-              onPress={() => void handleStartPractice()}
-              disabled={startingPractice}
+              onPress={handleStartPractice}
               className="py-4 rounded-2xl items-center bg-primary"
               style={{
                 shadowColor: "#FF6B4A",
@@ -377,13 +367,9 @@ export default function DeckDetail() {
                 elevation: 4,
               }}
             >
-              {startingPractice ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text className="text-base font-semibold text-primary-foreground">
-                  Start Practice ({activeCards.length} cards)
-                </Text>
-              )}
+              <Text className="text-base font-semibold text-primary-foreground">
+                Practice ({activeCards.length} cards)
+              </Text>
             </Pressable>
           </View>
         )}

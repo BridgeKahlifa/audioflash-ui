@@ -1,9 +1,10 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,6 +16,7 @@ export default function DecksIndex() {
   const { data: decks, isLoading, error, refetch, isStale } = useDecks();
   const isStaleRef = useRef(false);
   isStaleRef.current = isStale;
+  const [query, setQuery] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -54,8 +56,25 @@ export default function DecksIndex() {
           </Pressable>
         </View>
 
+        {/* Search */}
+        <View className="px-6 pb-3">
+          <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-11 gap-2">
+            <Ionicons name="search" size={16} color="#A0A0A0" />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search decks…"
+              placeholderTextColor="#A0A0A0"
+              className="flex-1 text-foreground text-base"
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+              autoCorrect={false}
+            />
+          </View>
+        </View>
+
         <ScrollView
-          className="flex-1 px-6 pt-4"
+          className="flex-1 px-6"
           contentContainerStyle={{ paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
         >
@@ -98,7 +117,12 @@ export default function DecksIndex() {
             </View>
           ) : (
             <View className="gap-3">
-              {decks.map((deck) => (
+              {(query.trim()
+                ? decks.filter((d) =>
+                    `${d.name} ${d.description ?? ""}`.toLowerCase().includes(query.toLowerCase()),
+                  )
+                : decks
+              ).map((deck) => (
                 <Pressable
                   key={deck.id}
                   onPress={() =>
@@ -138,6 +162,17 @@ export default function DecksIndex() {
                   <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
                 </Pressable>
               ))}
+              {query.trim() &&
+                decks.filter((d) =>
+                  `${d.name} ${d.description ?? ""}`.toLowerCase().includes(query.toLowerCase()),
+                ).length === 0 && (
+                <View className="items-center py-10 gap-2">
+                  <Ionicons name="search" size={28} color="#A0A0A0" />
+                  <Text className="text-muted text-sm text-center">
+                    No decks match "{query}"
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </ScrollView>

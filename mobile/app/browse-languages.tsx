@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ScrollView, ActivityIndicator, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,6 +17,7 @@ export default function BrowseLanguages() {
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     fetchLanguages()
@@ -82,8 +83,24 @@ export default function BrowseLanguages() {
           </View>
         </View>
 
+        <View className="px-6 pt-3 pb-2">
+          <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-11 gap-2">
+            <Ionicons name="search" size={16} color="#A0A0A0" />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search languages…"
+              placeholderTextColor="#A0A0A0"
+              className="flex-1 text-foreground text-base"
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+              autoCorrect={false}
+            />
+          </View>
+        </View>
+
         <ScrollView
-          className="flex-1 px-6 pt-4"
+          className="flex-1 px-6 pt-2"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 16 }}
         >
@@ -93,7 +110,12 @@ export default function BrowseLanguages() {
             </View>
           ) : (
             <View className="gap-3">
-              {languages.map((language) => {
+              {(query.trim()
+                ? languages.filter((l) =>
+                    l.language.toLowerCase().includes(query.toLowerCase()),
+                  )
+                : languages
+              ).map((language) => {
                 const isSelected = selectedLanguage === language.id;
                 const available = !language.language.toLowerCase().includes("coming soon");
                 return (
@@ -125,6 +147,17 @@ export default function BrowseLanguages() {
                   </Pressable>
                 );
               })}
+              {query.trim() &&
+                languages.filter((l) =>
+                  l.language.toLowerCase().includes(query.toLowerCase()),
+                ).length === 0 && (
+                <View className="items-center py-10 gap-2">
+                  <Ionicons name="search" size={28} color="#A0A0A0" />
+                  <Text className="text-muted text-sm text-center">
+                    No languages match "{query}"
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </ScrollView>
