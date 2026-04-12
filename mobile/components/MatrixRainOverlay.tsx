@@ -55,7 +55,7 @@ export function MatrixRainOverlay({ enabled }: { enabled: boolean }) {
           drops[index] = 0;
         }
 
-        drops[index] += 1;
+        drops[index] += 0.30;
       }
 
       animationFrame = window.requestAnimationFrame(draw);
