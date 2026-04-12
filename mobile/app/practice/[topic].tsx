@@ -24,6 +24,12 @@ import {
   DEFAULT_FLASHCARD_DISPLAY_MODE,
   normalizeFlashcardDisplayMode,
 } from "../../lib/flashcard-display-mode";
+import {
+  DEFAULT_TRADITIONAL_FLASHCARD_FRONT,
+  normalizeTraditionalFlashcardFront,
+  type TraditionalFlashcardFront,
+} from "../../lib/traditional-flashcard-front";
+import { getLessonTraditionalFlashcardFront } from "../../lib/lesson-card-preferences";
 
 export default function FlashcardPractice() {
   const insets = useSafeAreaInsets();
@@ -43,6 +49,7 @@ export default function FlashcardPractice() {
     initialCurrentIndex,
     lessonStatus,
     displayMode: displayModeParam,
+    traditionalFront: traditionalFrontParam,
   } = useLocalSearchParams<{
     topic: string;
     topicTitle?: string;
@@ -59,6 +66,7 @@ export default function FlashcardPractice() {
     initialCurrentIndex?: string;
     lessonStatus?: string;
     displayMode?: string;
+    traditionalFront?: string;
   }>();
 
   const { session } = useAuth();
@@ -102,6 +110,9 @@ export default function FlashcardPractice() {
     DEFAULT_FLASHCARD_DISPLAY_MODE,
   );
   const [displayModeResolved, setDisplayModeResolved] = useState(false);
+  const [traditionalFront, setTraditionalFront] = useState<TraditionalFlashcardFront>(
+    DEFAULT_TRADITIONAL_FLASHCARD_FRONT,
+  );
   const [selectedConfidence, setSelectedConfidence] = useState<number | null>(null);
   const [audioPlayCount, setAudioPlayCount] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
@@ -162,6 +173,10 @@ export default function FlashcardPractice() {
               (await getLessonDisplayMode(lessonSessionId)) ??
               DEFAULT_FLASHCARD_DISPLAY_MODE,
           );
+          const resolvedTraditionalFront = normalizeTraditionalFlashcardFront(
+            traditionalFrontParam ??
+              (await getLessonTraditionalFlashcardFront(lessonSessionId)),
+          );
           const flashcardsById = new Map(
             sessionFlashcards.map((card) => [String(card.id), card]),
           );
@@ -177,6 +192,7 @@ export default function FlashcardPractice() {
           }));
 
           setDisplayMode(resolvedDisplayMode);
+          setTraditionalFront(resolvedTraditionalFront);
           setDisplayModeResolved(true);
           setCards(mappedCards);
           setResolvedActivityId(lessonSession.activity_id ?? lessonSession.session_id);
@@ -222,8 +238,13 @@ export default function FlashcardPractice() {
           (lessonSessionId ? (await getLessonDisplayMode(lessonSessionId)) : null) ??
           DEFAULT_FLASHCARD_DISPLAY_MODE,
       );
+      const resolvedTraditionalFront = normalizeTraditionalFlashcardFront(
+        traditionalFrontParam ??
+          (lessonSessionId ? await getLessonTraditionalFlashcardFront(lessonSessionId) : null),
+      );
 
       setDisplayMode(resolvedDisplayMode);
+      setTraditionalFront(resolvedTraditionalFront);
       setDisplayModeResolved(true);
 
       const stored = await getCurrentCards(topic);
@@ -257,6 +278,7 @@ export default function FlashcardPractice() {
     lessonStatus,
     reviewId,
     session?.access_token,
+    traditionalFrontParam,
     topic,
     topicTitle,
   ]);
@@ -460,6 +482,9 @@ export default function FlashcardPractice() {
     );
   }
 
+  const traditionalPromptText =
+    traditionalFront === "target" ? currentCard.sourceText : currentCard.translation;
+
   return (
     <>
       <MatrixRainOverlay enabled={showMatrixRain} />
@@ -544,7 +569,7 @@ export default function FlashcardPractice() {
                     className="text-4xl text-foreground text-center"
                     style={{ alignSelf: "stretch", color: palette.foreground }}
                   >
-                    {currentCard.translation}
+                    {traditionalPromptText}
                   </Text>
                 </Pressable>
               ) : (

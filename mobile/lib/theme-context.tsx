@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Platform, View } from "react-native";
+import { Platform, Text, TextInput, View } from "react-native";
 import { vars } from "nativewind";
 import { getSettings, setSettings } from "./storage";
 
@@ -38,6 +38,33 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
   const [matrixMode, setMatrixModeState] = useState(true);
+
+  useEffect(() => {
+    const matrixFontFamily = Platform.select({
+      ios: "Courier",
+      android: "monospace",
+      default: "monospace",
+    });
+
+    const textDefaults = Text.defaultProps ?? {};
+    const textInputDefaults = TextInput.defaultProps ?? {};
+
+    Text.defaultProps = {
+      ...textDefaults,
+      style: [
+        textDefaults.style,
+        matrixMode && matrixFontFamily ? { fontFamily: matrixFontFamily } : null,
+      ],
+    };
+
+    TextInput.defaultProps = {
+      ...textInputDefaults,
+      style: [
+        textInputDefaults.style,
+        matrixMode && matrixFontFamily ? { fontFamily: matrixFontFamily } : null,
+      ],
+    };
+  }, [matrixMode]);
 
   useEffect(() => {
     let mounted = true;

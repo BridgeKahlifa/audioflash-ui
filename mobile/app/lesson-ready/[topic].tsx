@@ -11,6 +11,11 @@ import { buildErrorProperties, useAnalytics } from "../../lib/analytics";
 import { LanguageFlag } from "../../components/LanguageFlag";
 import { useCategories } from "../../lib/queries";
 import { DEFAULT_FLASHCARD_DISPLAY_MODE } from "../../lib/flashcard-display-mode";
+import {
+  DEFAULT_TRADITIONAL_FLASHCARD_FRONT,
+  type TraditionalFlashcardFront,
+} from "../../lib/traditional-flashcard-front";
+import { setLessonTraditionalFlashcardFront } from "../../lib/lesson-card-preferences";
 
 const DEFAULT_CARD_COUNT = 5;
 const MIN_CARD_COUNT = 5;
@@ -73,6 +78,9 @@ export default function LessonReady() {
   const [shuffleEnabled, setShuffleEnabled] = useState(false);
   const [displayMode, setDisplayMode] = useState<FlashcardDisplayMode>(
     DEFAULT_FLASHCARD_DISPLAY_MODE,
+  );
+  const [traditionalFront, setTraditionalFront] = useState<TraditionalFlashcardFront>(
+    DEFAULT_TRADITIONAL_FLASHCARD_FRONT,
   );
   const [cardCount, setCardCount] = useState(profile?.cards_per_session ?? DEFAULT_CARD_COUNT);
   const startLockRef = useRef(false);
@@ -200,6 +208,7 @@ export default function LessonReady() {
       await Promise.all([
         setCurrentCards(topic, mappedCards),
         setLessonDisplayMode(lessonSession.session_id, displayMode),
+        setLessonTraditionalFlashcardFront(lessonSession.session_id, traditionalFront),
       ]);
 
       posthog?.capture("lesson_started", {
@@ -210,6 +219,7 @@ export default function LessonReady() {
         requested_card_count: cardCount,
         shuffle: shuffleEnabled,
         display_mode: displayMode,
+        traditional_front: traditionalFront,
       });
 
       router.push({
@@ -226,6 +236,7 @@ export default function LessonReady() {
           lessonSessionId: lessonSession.session_id,
           activityId: lessonSession.activity_id ?? lessonSession.session_id,
           displayMode,
+          traditionalFront,
         },
       });
     } catch (error) {
@@ -238,6 +249,7 @@ export default function LessonReady() {
           requested_card_count: cardCount,
           topic,
           display_mode: displayMode,
+          traditional_front: traditionalFront,
         }) as Record<string, string | number | boolean | null>,
       );
       setStatus("error");
@@ -363,45 +375,105 @@ export default function LessonReady() {
 
             <View>
               <Text className="text-base font-medium text-muted mb-3 text-center">Card Style</Text>
-              <Pressable
-                onPress={() =>
-                  setDisplayMode((current) =>
-                    current === "traditional" ? DEFAULT_FLASHCARD_DISPLAY_MODE : "traditional",
-                  )
-                }
-                disabled={starting}
-                className={`rounded-2xl border px-4 py-4 flex-row items-center gap-3 ${
-                  displayMode === "traditional"
-                    ? "bg-accent border-primary"
-                    : "bg-background border-border"
-                }`}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  displayMode === "traditional"
-                    ? "Disable traditional flashcards"
-                    : "Enable traditional flashcards"
-                }
-              >
-                <View
-                  className={`w-6 h-6 rounded-full border items-center justify-center ${
-                    displayMode === "traditional"
-                      ? "bg-primary border-primary"
+              <View className="gap-3">
+                <Pressable
+                  onPress={() => setDisplayMode(DEFAULT_FLASHCARD_DISPLAY_MODE)}
+                  disabled={starting}
+                  className={`rounded-2xl border px-4 py-4 flex-row items-center gap-3 ${
+                    displayMode === DEFAULT_FLASHCARD_DISPLAY_MODE
+                      ? "bg-accent border-primary"
                       : "bg-background border-border"
                   }`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Select audio-only flashcards"
                 >
-                  {displayMode === "traditional" ? (
-                    <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                  ) : null}
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-semibold text-foreground">
-                    Traditional flashcards
+                  <View
+                    className={`w-6 h-6 rounded-full border items-center justify-center ${
+                      displayMode === DEFAULT_FLASHCARD_DISPLAY_MODE
+                        ? "bg-primary border-primary"
+                        : "bg-background border-border"
+                    }`}
+                  >
+                    {displayMode === DEFAULT_FLASHCARD_DISPLAY_MODE ? (
+                      <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                    ) : null}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-base font-semibold text-foreground">
+                      Audio only
+                    </Text>
+                    <Text className="text-sm text-muted mt-1">
+                      Hear the target-language audio first, then reveal the written answer.
+                    </Text>
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setDisplayMode("traditional")}
+                  disabled={starting}
+                  className={`rounded-2xl border px-4 py-4 flex-row items-center gap-3 ${
+                    displayMode === "traditional"
+                      ? "bg-accent border-primary"
+                      : "bg-background border-border"
+                  }`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Select traditional flashcards"
+                >
+                  <View
+                    className={`w-6 h-6 rounded-full border items-center justify-center ${
+                      displayMode === "traditional"
+                        ? "bg-primary border-primary"
+                        : "bg-background border-border"
+                    }`}
+                  >
+                    {displayMode === "traditional" ? (
+                      <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                    ) : null}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-base font-semibold text-foreground">
+                      Traditional flashcards
+                    </Text>
+                    <Text className="text-sm text-muted mt-1">
+                      {traditionalFront === "target"
+                        ? "Show your target-language text first, then reveal the translation."
+                        : "Show your native-language text first, then reveal the target-language card."}
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
+              {displayMode === "traditional" ? (
+                <View className="mt-3 rounded-2xl bg-accent/50 px-3 py-3">
+                  <Text className="text-xs font-medium uppercase tracking-wide text-muted text-center mb-2">
+                    Front Side
                   </Text>
-                  <Text className="text-sm text-muted mt-1">
-                    Show your native-language text first, then reveal the target-language card.
-                  </Text>
+                  <View className="flex-row self-center rounded-full bg-background border border-border p-1">
+                    {(["native", "target"] as const).map((value) => {
+                      const selected = traditionalFront === value;
+                      return (
+                        <Pressable
+                          key={value}
+                          onPress={() => setTraditionalFront(value)}
+                          disabled={starting}
+                          className="rounded-full px-4 py-2"
+                          style={{
+                            backgroundColor: selected ? "#E86A4A" : "transparent",
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Show ${value} language first`}
+                        >
+                          <Text
+                            className="text-sm font-semibold"
+                            style={{ color: selected ? "#FFFFFF" : "#8B6E66" }}
+                          >
+                            {value === "native" ? "Native" : "Target"}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
-              </Pressable>
+              ) : null}
             </View>
 
             <View className="h-px bg-border mt-5 mb-4" />
