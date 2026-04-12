@@ -9,7 +9,6 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthProvider, useAuth } from "../lib/auth-context";
-import { AuthModeBadge } from "../components/AuthModeBadge";
 import { ConfigProvider } from "../lib/config-context";
 import { AppDataProvider, useAppData } from "../lib/app-data-context";
 import { SplashScreen } from "../components/SplashScreen";
@@ -191,6 +190,12 @@ function RootNavigator() {
         <Stack.Screen name="history" options={{ animation: "none" }} />
         <Stack.Screen name="browse-languages" options={{ animation: "none" }} />
         <Stack.Screen name="my-library" options={{ animation: "none" }} />
+        <Stack.Screen name="decks" options={{ animation: "none" }} />
+        <Stack.Screen name="decks/new" options={{ animation: "none" }} />
+        <Stack.Screen name="decks/[id]" options={{ animation: "none" }} />
+        <Stack.Screen name="decks/[id]/edit" options={{ animation: "none" }} />
+        <Stack.Screen name="decks/[id]/add-card" options={{ animation: "none" }} />
+        <Stack.Screen name="decks/[id]/generate" options={{ animation: "none" }} />
       </Stack>
       {effectiveSplashMounted && (
         <SplashScreen visible={showSplash} onHidden={() => setSplashMounted(false)} />
@@ -227,18 +232,18 @@ export default function RootLayout() {
             enableSessionReplay: POSTHOG_ENABLE_SESSION_REPLAY,
             errorTracking: POSTHOG_ENABLE_ERROR_TRACKING
               ? {
-                  autocapture: true,
-                }
+                autocapture: true,
+              }
               : undefined,
             sessionReplayConfig: POSTHOG_ENABLE_SESSION_REPLAY
               ? {
-                  maskAllTextInputs: true,
-                  maskAllImages: true,
-                  maskAllSandboxedViews: true,
-                  captureLog: true,
-                  captureNetworkTelemetry: true,
-                  sampleRate: __DEV__ ? 1 : 0.2,
-                }
+                maskAllTextInputs: true,
+                maskAllImages: true,
+                maskAllSandboxedViews: true,
+                captureLog: true,
+                captureNetworkTelemetry: true,
+                sampleRate: __DEV__ ? 1 : 0.2,
+              }
               : undefined,
           }}
         >
@@ -249,7 +254,6 @@ export default function RootLayout() {
             <ConfigProvider>
               <AuthProvider>
                 <AppDataProvider>
-                  <AuthModeBadge />
                   <RootNavigator />
                 </AppDataProvider>
               </AuthProvider>

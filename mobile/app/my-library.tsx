@@ -95,7 +95,7 @@ export default function MyLibrary() {
             <Text className="text-2xl font-semibold text-foreground tracking-tight">
               My Library
             </Text>
-            <Text className="text-muted text-sm">Your saved lesson packs</Text>
+            <Text className="text-muted text-sm">Your saved lesson decks</Text>
           </View>
         </View>
 
