@@ -12,12 +12,12 @@ import { useAnalytics } from "../../lib/analytics";
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
 
 export default function SignIn() {
-  const { sendOtp, passkeySupported, signInWithPasskey } = useAuth();
+  const { sendOtp, signInWithGoogle } = useAuth();
   const posthog = useAnalytics();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   async function handleContinue() {
     if (!email.trim()) {
@@ -37,15 +37,15 @@ export default function SignIn() {
     router.push({ pathname: "/(auth)/verify", params: { email: email.trim() } });
   }
 
-  async function handlePasskey() {
+  async function handleGoogle() {
     setError(null);
-    setPasskeyLoading(true);
-    posthog?.capture("auth_passkey_sign_in_started");
-    const { error } = await signInWithPasskey();
-    setPasskeyLoading(false);
+    setGoogleLoading(true);
+    posthog?.capture("auth_google_sign_in_started");
+    const { error } = await signInWithGoogle();
+    setGoogleLoading(false);
     if (error) {
       setError(error);
-      posthog?.capture("auth_passkey_sign_in_failed");
+      posthog?.capture("auth_google_sign_in_failed");
     }
   }
 
@@ -70,8 +70,28 @@ export default function SignIn() {
               AudioFlash
             </Text>
             <Text className="text-muted mb-10">
-              Enter your email to sign in or create a free account
+              Continue with Gmail or use your email to sign in or create a free account
             </Text>
+
+            <Pressable
+              onPress={handleGoogle}
+              disabled={googleLoading}
+              className="py-4 rounded-2xl items-center bg-card border border-border flex-row justify-center gap-2 mb-4"
+            >
+              {googleLoading
+                ? <ActivityIndicator color="#1A1A1A" />
+                : <>
+                    <Ionicons name="logo-google" size={20} color="#1A1A1A" />
+                    <Text className="text-foreground font-medium">Continue with Gmail</Text>
+                  </>
+              }
+            </Pressable>
+
+            <View className="flex-row items-center gap-3 mb-4">
+              <View className="flex-1 h-px bg-border" />
+              <Text className="text-muted text-sm">or</Text>
+              <View className="flex-1 h-px bg-border" />
+            </View>
 
             <TextInput
               className="bg-card border border-border rounded-2xl px-4 py-4 text-foreground mb-3"
@@ -108,7 +128,7 @@ export default function SignIn() {
               }
             </Pressable>
 
-            {passkeySupported && (
+            {/* {passkeySupported && (
               <>
                 <View className="flex-row items-center gap-3 mb-4">
                   <View className="flex-1 h-px bg-border" />
@@ -130,7 +150,7 @@ export default function SignIn() {
                   }
                 </Pressable>
               </>
-            )}
+            )} */}
           </View>
 
           <Text className="text-center text-xs text-muted pb-4">

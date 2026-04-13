@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
+import * as ExpoLinking from "expo-linking";
+import { Linking as RNLinking } from "react-native";
 import { supabase } from "./supabase";
 import {
   ApiProfile,
@@ -27,6 +29,8 @@ interface AuthContextValue {
   // OTP flow
   sendOtp: (email: string) => Promise<{ error: string | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
+  completeOAuthRedirect: (url: string) => Promise<{ handled: boolean; error: string | null }>;
   // Passkey flow
   passkeySupported: boolean;
   registerPasskey: () => Promise<{ error: string | null }>;
@@ -42,6 +46,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const DEV_USER_ID = process.env.EXPO_PUBLIC_DEV_USER_ID?.trim() || "dev-user";
 const DEV_USER_EMAIL =
   process.env.EXPO_PUBLIC_DEV_USER_EMAIL?.trim() || "dev@audioflash.local";
+const AUTH_CALLBACK_PATH = "auth/callback";
 
 type PasskeyModule = typeof import("react-native-passkey").Passkey;
 type PasskeyCreateResult = import("react-native-passkey").PasskeyCreateResult;
@@ -110,6 +115,57 @@ function getEmailAuthErrorMessage(error: unknown, email?: string): string {
   return "We couldn't send a sign-in code right now. Please try again.";
 }
 
+function getOAuthErrorMessage(error: unknown): string {
+  const raw = typeof (error as any)?.message === "string"
+    ? (error as any).message
+    : typeof error === "string"
+      ? error
+      : "";
+  const message = raw.toLowerCase();
+
+  if (message.includes("network") || message.includes("failed to fetch") || message.includes("offline")) {
+    return "We couldn't reach Google sign-in. Check your connection and try again.";
+  }
+  if (message.includes("access_denied") || message.includes("cancel")) {
+    return "Google sign-in was canceled.";
+  }
+
+  return "We couldn't sign you in with Google right now. Please try again.";
+}
+
+function getOAuthCallbackPath(url: string): string {
+  try {
+    const parsedUrl = new URL(url);
+    const host = parsedUrl.host.replace(/^\/+|\/+$/g, "");
+    const pathname = parsedUrl.pathname.replace(/^\/+|\/+$/g, "");
+    return [host, pathname].filter(Boolean).join("/");
+  } catch {
+    const parsed = ExpoLinking.parse(url);
+    return (parsed.path ?? "").replace(/^\/+|\/+$/g, "");
+  }
+}
+
+function getOAuthCallbackParams(url: string): Record<string, string> {
+  try {
+    const parsedUrl = new URL(url);
+    const params = Object.fromEntries(parsedUrl.searchParams.entries());
+    const hash = parsedUrl.hash.startsWith("#") ? parsedUrl.hash.slice(1) : parsedUrl.hash;
+    const hashParams = new URLSearchParams(hash);
+    for (const [key, value] of hashParams.entries()) {
+      params[key] = value;
+    }
+    return params;
+  } catch {
+    const parsed = ExpoLinking.parse(url);
+    return Object.entries(parsed.queryParams ?? {}).reduce<Record<string, string>>((acc, [key, value]) => {
+      if (typeof value === "string") {
+        acc[key] = value;
+      }
+      return acc;
+    }, {});
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -142,6 +198,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (profile) syncSettingsFromProfile(profile);
   }, [profile]);
 
+  async function ensureProfileRecord(user: User | null) {
+    if (!user) return;
+    await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
+  }
+
+  async function completeOAuthRedirect(url: string): Promise<{ handled: boolean; error: string | null }> {
+    const path = getOAuthCallbackPath(url);
+    const params = getOAuthCallbackParams(url);
+    const code = params.code ?? null;
+    const accessToken = params.access_token ?? null;
+    const refreshToken = params.refresh_token ?? null;
+    const authError = params.error_description ?? params.error ?? null;
+
+    if (path !== AUTH_CALLBACK_PATH && !code && !accessToken && !refreshToken && !authError) {
+      return { handled: false, error: null };
+    }
+
+    if (authError) {
+      return { handled: true, error: getOAuthErrorMessage(authError) };
+    }
+
+    if (!code) {
+      if (!accessToken || !refreshToken) {
+        return { handled: true, error: "Google sign-in did not return a valid session." };
+      }
+
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) return { handled: true, error: getOAuthErrorMessage(error) };
+
+      const { data: { user } } = await supabase.auth.getUser();
+      await ensureProfileRecord(user);
+      return { handled: true, error: null };
+    }
+
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) return { handled: true, error: getOAuthErrorMessage(error) };
+
+    const { data: { user } } = await supabase.auth.getUser();
+    await ensureProfileRecord(user);
+    return { handled: true, error: null };
+  }
+
   // ── Auth setup ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (DEV_AUTH_MODE) {
@@ -156,14 +257,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      if (event === "SIGNED_IN" && session?.user) {
+        void ensureProfileRecord(session.user);
+      }
     });
 
     const passkey = getPasskeyModule();
     setPasskeySupported(passkey?.isSupported?.() ?? false);
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // ── Auth methods ───────────────────────────────────────────────────────────
@@ -186,10 +292,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) return { error: error.message };
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
-    }
+    await ensureProfileRecord(user);
     return { error: null };
+  }
+
+  async function signInWithGoogle() {
+    if (DEV_AUTH_MODE) return { error: "Google sign-in is disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
+
+    const redirectTo = ExpoLinking.createURL(AUTH_CALLBACK_PATH);
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+        queryParams: {
+          access_type: "offline",
+          prompt: "select_account",
+        },
+      },
+    });
+
+    if (error) return { error: getOAuthErrorMessage(error) };
+    if (!data?.url) return { error: "We couldn't start Google sign-in right now. Please try again." };
+
+    try {
+      await RNLinking.openURL(data.url);
+      return { error: null };
+    } catch (openError) {
+      return { error: getOAuthErrorMessage(openError) };
+    }
   }
 
   async function registerPasskey() {
@@ -326,6 +457,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       deleteAccount,
       sendOtp,
       verifyOtp,
+      signInWithGoogle,
+      completeOAuthRedirect,
       passkeySupported,
       registerPasskey,
       signInWithPasskey,
