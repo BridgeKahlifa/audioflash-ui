@@ -149,7 +149,7 @@ function RootNavigator() {
   useEffect(() => {
     if (loading || profilePending) return;
 
-    const inAuthGroup = segments[0] === "(auth)";
+    const inAuthGroup = segments[0] === "(auth)" || segments[0] === "auth";
     const inOnboardingGroup = segments[0] === "(onboarding)";
     const needsOnboarding = profile != null && !profile.onboarding_completed;
 
@@ -182,6 +182,7 @@ function RootNavigator() {
     <View style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false, animation: "none" }}>
         <Stack.Screen name="(auth)" />
+        <Stack.Screen name="auth/callback" />
         <Stack.Screen name="(onboarding)" />
         <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
         <Stack.Screen name="generate" options={{ animation: "none" }} />
