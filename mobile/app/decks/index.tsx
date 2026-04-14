@@ -11,12 +11,32 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useDecks } from "../../lib/queries";
+import { useAppTheme } from "../../lib/theme-context";
 
 export default function DecksIndex() {
   const { data: decks, isLoading, error, refetch, isStale } = useDecks();
+  const { matrixMode } = useAppTheme();
   const isStaleRef = useRef(false);
   isStaleRef.current = isStale;
   const [query, setQuery] = useState("");
+  const backButtonPalette = matrixMode
+    ? {
+        background: "#202020",
+        icon: "#ff8c42",
+      }
+    : {
+        background: "#FBE7DE",
+        icon: "#1A1A1A",
+      };
+
+  function handleBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/(tabs)");
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -30,10 +50,11 @@ export default function DecksIndex() {
         {/* Header */}
         <View className="px-6 pt-6 pb-2 flex-row items-center gap-3">
           <Pressable
-            onPress={() => router.back()}
-            className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+            onPress={handleBack}
+            className="w-10 h-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: backButtonPalette.background }}
           >
-            <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+            <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
           </Pressable>
           <View className="flex-1">
             <Text className="text-2xl font-semibold text-foreground tracking-tight">
