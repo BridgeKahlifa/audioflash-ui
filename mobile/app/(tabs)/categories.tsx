@@ -39,7 +39,6 @@ export default function Categories() {
 
   const [savingLanguage, setSavingLanguage] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [switchingLanguage, setSwitchingLanguage] = useState(false);
   const [resolvedLanguage, setResolvedLanguage] = useState<ApiLanguage | null>(null);
   const [topicQuery, setTopicQuery] = useState("");
@@ -109,23 +108,21 @@ export default function Categories() {
     setSwitchingLanguage(false);
   }
 
-  function handleStartLesson() {
-    if (!selectedTopic || !resolvedLanguage) return;
-    const topic = topics.find((item) => item.id === selectedTopic);
+  function handleBrowseCategory(topic: Topic) {
+    if (!resolvedLanguage) return;
 
     router.push({
-      pathname: "/lesson-ready/[topic]",
+      pathname: "/categories/[id]",
       params: {
-        topic: selectedTopic,
-        topicTitle: topic?.title ?? selectedTopic,
+        id: topic.apiCategoryId ?? "",
+        topic: topic.id,
+        title: topic.title,
         language: resolvedLanguage.language.toLowerCase().replace(/\s+/g, "-"),
         languageLabel: resolvedLanguage.language,
         apiLanguageId: String(resolvedLanguage.id),
-        apiLoaded: "true",
-        apiCategoryId: topic?.apiCategoryId ?? "",
-        supportedDifficulties: (topic?.supportedDifficulties ?? []).join(","),
+        supportedDifficulties: (topic.supportedDifficulties ?? []).join(","),
         availableCardCount:
-          typeof topic?.availableCardCount === "number"
+          typeof topic.availableCardCount === "number"
             ? String(topic.availableCardCount)
             : "",
       },
@@ -159,14 +156,14 @@ export default function Categories() {
           </View>
 
           <View className="px-6 pb-3">
-            <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-11 gap-2">
+            <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 py-3 gap-2">
               <Ionicons name="search" size={16} color="#A0A0A0" />
               <TextInput
                 value={langQuery}
                 onChangeText={setLangQuery}
                 placeholder="Search languages…"
                 placeholderTextColor="#A0A0A0"
-                className="flex-1 text-foreground text-base"
+                className="flex-1 text-foreground" style={{ fontSize: 16 }}
                 returnKeyType="search"
                 clearButtonMode="while-editing"
                 autoCorrect={false}
@@ -276,14 +273,14 @@ export default function Categories() {
         </View>
 
         <View className="px-6 pb-3">
-          <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-11 gap-2">
+          <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 py-3 gap-2">
             <Ionicons name="search" size={16} color="#A0A0A0" />
             <TextInput
               value={topicQuery}
               onChangeText={setTopicQuery}
               placeholder="Search categories…"
               placeholderTextColor="#A0A0A0"
-              className="flex-1 text-foreground text-base"
+              className="flex-1 text-foreground" style={{ fontSize: 16 }}
               returnKeyType="search"
               clearButtonMode="while-editing"
               autoCorrect={false}
@@ -319,12 +316,11 @@ export default function Categories() {
                 )
               : topics
             ).map((topic) => {
-              const isSelected = selectedTopic === topic.id;
               return (
                 <Pressable
                   key={topic.id}
-                  onPress={() => setSelectedTopic(topic.id)}
-                  className={`rounded-2xl p-4 border-2 ${isSelected ? "bg-accent border-primary" : "bg-card border-transparent"}`}
+                  onPress={() => handleBrowseCategory(topic)}
+                  className="rounded-2xl p-4 border-2 bg-card border-transparent"
                   style={{
                     width: "47.5%",
                     shadowColor: palette.cardShadow,
@@ -335,9 +331,9 @@ export default function Categories() {
                   }}
                 >
                   <View
-                    className={`w-10 h-10 rounded-xl items-center justify-center mb-3 ${isSelected ? "bg-primary" : "bg-secondary"}`}
+                    className="w-10 h-10 rounded-xl items-center justify-center mb-3"
                     style={{
-                      backgroundColor: isSelected ? palette.iconSelectedContainer : palette.iconContainer,
+                      backgroundColor: palette.iconContainer,
                       borderWidth: matrixMode ? 1 : 0,
                       borderColor: matrixMode ? "rgba(255, 107, 74, 0.18)" : "transparent",
                     }}
@@ -345,10 +341,11 @@ export default function Categories() {
                     <Ionicons
                       name={topic.icon}
                       size={20}
-                      color={isSelected ? palette.iconSelectedColor : palette.iconColor}
+                      color={palette.iconColor}
                     />
                   </View>
                   <Text className="text-foreground font-medium mb-0.5" style={{ fontFamily }}>{topic.title}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={palette.chevron} style={{ position: "absolute", top: 16, right: 12 }} />
                 </Pressable>
               );
             })}
@@ -366,21 +363,6 @@ export default function Categories() {
           </View>
         </ScrollView>
 
-        <View className="p-6 pt-3">
-          <Pressable
-            onPress={handleStartLesson}
-            disabled={!selectedTopic}
-            className={`py-4 rounded-2xl items-center ${selectedTopic ? "bg-primary" : "bg-secondary"}`}
-            style={selectedTopic ? { shadowColor: "#FF6B4A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 } : undefined}
-          >
-            <Text
-              className={`text-base font-semibold ${selectedTopic ? "text-primary-foreground" : "text-muted"}`}
-              style={{ fontFamily }}
-            >
-              Start Lesson
-            </Text>
-          </Pressable>
-        </View>
       </View>
     </SafeAreaView>
   );

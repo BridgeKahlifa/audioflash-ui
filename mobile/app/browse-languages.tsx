@@ -84,14 +84,14 @@ export default function BrowseLanguages() {
         </View>
 
         <View className="px-6 pt-3 pb-2">
-          <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-11 gap-2">
+          <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 py-3 gap-2">
             <Ionicons name="search" size={16} color="#A0A0A0" />
             <TextInput
               value={query}
               onChangeText={setQuery}
               placeholder="Search languages…"
               placeholderTextColor="#A0A0A0"
-              className="flex-1 text-foreground text-base"
+              className="flex-1 text-foreground" style={{ fontSize: 16 }}
               returnKeyType="search"
               clearButtonMode="while-editing"
               autoCorrect={false}
