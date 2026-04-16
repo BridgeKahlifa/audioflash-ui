@@ -14,7 +14,7 @@ const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
 export default function Home() {
   const { profile } = useAuth();
   const posthog = useAnalytics();
-  const { matrixMode } = useAppTheme();
+  const { matrixMode, fontFamily } = useAppTheme();
   const {
     data: srsQueue,
     refetch: refetchSRS,
@@ -127,24 +127,24 @@ export default function Home() {
               style={{ width: 88, height: 88, marginBottom: 20, alignSelf: "center" }}
               resizeMode="contain"
             />
-            <Text className="text-3xl font-semibold text-foreground tracking-tight">
+            <Text className="text-3xl font-semibold text-foreground tracking-tight" style={{ fontFamily }}>
               {firstName ? `${greeting}, ${firstName}` : greeting}
             </Text>
             {profile?.streak_count != null && profile.streak_count > 0 ? (
               <View className="flex-row items-center mt-1.5 gap-1">
                 <Text style={{ fontSize: 14 }}>🔥</Text>
-                <Text className="text-muted text-sm">
+                <Text className="text-muted text-sm" style={{ fontFamily }}>
                   {profile.streak_count} day streak
                 </Text>
               </View>
             ) : (
-              <Text className="text-muted mt-1 text-sm">Start practicing to build your streak</Text>
+              <Text className="text-muted mt-1 text-sm" style={{ fontFamily }}>Start practicing to build your streak</Text>
             )}
           </View>
 
           {loadError ? (
             <View className="mx-6 mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
-              <Text className="text-red-600 text-sm">{loadError}</Text>
+              <Text className="text-red-600 text-sm" style={{ fontFamily }}>{loadError}</Text>
             </View>
           ) : null}
 
@@ -165,10 +165,10 @@ export default function Home() {
                 <Ionicons name="refresh-circle" size={22} color="#FFFFFF" />
               </View>
               <View className="flex-1">
-                <Text className="text-white font-semibold">
+                <Text className="text-white font-semibold" style={{ fontFamily }}>
                   {srsQueue.due_count} card{srsQueue.due_count !== 1 ? "s" : ""} due for review
                 </Text>
-                <Text className="text-white/75 text-xs mt-0.5">Tap to start your review session</Text>
+                <Text className="text-white/75 text-xs mt-0.5" style={{ fontFamily }}>Tap to start your review session</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
             </Pressable>
@@ -176,7 +176,7 @@ export default function Home() {
 
           {/* Quick actions */}
           <View className="px-6 mb-2">
-            <Text className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
+            <Text className="text-xs font-semibold text-muted uppercase tracking-wide mb-3" style={{ fontFamily }}>
               Start Learning
             </Text>
           </View>
@@ -203,8 +203,8 @@ export default function Home() {
                   )}
                 </View>
                 <View className="flex-1">
-                  <Text className="text-white font-semibold text-base">Continue Lesson</Text>
-                  <Text className="text-white/75 text-sm mt-0.5">
+                  <Text className="text-white font-semibold text-base" style={{ fontFamily }}>Continue Lesson</Text>
+                  <Text className="text-white/75 text-sm mt-0.5" style={{ fontFamily }}>
                     {inProgressLessonName ?? "Resume where you left off"}
                   </Text>
                 </View>
@@ -231,8 +231,8 @@ export default function Home() {
                 <Ionicons name="sparkles" size={24} color={quickActionPalette.iconColor} />
               </View>
               <View className="flex-1">
-                <Text className="text-foreground font-semibold text-base">Generate a Lesson</Text>
-                <Text className="text-muted text-sm mt-0.5">
+                <Text className="text-foreground font-semibold text-base" style={{ fontFamily }}>Generate a Lesson</Text>
+                <Text className="text-muted text-sm mt-0.5" style={{ fontFamily }}>
                   Type any topic — AI builds cards for you
                 </Text>
               </View>
@@ -258,8 +258,8 @@ export default function Home() {
                 <Ionicons name="grid" size={24} color={quickActionPalette.iconColor} />
               </View>
               <View className="flex-1">
-                <Text className="text-foreground font-semibold text-base">Browse Categories</Text>
-                <Text className="text-muted text-sm mt-0.5">Pick a language and topic to practice</Text>
+                <Text className="text-foreground font-semibold text-base" style={{ fontFamily }}>Browse Categories</Text>
+                <Text className="text-muted text-sm mt-0.5" style={{ fontFamily }}>Pick a language and topic to practice</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
             </Pressable>
@@ -283,8 +283,8 @@ export default function Home() {
                 <Ionicons name="bookmark" size={24} color={quickActionPalette.iconColor} />
               </View>
               <View className="flex-1">
-                <Text className="text-foreground font-semibold text-base">My Library</Text>
-                <Text className="text-muted text-sm mt-0.5">
+                <Text className="text-foreground font-semibold text-base" style={{ fontFamily }}>My Library</Text>
+                <Text className="text-muted text-sm mt-0.5" style={{ fontFamily }}>
                   Saved lessons and AI-generated decks
                 </Text>
               </View>
@@ -310,8 +310,8 @@ export default function Home() {
                 <Ionicons name="albums" size={24} color={quickActionPalette.iconColor} />
               </View>
               <View className="flex-1">
-                <Text className="text-foreground font-semibold text-base">My Decks</Text>
-                <Text className="text-muted text-sm mt-0.5">
+                <Text className="text-foreground font-semibold text-base" style={{ fontFamily }}>My Decks</Text>
+                <Text className="text-muted text-sm mt-0.5" style={{ fontFamily }}>
                   Custom flashcard decks you've built
                 </Text>
               </View>

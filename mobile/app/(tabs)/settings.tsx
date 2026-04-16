@@ -29,7 +29,8 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function SectionLabel({ children }: { children: string }) {
-  return <Text className="text-xs text-muted font-medium uppercase tracking-wide mb-2 mt-5 px-1">{children}</Text>;
+  const { fontFamily } = useAppTheme();
+  return <Text className="text-xs text-muted font-medium uppercase tracking-wide mb-2 mt-5 px-1" style={{ fontFamily }}>{children}</Text>;
 }
 
 export default function SettingsScreen() {
@@ -37,7 +38,7 @@ export default function SettingsScreen() {
   const { data: languages = [] } = useLanguages();
   const posthog = useAnalytics();
   const navigation = useNavigation();
-  const { matrixMode, setMatrixMode } = useAppTheme();
+  const { matrixMode, setMatrixMode, fontFamily } = useAppTheme();
   const [errorMessage, setErrorMessage] = useState("");
 
   const [localSettings, setLocalSettings] = useState<ApiUpdateProfile>({
@@ -328,13 +329,13 @@ export default function SettingsScreen() {
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
         <View className="px-6 pt-6 pb-4">
-          <Text className="text-2xl font-semibold text-foreground">Settings</Text>
+          <Text className="text-2xl font-semibold text-foreground" style={{ fontFamily }}>Settings</Text>
         </View>
 
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 32 }}>
           {errorMessage ? (
             <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
-              <Text className="text-red-600 text-sm">{errorMessage}</Text>
+              <Text className="text-red-600 text-sm" style={{ fontFamily }}>{errorMessage}</Text>
             </View>
           ) : null}
 
@@ -342,7 +343,7 @@ export default function SettingsScreen() {
           <SectionLabel>Profile</SectionLabel>
           <View className="bg-card border border-border rounded-2xl p-4 gap-3">
             <View>
-              <Text className="text-xs text-muted mb-1">Name</Text>
+              <Text className="text-xs text-muted mb-1" style={{ fontFamily }}>Name</Text>
               <View className="relative">
                 <TextInput
                   value={name}
@@ -362,7 +363,7 @@ export default function SettingsScreen() {
             </View>
 
             <View className="border-t border-border pt-3">
-              <Text className="text-xs text-muted mb-1">Email</Text>
+              <Text className="text-xs text-muted mb-1" style={{ fontFamily }}>Email</Text>
               <View className="relative">
                 <TextInput
                   value={email}
@@ -383,10 +384,10 @@ export default function SettingsScreen() {
                 </View>
               </View>
               {emailStatus === "sent" && (
-                <Text className="text-xs text-muted mt-1.5">Check your inbox to confirm the new email.</Text>
+                <Text className="text-xs text-muted mt-1.5" style={{ fontFamily }}>Check your inbox to confirm the new email.</Text>
               )}
               {isDevAuth && (
-                <Text className="text-xs text-muted mt-1.5">
+                <Text className="text-xs text-muted mt-1.5" style={{ fontFamily }}>
                   Dev auth mode is active, so account email changes are disabled.
                 </Text>
               )}
@@ -401,8 +402,8 @@ export default function SettingsScreen() {
               className="flex-row items-center justify-between p-4"
             >
               <View className="flex-1 mr-3">
-                <Text className="text-xs text-muted mb-0.5">Learning</Text>
-                <Text className="text-foreground font-medium" numberOfLines={2}>{targetLanguageLabel}</Text>
+                <Text className="text-xs text-muted mb-0.5" style={{ fontFamily }}>Learning</Text>
+                <Text className="text-foreground font-medium" numberOfLines={2} style={{ fontFamily }}>{targetLanguageLabel}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </Pressable>
@@ -412,7 +413,7 @@ export default function SettingsScreen() {
           <SectionLabel>Practice</SectionLabel>
           <View className="bg-card border border-border rounded-2xl p-5 gap-5">
             <View>
-              <Text className="text-foreground font-medium mb-3">Cards Per Session</Text>
+              <Text className="text-foreground font-medium mb-3" style={{ fontFamily }}>Cards Per Session</Text>
               <View className="flex-row items-center justify-between">
                 <Pressable
                   onPress={() => setLocalSettings((p) => ({ ...p, cards_per_session: clamp((p.cards_per_session ?? 20) - 5, 5, 50) }))}
@@ -420,7 +421,7 @@ export default function SettingsScreen() {
                 >
                   <Ionicons name="remove" size={20} color="#1A1A1A" />
                 </Pressable>
-                <Text className="text-2xl font-semibold text-foreground">{localSettings.cards_per_session}</Text>
+                <Text className="text-2xl font-semibold text-foreground" style={{ fontFamily }}>{localSettings.cards_per_session}</Text>
                 <Pressable
                   onPress={() => setLocalSettings((p) => ({ ...p, cards_per_session: clamp((p.cards_per_session ?? 20) + 5, 5, 50) }))}
                   className="w-10 h-10 rounded-full bg-secondary items-center justify-center"
@@ -431,7 +432,7 @@ export default function SettingsScreen() {
             </View>
 
             <View className="border-t border-border pt-5">
-              <Text className="text-foreground font-medium mb-3">Default Lesson Mode</Text>
+              <Text className="text-foreground font-medium mb-3" style={{ fontFamily }}>Default Lesson Mode</Text>
               <View className="gap-2">
                 <Pressable
                   onPress={() => void saveDefaultDisplayMode("audio-first")}
@@ -451,8 +452,8 @@ export default function SettingsScreen() {
                     ) : null}
                   </View>
                   <View className="flex-1">
-                    <Text className="text-foreground font-medium text-sm">Audio only</Text>
-                    <Text className="text-muted text-xs mt-0.5">
+                    <Text className="text-foreground font-medium text-sm" style={{ fontFamily }}>Audio only</Text>
+                    <Text className="text-muted text-xs mt-0.5" style={{ fontFamily }}>
                       Hear the audio first, then reveal the written answer.
                     </Text>
                   </View>
@@ -476,8 +477,8 @@ export default function SettingsScreen() {
                     ) : null}
                   </View>
                   <View className="flex-1">
-                    <Text className="text-foreground font-medium text-sm">Traditional flashcards</Text>
-                    <Text className="text-muted text-xs mt-0.5">
+                    <Text className="text-foreground font-medium text-sm" style={{ fontFamily }}>Traditional flashcards</Text>
+                    <Text className="text-muted text-xs mt-0.5" style={{ fontFamily }}>
                       Read the card text and flip to reveal the answer.
                     </Text>
                   </View>
@@ -497,8 +498,8 @@ export default function SettingsScreen() {
               className="flex-row items-center justify-between p-4"
             >
               <View className="flex-1 mr-4">
-                <Text className="text-foreground font-medium">Matrix Mode</Text>
-                <Text className="text-xs text-muted mt-1">
+                <Text className="text-foreground font-medium" style={{ fontFamily }}>Matrix Mode</Text>
+                <Text className="text-xs text-muted mt-1" style={{ fontFamily }}>
                   Pure black surfaces with orange accents and animated rain on supported screens.
                 </Text>
               </View>
@@ -524,9 +525,9 @@ export default function SettingsScreen() {
           */}
 
           <Pressable onPress={saveSettings} className="py-4 rounded-2xl items-center bg-primary mt-3">
-            <Text className="text-primary-foreground font-semibold">Save Settings</Text>
+            <Text className="text-primary-foreground font-semibold" style={{ fontFamily }}>Save Settings</Text>
           </Pressable>
-          {saved && <Text className="text-center text-muted mt-2 text-sm">Saved</Text>}
+          {saved && <Text className="text-center text-muted mt-2 text-sm" style={{ fontFamily }}>Saved</Text>}
 
           <SectionLabel>Environment</SectionLabel>
           <AuthModeSettingsCard />
@@ -535,12 +536,12 @@ export default function SettingsScreen() {
           <SectionLabel>Account</SectionLabel>
           <View className="bg-card border border-border rounded-2xl overflow-hidden">
             <View className="p-4 border-b border-border">
-              <Text className="text-xs text-muted mb-0.5">Signed in as</Text>
-              <Text className="text-foreground font-medium">{user?.email ?? "Dev user"}</Text>
+              <Text className="text-xs text-muted mb-0.5" style={{ fontFamily }}>Signed in as</Text>
+              <Text className="text-foreground font-medium" style={{ fontFamily }}>{user?.email ?? "Dev user"}</Text>
             </View>
             {isDevAuth ? (
               <View className="p-4">
-                <Text className="text-xs text-muted">
+                <Text className="text-xs text-muted" style={{ fontFamily }}>
                   Dev auth mode is active. Sign out and account deletion are disabled.
                 </Text>
               </View>
@@ -551,7 +552,7 @@ export default function SettingsScreen() {
                   className="flex-row items-center gap-2 p-4 border-b border-border"
                 >
                   <Ionicons name="log-out-outline" size={18} color="#6B7280" />
-                  <Text className="text-foreground font-medium">Sign Out</Text>
+                  <Text className="text-foreground font-medium" style={{ fontFamily }}>Sign Out</Text>
                 </Pressable>
                 <Pressable
                   onPress={async () => {
@@ -566,16 +567,16 @@ export default function SettingsScreen() {
                   className="flex-row items-center gap-2 p-4 border-b border-border"
                 >
                   <Ionicons name="mail-outline" size={18} color="#6B7280" />
-                  <Text className="text-foreground font-medium">Contact Support</Text>
+                  <Text className="text-foreground font-medium" style={{ fontFamily }}>Contact Support</Text>
                 </Pressable>
                 <Pressable onPress={confirmDelete} className="flex-row items-center gap-2 p-4">
                   <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                  <Text className="text-red-500 font-medium">Delete Account</Text>
+                  <Text className="text-red-500 font-medium" style={{ fontFamily }}>Delete Account</Text>
                 </Pressable>
               </>
             )}
           </View>
-          <Text className="text-center text-xs text-muted mt-5">{versionLabel}</Text>
+          <Text className="text-center text-xs text-muted mt-5" style={{ fontFamily }}>{versionLabel}</Text>
 
         </ScrollView>
       </View>

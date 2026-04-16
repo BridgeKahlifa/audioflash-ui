@@ -5,6 +5,7 @@ import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
 import { useSRSQueue, useSavedReviews } from "../../lib/queries";
+import { useAppTheme } from "../../lib/theme-context";
 import {
   fetchFlashcards,
   startLesson,
@@ -20,6 +21,7 @@ function formatReviewDate(dateStr: string): string {
 }
 
 export default function ReviewQueue() {
+  const { fontFamily } = useAppTheme();
   const { session, profile } = useAuth();
   const posthog = useAnalytics();
   const { data: queue, refetch: refetchSRS, isStale: isSRSStale } = useSRSQueue();
@@ -161,20 +163,20 @@ export default function ReviewQueue() {
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
         <View className="px-6 pt-8 pb-4">
-          <Text className="text-3xl font-semibold text-foreground tracking-tight">Review</Text>
-          <Text className="text-muted mt-1">Spaced repetition &amp; saved reviews</Text>
+          <Text className="text-3xl font-semibold text-foreground tracking-tight" style={{ fontFamily }}>Review</Text>
+          <Text className="text-muted mt-1" style={{ fontFamily }}>Spaced repetition &amp; saved reviews</Text>
         </View>
 
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 24 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B4A" />}>
           <>
             {error ? (
               <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
-                <Text className="text-red-600 text-sm">{error}</Text>
+                <Text className="text-red-600 text-sm" style={{ fontFamily }}>{error}</Text>
               </View>
             ) : null}
 
               {/* ── SRS Queue ─────────────────────────────────── */}
-              <Text className="text-sm font-semibold text-muted mb-3">Spaced Repetition</Text>
+              <Text className="text-sm font-semibold text-muted mb-3" style={{ fontFamily }}>Spaced Repetition</Text>
 
               <View
                 className="bg-card border border-border rounded-2xl p-5 mb-4"
@@ -190,10 +192,10 @@ export default function ReviewQueue() {
                   <View className="w-10 h-10 rounded-xl bg-accent items-center justify-center">
                     <Ionicons name="refresh-circle" size={22} color="#FF6B4A" />
                   </View>
-                  <Text className="text-foreground font-semibold">Due today</Text>
+                  <Text className="text-foreground font-semibold" style={{ fontFamily }}>Due today</Text>
                 </View>
-                <Text className="text-5xl font-bold text-foreground">{queue?.due_count ?? 0}</Text>
-                <Text className="text-muted text-sm mt-1">
+                <Text className="text-5xl font-bold text-foreground" style={{ fontFamily }}>{queue?.due_count ?? 0}</Text>
+                <Text className="text-muted text-sm mt-1" style={{ fontFamily }}>
                   {queue?.due_count === 0
                     ? "You're all caught up! Practice a lesson to add cards."
                     : `${queue?.due_count} card${queue?.due_count !== 1 ? "s" : ""} waiting for review`}
@@ -201,7 +203,7 @@ export default function ReviewQueue() {
               </View>
 
               <View className="bg-accent border border-primary/10 rounded-2xl p-4 mb-4">
-                <Text className="text-foreground text-sm leading-relaxed">
+                <Text className="text-foreground text-sm leading-relaxed" style={{ fontFamily }}>
                   Spaced repetition schedules reviews right before you'd forget a card. Answer cards
                   you know well and they'll appear less often. Miss one and it comes back sooner.
                 </Text>
@@ -209,18 +211,18 @@ export default function ReviewQueue() {
 
               {queue && queue.cards.length > 0 && (
                 <View className="gap-3 mb-4">
-                  <Text className="text-sm font-semibold text-muted">Due cards</Text>
+                  <Text className="text-sm font-semibold text-muted" style={{ fontFamily }}>Due cards</Text>
                   {queue.cards.slice(0, 5).map((card) => (
                     <View key={card.id} className="bg-card border border-border rounded-2xl p-4">
-                      <Text className="text-foreground font-medium">{card.source_text}</Text>
+                      <Text className="text-foreground font-medium" style={{ fontFamily }}>{card.source_text}</Text>
                       {card.romanization ? (
-                        <Text className="text-muted text-sm mt-0.5">{card.romanization}</Text>
+                        <Text className="text-muted text-sm mt-0.5" style={{ fontFamily }}>{card.romanization}</Text>
                       ) : null}
-                      <Text className="text-foreground text-sm mt-1">{card.translation}</Text>
+                      <Text className="text-foreground text-sm mt-1" style={{ fontFamily }}>{card.translation}</Text>
                     </View>
                   ))}
                   {queue.due_count > 5 && (
-                    <Text className="text-muted text-xs text-center">
+                    <Text className="text-muted text-xs text-center" style={{ fontFamily }}>
                       +{queue.due_count - 5} more cards
                     </Text>
                   )}
@@ -250,6 +252,7 @@ export default function ReviewQueue() {
                   <Text
                     className={`text-base font-semibold ${queue && queue.due_count > 0 ? "text-primary-foreground" : "text-muted"
                       }`}
+                    style={{ fontFamily }}
                   >
                     {queue?.due_count === 0 ? "Nothing due right now" : "Start SRS Review"}
                   </Text>
@@ -257,11 +260,11 @@ export default function ReviewQueue() {
               </Pressable>
 
               {/* ── Named Reviews ─────────────────────────────── */}
-              <Text className="text-sm font-semibold text-muted mb-3">Saved Reviews</Text>
+              <Text className="text-sm font-semibold text-muted mb-3" style={{ fontFamily }}>Saved Reviews</Text>
 
               {reviews.length === 0 ? (
                 <View className="bg-card border border-border rounded-2xl p-4 mb-4">
-                  <Text className="text-muted text-sm">No saved reviews available.</Text>
+                  <Text className="text-muted text-sm" style={{ fontFamily }}>No saved reviews available.</Text>
                 </View>
               ) : (
                 <View className="gap-3">
@@ -283,17 +286,17 @@ export default function ReviewQueue() {
                       >
                         <View className="flex-row items-start justify-between gap-3">
                           <View className="flex-1">
-                            <Text className="text-base font-semibold text-foreground">
+                            <Text className="text-base font-semibold text-foreground" style={{ fontFamily }}>
                               {review.review_name}
                             </Text>
-                            <Text className="text-sm text-muted mt-1">
+                            <Text className="text-sm text-muted mt-1" style={{ fontFamily }}>
                               {review.flashcard_ids.length} cards
                             </Text>
-                            <Text className="text-xs text-muted mt-2">
+                            <Text className="text-xs text-muted mt-2" style={{ fontFamily }}>
                               Created {formatReviewDate(review.created_at)}
                             </Text>
                             {review.started_at ? (
-                              <Text className="text-xs text-muted mt-1">
+                              <Text className="text-xs text-muted mt-1" style={{ fontFamily }}>
                                 Started {formatReviewDate(review.started_at)}
                               </Text>
                             ) : null}
@@ -301,7 +304,7 @@ export default function ReviewQueue() {
                           {isStarting ? (
                             <ActivityIndicator color="#FF6B4A" />
                           ) : (
-                            <Text className="text-primary font-semibold">Open</Text>
+                            <Text className="text-primary font-semibold" style={{ fontFamily }}>Open</Text>
                           )}
                         </View>
                       </Pressable>
