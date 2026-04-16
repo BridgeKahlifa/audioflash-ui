@@ -211,10 +211,19 @@ export default function LessonReady() {
     setErrorMessage("");
 
     try {
+      const requestedAvailableCardCount =
+        typeof availableCardCount === "number" && Number.isFinite(availableCardCount)
+          ? availableCardCount
+          : cardCount;
+      const requestedCardLimit = Math.max(
+        MIN_CARD_COUNT,
+        Math.min(cardCount, requestedAvailableCardCount),
+      );
+
       const lessonCards = await fetchLessonsByCategory({
         categoryId: apiCategoryId,
         languageId: apiLanguageId ?? undefined,
-        limit: cardCount,
+        limit: requestedCardLimit,
         difficulty: selectedDifficulty,
         shuffle: shuffleEnabled,
       });
