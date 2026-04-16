@@ -87,11 +87,7 @@ Scope: `../api` FastAPI backend
 - Idempotent review creation per parent session
 - Review-name generation
 
-### 9. Library And SRS
-- Browse public library categories
-- Save lesson
-- Unsave lesson
-- List saved lessons
+### 9. Review Queue And SRS
 - Get SRS queue
 - Get SRS queue count
 
@@ -105,7 +101,6 @@ Scope: `../api` FastAPI backend
 - Unseen-card reuse from existing category pool
 - New category + flashcard creation
 - Generation request audit logging
-- Auto-save generated lesson to library
 - Replace selected cards
 - Replacement reuse from unseen pool
 - Replacement fresh generation
@@ -113,7 +108,6 @@ Scope: `../api` FastAPI backend
 ### 11. Database State And Side Effects
 - Activity creation for lessons and reviews
 - Unique active lesson per profile
-- Unique saved lesson per profile/category
 - Unique review per parent session
 - Unique review name constraint
 - Cascade deletes from profile/category/session/activity
@@ -386,8 +380,7 @@ Scope: `../api` FastAPI backend
   10. Category is reused or created.
   11. New flashcards are stored.
   12. Generation request is marked success.
-  13. Lesson is auto-saved for the user.
-  14. Response returns category, cards, and `cached` flag.
+  13. Response returns category, cards, and `cached` flag.
 - Alternate branches:
   - cached pool path skips LLM
   - existing category pool can expand over time when user exhausts unseen cards
@@ -412,7 +405,6 @@ Scope: `../api` FastAPI backend
   4. Otherwise fresh cards are generated.
   5. Existing or new category is used.
   6. New cards are persisted.
-  7. Lesson is auto-saved.
 - Alternate branches:
   - no generation-request audit row or rate limit check on replacements
 - Failure branches:
@@ -421,23 +413,13 @@ Scope: `../api` FastAPI backend
 - Exit conditions:
   - replacement cards returned
 
-### Flow: Library / SRS
-- Trigger / entry point: `/api/library/*`
+### Flow: Review / SRS
+- Trigger / entry point: `/api/review/srs/queue`
 - Preconditions: authenticated user
 - Step-by-step path:
-  1. Browse returns public categories with saved flag and distinct difficulties.
-  2. Save lesson inserts unique row or returns existing saved row.
-  3. Unsave deletes row if present.
-  4. Saved lessons list returns rows ordered by saved time.
-  5. SRS queue returns due count and due cards from `user_card_state`.
-- Alternate branches:
-  - save is idempotent via unique constraint
-  - unsave is idempotent-ish and returns 204 even if missing
-- Failure branches:
-  - save 404 when category missing
-  - browse may omit categories if `is_public=false`
+  1. SRS queue returns due count and due cards from `user_card_state`.
 - Exit conditions:
-  - library or SRS payload returned
+  - SRS payload returned
 
 ## C. QA Coverage Matrix
 
@@ -480,13 +462,9 @@ Legend:
 | `POST /api/sessions` | Create aggregate practice session | Session row created and streak updated | completed_at defaulting, streak rollover logic, profile absent behavior, category optionality | multiple sessions same day, timezone boundary | invalid payload ranges not strongly constrained | server timezone/date vs user timezone | P0 | Yes |
 | `GET /api/sessions` | List practice sessions | Latest 100 sessions returned | ownership, order desc, null fields | >100 sessions truncation | auth failures | payload size/perf | P1 | Yes |
 | `GET /api/sessions/stats` | Aggregate stats | totals + streak returned | sum accuracy, profile missing -> streak 0 | no sessions | auth failure | None | P1 | Yes |
-| `GET /api/library/browse` | Browse public categories | Public library categories with save flags | public-only filter, language filter, distinct difficulties, saved flag correctness | no public categories, null language_id | invalid UUID query | N+1 query performance risk | P1 | Yes |
-| `GET /api/library/saved` | List saved lessons | Saved lessons with difficulties | ownership, order desc, idempotent saved rows | many saves | auth failure | N+1 query performance risk | P1 | Yes |
-| `POST /api/library/saved` | Save lesson | Existing or new save returned | unique constraint/idempotency, 404 on missing category | repeated same save | missing category | commit/refresh correctness | P1 | Yes |
-| `DELETE /api/library/saved/{category_id}` | Unsave lesson | 204 always | idempotent delete behavior, ownership | missing row | invalid UUID | None | P1 | Yes |
-| `GET /api/library/srs/queue` | Get due cards | due_count + due flashcards returned | count vs payload consistency, due-date ordering, limit 20 | no due cards, many due cards | auth failure | date-based flakiness around midnight | P0 | Yes |
-| `POST /api/generate` | Generate lesson | Cached or fresh lesson returned | rate limit, sanitization, language existence, unseen-pool reuse, audit records, auto-save, `cached` flag | repeated same topic/user/language/difficulty, pool exhaustion | 429, 404, 422, 503, 502 | external LLM latency and failure | P0 | Yes |
-| `POST /api/generate/replace` | Generate replacement cards | Reuse unseen or generate fresh replacements | topic sanitization, exclude_ids handling, count 1-10, auto-save side effect | no existing pool, insufficient unseen cards | 404, 422, 503, 502 | external LLM latency and failure | P1 | Yes |
+| `GET /api/review/srs/queue` | Get due cards | due_count + due flashcards returned | count vs payload consistency, due-date ordering, limit 20 | no due cards, many due cards | auth failure | date-based flakiness around midnight | P0 | Yes |
+| `POST /api/generate` | Generate lesson | Cached or fresh lesson returned | rate limit, sanitization, language existence, unseen-pool reuse, audit records, `cached` flag | repeated same topic/user/language/difficulty, pool exhaustion | 429, 404, 422, 503, 502 | external LLM latency and failure | P0 | Yes |
+| `POST /api/generate/replace` | Generate replacement cards | Reuse unseen or generate fresh replacements | topic sanitization, exclude_ids handling, count 1-10 | no existing pool, insufficient unseen cards | 404, 422, 503, 502 | external LLM latency and failure | P1 | Yes |
 | GenerationService moderation | Moderate topic/output | Flagged content blocked | fail-open vs fail-closed semantics, explicit flagged behavior | moderation API unavailable | false positives/negatives | external API dependency | P1 | Partial |
 | DB migration layer | Apply pending migrations | New schema applied exactly once | tracking table behavior, duplicate-object fallback, ordered application | dirty DB with missing migration records | broken SQL stops startup | local-only startup behavior | P1 | Partial |
 
@@ -494,7 +472,7 @@ Legend:
 
 ### Authentication / Authorization
 - Protected-route coverage for every user-scoped endpoint.
-- Ownership mismatch testing for profile, sessions, lesson sessions, attempts, reviews, saved lessons, and SRS.
+- Ownership mismatch testing for profile, sessions, lesson sessions, attempts, reviews, and SRS.
 - Dev auth fallback behavior and misconfiguration handling.
 - JWKS cache invalidation after key rotation.
 
@@ -518,7 +496,6 @@ Legend:
 - Current-index progression for both create and update attempt paths
 - Relationship between `lesson_sessions`, `activities`, `flashcard_attempts`, `reviews`, `user_card_state`, and `practice_sessions`
 - Idempotency of:
-  - save lesson
   - review creation by parent session
   - same-category lesson start
 
@@ -529,7 +506,6 @@ Legend:
   - review creation eligibility
   - SRS scheduling
 - Aggregate session endpoint separately drives streak and progress stats.
-- Generated lessons auto-save to library on backend even if frontend save UI is not used.
 - SRS queue depends on attempts being recorded through activity-based endpoints, not just local completion.
 
 ### External Dependencies
@@ -540,7 +516,6 @@ Legend:
 - PostgreSQL availability and transaction behavior.
 
 ### Performance / Scalability
-- N+1 style queries in library browse/list saved.
 - Random ordering queries on flashcards by category.
 - Large flashcard pools for unseen-card selection.
 - Generation audit table growth and rate-limit query efficiency.
@@ -566,7 +541,7 @@ Legend:
 ### Missing Or Weakly Defined Backend Flows
 - No explicit endpoint to fetch a single review by id.
 - No explicit admin authorization on create-language/create-category/create-flashcard endpoints.
-- No pagination on sessions, saved lessons, languages, categories, or flashcards lists.
+- No pagination on sessions, languages, categories, or flashcards lists.
 - No explicit idempotency keys for generation or session completion.
 - No explicit retry/recovery endpoint for failed generation request rows.
 
@@ -594,7 +569,7 @@ Legend:
 - Lesson lifecycle around active-session uniqueness.
 - Review auto-creation logic.
 - SRS scheduling from attempt writes.
-- Generation cached-vs-fresh logic and auto-save side effects.
+- Generation cached-vs-fresh logic.
 - Deletion cascades and account cleanup.
 
 ## E. Recommended Test Suite Structure
@@ -615,18 +590,17 @@ Legend:
 - Lesson start/create/resume/end branches including ownership failures.
 - Flashcard attempt creation/update across lesson and review activities.
 - Review create/start/complete with idempotent parent-session behavior.
-- Library save/unsave/browse and SRS queue derivation.
+- Review queue and SRS queue derivation.
 - Generation rate limiting, sanitization, moderation, cached pool reuse, replacement flow.
 - Startup migration behavior and active-lesson unique index races.
 
 ### End-to-End / API Workflow Tests
 - New user profile fetch -> onboarding-style profile patch -> lesson start -> attempts -> lesson end -> review create/list/start/complete -> aggregate session stats.
-- Generate lesson -> save side effect -> start lesson -> attempts -> end -> SRS queue appears later.
-- Saved lesson browse -> save -> list saved -> unsave.
+- Generate lesson -> start lesson -> attempts -> end -> SRS queue appears later.
 - Delete account -> verify dependent resources are removed / access fails.
 
 ### Exploratory Tests
-- Concurrency on start lesson, create review, save lesson.
+- Concurrency on start lesson and create review.
 - Midnight boundary for streak and SRS due dates.
 - Fault injection for LLM/moderation/JWKS/Supabase admin APIs.
 - Dirty migration state / partially migrated DB restore.
@@ -640,7 +614,7 @@ Legend:
   - attempt create/update
   - session stats/streak
   - generation happy/error paths
-  - library and SRS queue
+  - review queue and SRS queue
 - P1 next:
   - review lifecycle
   - deletion flows
@@ -650,4 +624,3 @@ Legend:
   - performance profiling
   - abuse/security hardening
   - long-run data growth behavior
-

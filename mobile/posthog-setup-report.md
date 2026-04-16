@@ -28,7 +28,7 @@ The wizard completed a deep integration of AudioFlash Mobile with PostHog. The p
 | `onboarding_started` | `app/(onboarding)/index.tsx` |
 | `onboarding_name_set` | `app/(onboarding)/name.tsx` |
 | `onboarding_target_languages_set`, `onboarding_completed` | `app/(onboarding)/target-languages.tsx` |
-| `lesson_generate_started`, `lesson_generated`, `lesson_generate_failed`, `lesson_saved` | `app/generate.tsx` |
+| `lesson_generate_started`, `lesson_generated`, `lesson_generate_failed` | `app/generate.tsx` |
 | `lesson_ready_start_failed` | `app/lesson-ready/[topic].tsx` |
 | `session_started` | `app/practice/[topic].tsx` |
 | `card_result_submitted`, `session_completed` | `lib/use-session-manager.ts` |

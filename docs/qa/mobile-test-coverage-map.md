@@ -9,7 +9,7 @@ Scope: `mobile/` Expo React Native app
 - The app supports two auth modes: normal Supabase auth and `EXPO_PUBLIC_AUTH_MODE=dev`.
 - "Reminders" currently persist a profile flag only. There is no visible local notification permission request or scheduling implementation in the mobile app.
 - Deep link support is not explicitly implemented in the screens reviewed; routing is app-internal via Expo Router.
-- The app relies on remote APIs for profile, lessons, reviews, analytics-backed score history, saved library, and SRS queue.
+- The app relies on remote APIs for profile, lessons, reviews, analytics-backed score history, SRS queue.
 - The app also uses local persistence via AsyncStorage for current cards, session history, progress, review queue, query cache, settings, and cached profile/session stats.
 
 ## A. App Flow Inventory
@@ -48,7 +48,6 @@ Scope: `mobile/` Expo React Native app
 - Start SRS review from home
 - Start generated lesson from home
 - Browse categories from home
-- Open library from home
 
 ### 5. Browse And Lesson Start
 - Category browse with preferred language
@@ -57,7 +56,6 @@ Scope: `mobile/` Expo React Native app
 - Topic selection
 - Lesson-ready screen
 - Difficulty selection
-- Save/unsave lesson from lesson-ready
 - Start category lesson
 
 ### 6. AI Lesson Generation
@@ -72,7 +70,6 @@ Scope: `mobile/` Expo React Native app
 - Remove generated cards
 - Select generated cards
 - Regenerate selected cards
-- Save generated lesson
 - Start generated lesson
 - Regenerate all / return to form
 
@@ -118,13 +115,7 @@ Scope: `mobile/` Expo React Native app
 - Start new lesson from progress
 - Local-only history screen
 
-### 11. Library
-- Saved lesson library load
-- Empty library state
-- Remove saved lesson
-- Start lesson from saved lesson
-
-### 12. Settings And Account Management
+### 11. Settings And Account Management
 - Settings load
 - Edit name
 - Edit email
@@ -141,7 +132,7 @@ Scope: `mobile/` Expo React Native app
 - Sign out
 - Dev auth restricted account actions
 
-### 13. Secondary / Hidden Support Flows
+### 12. Secondary / Hidden Support Flows
 - Query invalidation after session completion
 - Cache clear via dev badge
 - Cold-start reset with splash delay
@@ -149,12 +140,12 @@ Scope: `mobile/` Expo React Native app
 - Config refresh on foreground in non-prod env
 - Local progress/review queue persistence after session completion
 
-### 14. Failure / Recovery / Edge Flows
+### 13. Failure / Recovery / Edge Flows
 - Missing route params
 - Missing profile id during lesson start or completion
 - Empty lesson payload
 - Missing activity id on review start
-- Partial data fetch failure on home/progress/settings/library/review
+- Partial data fetch failure on home/progress/settings/review
 - Network failure during session answer submission
 - Offline app with warm cache
 - Offline app with cold cache
@@ -285,7 +276,6 @@ Scope: `mobile/` Expo React Native app
   10. Practice screen opens.
 - Alternate branches:
   - User changes learning language from browse header
-  - User saves or unsaves lesson in lesson-ready
 - Failure branches:
   - No categories available
   - Languages or categories fetch failure
@@ -297,7 +287,7 @@ Scope: `mobile/` Expo React Native app
   - Practice screen opens or lesson-ready error/empty state shown
 
 ### Flow: Generate AI Lesson
-- Trigger / entry point: home `Generate a Lesson` or empty-library CTA
+- Trigger / entry point: home `Generate a Lesson`
 - Preconditions: authenticated session token
 - Step-by-step path:
   1. Generate form loads languages.
@@ -307,9 +297,8 @@ Scope: `mobile/` Expo React Native app
   5. Review Cards preview is shown.
   6. User optionally removes cards.
   7. User optionally selects cards and regenerates those cards.
-  8. User optionally saves the generated lesson.
-  9. User starts lesson.
-  10. App creates lesson session, persists current cards, and opens practice.
+  8. User starts lesson.
+  9. App creates lesson session, persists current cards, and opens practice.
 - Alternate branches:
   - Suggested topic chip tap
   - Regenerate all returns to form
@@ -321,7 +310,6 @@ Scope: `mobile/` Expo React Native app
   - Inappropriate topic failure
   - Generic network failure
   - Replacement generation failure
-  - Save lesson failure is silently ignored
   - Start lesson failure after successful generation
 - Exit conditions:
   - Practice starts, preview remains editable, or user returns to form
@@ -403,23 +391,6 @@ Scope: `mobile/` Expo React Native app
 - Exit conditions:
   - Practice restarts or user navigates to progress/home
 
-### Flow: Library
-- Trigger / entry point: home CTA or direct route
-- Preconditions: authenticated user
-- Step-by-step path:
-  1. Saved lessons and languages load in parallel on focus.
-  2. User sees empty or populated saved lessons.
-  3. User removes saved lesson or starts lesson from saved lesson.
-  4. Start routes into lesson-ready with saved category metadata.
-- Alternate branches:
-  - Empty library CTA opens generate
-- Failure branches:
-  - Library load failure
-  - Remove failure
-  - Missing language map label
-- Exit conditions:
-  - Lesson-ready shown or library remains with error banner
-
 ### Flow: Settings And Account
 - Trigger / entry point: settings tab
 - Preconditions: authenticated user
@@ -466,20 +437,18 @@ Legend:
 | Home screen | Load dashboard | Greeting, streak, and cards render | First-name parsing, streak messaging, partial error banner, SRS card visibility, in-progress lesson CTA visibility | No name, no streak, stale data | SRS query fail, in-progress lesson fail | Safe area and scroll on smaller phones | P1 | Yes |
 | Home screen | Tap Continue Lesson | Resume practice route opened | Route params, lesson name resolution, `continuingLesson` lock, analytics `home_action_tapped` | In-progress lesson missing category name, server current index near end | Lesson becomes unavailable between load and tap | Android back behavior into tabs | P0 | Yes |
 | Home screen | Tap SRS review CTA | Review tab opens | CTA hidden when due count 0, analytics payload | Very large due count | Route push failure | Text truncation and touch target size | P1 | Yes |
-| Home screen | Tap Generate / Browse / Library | Correct destination opens | Analytics for each action, repeated taps, navigation consistency | Home data partially failed | Navigation with stale route params | Tab + stack transitions on both OSes | P1 | Yes |
+| Home screen | Tap Generate / Browse | Correct destination opens | Analytics for each action, repeated taps, navigation consistency | Home data partially failed | Navigation with stale route params | Tab + stack transitions on both OSes | P1 | Yes |
 | Categories screen | Load with no preferred language | Language picker shown | Correct gating from profile state, loading, error banner | Preferred language removed from backend list | Profile null with loading spinner | Scroll/picker behavior differs by OS | P0 | Yes |
 | Categories language picker | Select language | Profile updates and category browse shown | Save spinner, rollback on failure, coming-soon disablement | Rapid selection changes | Save failure resets resolved language and shows error | Pressable disabled visuals | P1 | Yes |
 | Categories browse | Select topic then Start Lesson | Lesson-ready opened with correct params | Topic selection state, disabled CTA until selected, category icon mapping | No categories, odd number of tiles, supported difficulty empty | Categories query fail | Grid wrapping on narrow screens | P0 | Yes |
 | Lesson-ready | Missing params | Error state shown | Required param validation for category and difficulties | Deep-linked or malformed route | No `apiCategoryId`, no supported difficulties | Back navigation route path correctness | P0 | Yes |
 | Lesson-ready | Change difficulty | Difficulty chip selection updates state | Selected visuals, reset of prior empty/error state, disabled while starting | Unsupported difficulty list order, duplicate difficulty values | Tap while starting or while status error | Hit targets and text scale | P1 | Yes |
-| Lesson-ready | Save/unsave lesson | Bookmark icon toggles | Save state, spinner, silent failure behavior, repeated taps | Unsave 404 accepted | Save network error is swallowed; verify UX risk | Icon rendering consistency | P2 | Partial |
 | Lesson-ready | Start lesson success | Cards fetched, session created, practice opens | Start lock, loading title, settings/profile card count precedence, local current cards persistence | Empty lesson result, category returns fewer cards than expected | Fetch/create failure, missing profile id | Back stack after push | P0 | Yes |
 | Generate form | Load screen | Languages and controls render | Default selections, target-language preselection, `loadError`, suggestions list, keyboard handling | No languages returned | Language fetch failure | Keyboard avoidance differs by OS | P1 | Yes |
 | Generate form | Submit valid prompt | Preview screen shown | Topic min length, status transitions, analytics start/success/fail, card count and difficulty payloads | Topic with punctuation/emoji, long topics, fast repeated taps | Rate limit, inappropriate topic, generic failure | Return-key submission and loading jank | P0 | Yes |
 | Generate preview | Select/deselect card | Card selection toggles | Selection visuals, count text, disabled while replacing | Many selected cards, replacing subset | Tap replacing card | Scroll perf with many cards | P1 | Yes |
 | Generate preview | Remove card | Card disappears | State update, selected-id cleanup, empty-state transition | Remove last card | Remove during replacement | Press target conflicts with parent card press | P1 | Yes |
 | Generate preview | Regenerate selected | Chosen cards replaced only | Request payload excludes remaining ids, replacing spinner state, selected reset | Duplicate replacement ids, cards reorder stability | Replacement request fails | Animation / opacity differences | P1 | Partial |
-| Generate preview | Save lesson | Saved icon persists | Saving spinner, analytics `lesson_saved`, double-tap lock | Save already saved lesson | Save failure is silent | Visual confirmation is icon-only | P2 | Partial |
 | Generate preview | Start generated lesson | Practice opens | Local card persistence, session creation, params correctness, status `starting` | Preview card count reduced by removals | Session creation failure | Replace vs push affects back behavior | P0 | Yes |
 | Practice screen | Initial load | Cards appear or loading placeholder stays | Local-vs-remote card loading, resume logic, analytics `session_started`, current index resolution | Resume current index out of bounds, remote card ordering mismatch | No stored cards, remote fetch failure leaves indefinite loading | Audio autoplay restrictions may vary | P0 | Yes |
 | Practice screen | Auto-play prompt audio | Prompt audio plays once per fresh card | `speakText` invocation, replay button, play count reset per card | Backgrounded during playback, playback speed adjusted before replay | TTS failure has no visible error | iOS vs Android TTS voice/latency | P1 | Partial |
@@ -498,9 +467,6 @@ Legend:
 | Session summary | Retry missed cards | Practice restarts from missed cards | Local rebuild of current cards, review restart path, button disablement, route params | Perfect run disables CTA | Missing auth token for review retry, missing activity id | Replace navigation and back behavior | P1 | Yes |
 | Progress dashboard | Load progress | Stats, streak, chart, and recent sessions render | Focus refetch, stale fallback message, derived weekly totals, empty recent sessions | Large session history, timezone around date boundaries | Sessions/stats query failure | Date formatting can vary by locale | P1 | Yes |
 | History screen | Load local history | Local history entries shown | Local-only persistence, order, accuracy calc | Large history near 100-entry cap | Empty history | Locale/time formatting | P2 | Yes |
-| Library | Load saved lessons | Saved lessons or empty state shown | Parallel fetches, language mapping, error message, focus refresh | Missing language labels, many saved lessons | No auth token, fetch failures | Scroll and touch layout on small devices | P1 | Yes |
-| Library | Remove saved lesson | Item disappears | Removing spinner, list update, error rollback | Remove last item | Network failure | Icon states on both platforms | P1 | Yes |
-| Library | Start saved lesson | Lesson-ready opens | Param integrity, supported difficulties pass-through | Language label missing | Missing category id in payload | Navigation stack consistency | P1 | Yes |
 | Goals screen | Load daily goal | Goal card and toggle render | Profile loading, ratio calculation, local progress dependency, toggle visuals | Daily goal 0 not possible via UI but API may return it | Profile update failure is unsurfaced | Progress uses local data while profile uses remote | P2 | Partial |
 | Goals screen | Change goal / reminder | Profile updates silently | Increment/decrement clamp, notifications flag mutation, persistence after relaunch | Rapid taps | Network failure with no UI error | Hit target size | P2 | Partial |
 | Settings | Load settings | Fields prefilled | Profile loading, language data dependency, dev-auth restrictions, section rendering | Empty name/email, missing target language | Profile or language load failure | Keyboard + scroll in long form | P0 | Yes |
@@ -597,7 +563,6 @@ Legend:
 - Session summary retry path when `reviewId` exists but auth token does not.
 - Unsaved-changes guards firing while save requests are in-flight.
 - Silent failure paths:
-  - save/unsave lesson
   - resend OTP
   - goal/reminder save
   - dev badge onboard failure
@@ -618,7 +583,7 @@ Legend:
 - Profile always exists after auth.
 - Backend always returns consistent `current_index`, `activity_id`, and ordered `card_ids`.
 - Local progress in `Goals` is trustworthy even though main progress data comes from remote sessions.
-- Silent save failures are acceptable in lesson save/unsave and reminder-goal updates.
+- Silent reminder-goal update failures are acceptable.
 
 ### Likely Untested Scenarios
 - App killed during practice after some attempt submissions but before completion.
