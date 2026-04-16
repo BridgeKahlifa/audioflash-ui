@@ -23,7 +23,20 @@ const KEYS = {
   PROFILE: "audioflash:profile",
   SESSIONS: "audioflash:sessions",
   SESSION_STATS: "audioflash:session-stats",
+  GENERATED_DECK_IMPORT: "audioflash:generated-deck-import",
 } as const;
+
+export interface GeneratedDeckImportCard {
+  source_text: string;
+  translation: string;
+  romanization: string | null;
+  difficulty: number;
+}
+
+export interface GeneratedDeckImportPayload {
+  languageId: string;
+  cards: GeneratedDeckImportCard[];
+}
 
 export async function getCachedProfile(): Promise<ApiProfile | null> {
   try {
@@ -191,6 +204,33 @@ export async function setCurrentCards(
       KEYS.CURRENT_CARDS + topic,
       JSON.stringify(cards)
     );
+  } catch {
+    // Non-critical
+  }
+}
+
+export async function getGeneratedDeckImport(): Promise<GeneratedDeckImportPayload | null> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.GENERATED_DECK_IMPORT);
+    return raw ? (JSON.parse(raw) as GeneratedDeckImportPayload) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setGeneratedDeckImport(
+  payload: GeneratedDeckImportPayload
+): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.GENERATED_DECK_IMPORT, JSON.stringify(payload));
+  } catch {
+    // Non-critical
+  }
+}
+
+export async function clearGeneratedDeckImport(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(KEYS.GENERATED_DECK_IMPORT);
   } catch {
     // Non-critical
   }

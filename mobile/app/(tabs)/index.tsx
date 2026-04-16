@@ -212,7 +212,7 @@ export default function Home() {
               </Pressable>
             ) : null}
 
-            {/* Generate a Lesson */}
+            {/* Generate Flashcards */}
             <Pressable
               onPress={() => { posthog?.capture("home_action_tapped", { action: "generate_lesson" }); router.push("/generate"); }}
               className="rounded-2xl p-5 bg-card border border-border flex-row items-center"
@@ -231,7 +231,7 @@ export default function Home() {
                 <Ionicons name="sparkles" size={24} color={quickActionPalette.iconColor} />
               </View>
               <View className="flex-1">
-                <Text className="text-foreground font-semibold text-base" style={{ fontFamily }}>Generate a Lesson</Text>
+                <Text className="text-foreground font-semibold text-base" style={{ fontFamily }}>Generate Flashcards</Text>
                 <Text className="text-muted text-sm mt-0.5" style={{ fontFamily }}>
                   Type any topic — AI builds cards for you
                 </Text>

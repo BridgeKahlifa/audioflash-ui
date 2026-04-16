@@ -3,6 +3,7 @@ import type { components } from "./generated/api-types";
 
 export type ApiLanguage = components["schemas"]["LanguageResponse"];
 export type ApiCategory = components["schemas"]["CategoryResponse"] & {
+  is_public?: boolean;
   supported_difficulties?: number[];
   total_cards?: number;
 };
