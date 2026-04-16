@@ -1,9 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Animated,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -14,19 +17,20 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAnalytics } from "../lib/analytics";
 import {
-  commitGeneratedLesson,
-  createLessonSession,
-  fetchLanguages,
   generateLesson,
   generateReplacements,
   type ApiEphemeralCard,
-  type ApiLanguage,
+  bulkCreateDeckCards,
 } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
-import { setCurrentCards } from "../lib/storage";
-import type { Flashcard } from "../lib/types";
+import {
+  clearGeneratedDeckImport,
+  setGeneratedDeckImport,
+} from "../lib/storage";
 import { LanguagePickerModal } from "../components/LanguagePickerModal";
-
+import { useDecks, useLanguages, queryKeys } from "../lib/queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAppTheme } from "../lib/theme-context";
 const TOPIC_SUGGESTIONS = [
   "Ordering coffee",
   "At the airport",
@@ -49,32 +53,27 @@ const DIFFICULTY_OPTIONS = [
 ];
 
 interface GeneratedResult {
-  /** The original user-typed topic — used for the commit hash. */
   topic: string;
-  categoryName: string;
   languageId: string;
-  languageSlug: string;
   languageLabel: string;
 }
 
-/** Cards committed to the DB. Stored so a second action (save → start) skips re-commit. */
-interface CommittedResult {
-  categoryId: string;
-  categoryName: string;
-  /** DB card IDs in the same order as previewCards at commit time. */
-  cardIds: string[];
-}
-
 export default function Generate() {
-  const { session, profile } = useAuth();
+  const { session, profile, isDevAuth } = useAuth();
   const posthog = useAnalytics();
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
+  const { fontFamily } = useAppTheme();
+  const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
+  const { data: decks } = useDecks();
+  const { data: languagesData, error: languagesError } = useLanguages();
   const [topic, setTopic] = useState("");
-  const [languages, setLanguages] = useState<ApiLanguage[]>([]);
-  const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(null);
+  const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(
+    profile?.target_language_ids?.[0] ?? null,
+  );
   const [difficultyLevel, setDifficultyLevel] = useState(3);
   const [cardCount, setCardCount] = useState(10);
-  const [status, setStatus] = useState<"idle" | "generating" | "starting" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "generating" | "saving" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
@@ -84,33 +83,47 @@ export default function Generate() {
   const [previewCards, setPreviewCards] = useState<ApiEphemeralCard[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [replacingIds, setReplacingIds] = useState<Set<string>>(new Set());
-  const [committedResult, setCommittedResult] = useState<CommittedResult | null>(null);
+  const [showDeckModal, setShowDeckModal] = useState(false);
+  const [addingToDeckId, setAddingToDeckId] = useState<string | null>(null);
+  const [deckSearch, setDeckSearch] = useState("");
+  const deckModalOpacity = useRef(new Animated.Value(0)).current;
+  const deckModalTranslateY = useRef(new Animated.Value(400)).current;
+  const [deckModalMounted, setDeckModalMounted] = useState(false);
+
+  const languages = useMemo(
+    () => (languagesData ?? []).filter((language) => !language.language.toLowerCase().includes("coming soon")),
+    [languagesData],
+  );
 
   useEffect(() => {
+    if (languagesError) {
+      setLoadError("We couldn't load the available languages right now. Please try again in a moment.");
+      return;
+    }
     setLoadError("");
-    fetchLanguages()
-      .then((langs) => {
-        const available = langs.filter(
-          (l) => !l.language.toLowerCase().includes("coming soon"),
-        );
-        setLanguages(available);
-        const targetId = profile?.target_language_ids?.[0];
-        if (targetId) {
-          const match = available.find((l) => l.id === targetId);
-          if (match) setSelectedLanguageId(match.id);
-        }
-        if (!selectedLanguageId && available.length > 0) {
-          setSelectedLanguageId(available[0].id);
-        }
-      })
-      .catch(() => {
-        setLoadError("We couldn't load the available languages right now. Please try again in a moment.");
-      });
-  }, []);
+  }, [languagesError]);
+
+  useEffect(() => {
+    if (selectedLanguageId || languages.length === 0) return;
+    const preferredLanguageId = profile?.target_language_ids?.[0];
+    const preferredLanguage = languages.find((language) => language.id === preferredLanguageId);
+    setSelectedLanguageId(preferredLanguage?.id ?? languages[0]?.id ?? null);
+  }, [languages, profile?.target_language_ids, selectedLanguageId]);
 
   const canGenerate =
     topic.trim().length >= 2 && selectedLanguageId !== null && status === "idle";
   const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
+  const matchingDecks = useMemo(
+    () => (decks ?? []).filter((deck) => deck.language_id === generatedResult?.languageId),
+    [decks, generatedResult?.languageId],
+  );
+  const filteredDecks = useMemo(
+    () =>
+      matchingDecks.filter((deck) =>
+        !deckSearch.trim() || deck.name.toLowerCase().includes(deckSearch.toLowerCase()),
+      ),
+    [deckSearch, matchingDecks],
+  );
 
   async function handleGenerate() {
     if (!canGenerate || !session?.access_token) return;
@@ -120,7 +133,7 @@ export default function Generate() {
 
     const selectedLang = languages.find((l) => l.id === selectedLanguageId);
     posthog?.capture("lesson_generate_started", {
-      language: selectedLang?.language,
+      language: selectedLang?.language ?? "",
       difficulty: difficultyLevel,
       card_count: cardCount,
       topic: topic.trim(),
@@ -136,15 +149,12 @@ export default function Generate() {
 
       setGeneratedResult({
         topic: topic.trim(),
-        categoryName: result.category_name,
         languageId: selectedLanguageId!,
-        languageSlug: selectedLang?.language.toLowerCase().replace(/\s+/g, "-") ?? "unknown",
         languageLabel: selectedLang?.language ?? "",
       });
       setPreviewCards(result.flashcards);
-      setCommittedResult(null);
       posthog?.capture("lesson_generated", {
-        language: selectedLang?.language,
+        language: selectedLang?.language ?? "",
         difficulty: difficultyLevel,
         card_count: result.flashcards.length,
         topic: topic.trim(),
@@ -164,103 +174,84 @@ export default function Generate() {
         setErrorMessage("Generation failed. Please check your connection and try again.");
       }
       posthog?.capture("lesson_generate_failed", {
-        language: selectedLang?.language,
+        language: selectedLang?.language ?? "",
         topic: topic.trim(),
         error_type,
       });
     }
   }
 
-  /**
-   * Persist the current previewCards to the DB if not already done.
-   * Returns the committed result, or null on failure.
-   */
-  async function ensureCommitted(): Promise<CommittedResult | null> {
-    if (committedResult) return committedResult;
-    if (!generatedResult || !session?.access_token || previewCards.length === 0) return null;
+  useEffect(() => {
+    if (showDeckModal) {
+      setDeckModalMounted(true);
+      Animated.parallel([
+        Animated.timing(deckModalOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(deckModalTranslateY, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 280, mass: 0.8 }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(deckModalOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+        Animated.timing(deckModalTranslateY, { toValue: 400, duration: 160, useNativeDriver: true }),
+      ]).start(() => {
+        setDeckModalMounted(false);
+        setDeckSearch("");
+      });
+    }
+  }, [deckModalOpacity, deckModalTranslateY, showDeckModal]);
 
-    const committed = await commitGeneratedLesson(session.access_token, {
-      language_id: generatedResult.languageId,
-      topic: generatedResult.topic,
-      difficulty_level: difficultyLevel,
-      cards: previewCards.map(({ _clientId: _omit, ...card }) => card),
-    });
-
-    const result: CommittedResult = {
-      categoryId: String(committed.category_id),
-      categoryName: committed.category_name,
-      cardIds: committed.flashcards.map((f) => String(f.id)),
-    };
-    setCommittedResult(result);
-    return result;
-  }
-
-  async function handleStartLesson() {
-    if (!generatedResult || !session?.access_token || previewCards.length === 0) return;
-
-    const profileId = profile?.id ?? session.user?.id;
-    if (!profileId) return;
-
-    setStatus("starting");
+  async function handleAddToDeck(deckId: string) {
+    if (!session?.access_token || previewCards.length === 0 || addingToDeckId) return;
+    setStatus("saving");
+    setAddingToDeckId(deckId);
+    setErrorMessage("");
 
     try {
-      const committed = await ensureCommitted();
-      if (!committed) throw new Error("Commit failed");
-
-      const topicKey = `generated-${committed.categoryId}`;
-      const mappedCards: Flashcard[] = committed.cardIds.map((dbId, index) => ({
-        id: index + 1,
-        dbId,
-        sourceText: previewCards[index]?.source_text ?? "",
-        romanization: previewCards[index]?.romanization ?? "",
-        translation: previewCards[index]?.translation ?? "",
-      }));
-      await setCurrentCards(topicKey, mappedCards);
-
-      const lessonSession = await createLessonSession(session.access_token, {
-        profile_id: profileId,
-        category_id: committed.categoryId,
-        difficulty: difficultyLevel,
-        started_at: new Date().toISOString(),
-        card_ids: committed.cardIds,
-        current_index: 0,
-        status: "in_progress",
-        completed: false,
+      await bulkCreateDeckCards(session.access_token, deckId, {
+        cards: previewCards.map(({ _clientId: _omit, ...card }) => card),
       });
-
-      posthog?.capture("lesson_started", {
-        language: generatedResult.languageLabel,
-        topic: generatedResult.categoryName,
-        difficulty: difficultyLevel,
-        card_count: mappedCards.length,
+      qc.invalidateQueries({ queryKey: queryKeys.deckCards(userId, deckId) });
+      qc.invalidateQueries({ queryKey: queryKeys.deck(userId, deckId) });
+      qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
+      posthog?.capture("flashcards_saved_to_deck", {
+        deck_id: deckId,
+        topic: generatedResult?.topic ?? topic.trim(),
+        language: generatedResult?.languageLabel ?? "",
+        card_count: previewCards.length,
       });
-
-      router.replace({
-        pathname: "/practice/[topic]",
-        params: {
-          topic: topicKey,
-          topicTitle: committed.categoryName,
-          language: generatedResult.languageSlug,
-          languageLabel: generatedResult.languageLabel,
-          apiLanguageId: generatedResult.languageId,
-          apiCategoryId: committed.categoryId,
-          difficulty: String(difficultyLevel),
-          apiLoaded: "true",
-          lessonSessionId: lessonSession.session_id,
-          activityId: lessonSession.activity_id ?? lessonSession.session_id,
-        },
-      });
+      setShowDeckModal(false);
+      router.push({ pathname: "/decks/[id]", params: { id: deckId } });
     } catch {
       setStatus("error");
-      setErrorMessage("Couldn't start the lesson. Please try again.");
+      setErrorMessage("Couldn't save cards to this deck. Please try again.");
+      Alert.alert("Error", "Couldn't add cards to deck. Please try again.");
+    } finally {
+      setAddingToDeckId(null);
+      setStatus("idle");
     }
+  }
+
+  async function handleCreateNewDeck() {
+    if (!generatedResult || previewCards.length === 0) return;
+    await setGeneratedDeckImport({
+      languageId: generatedResult.languageId,
+      cards: previewCards.map(({ _clientId: _omit, ...card }) => ({
+        ...card,
+        difficulty: card.difficulty,
+      })),
+    });
+    setShowDeckModal(false);
+    router.push({
+      pathname: "/decks/new",
+      params: {
+        languageId: generatedResult.languageId,
+        importSource: "generated",
+      },
+    });
   }
 
   function handleRemoveCard(clientId: string) {
     setPreviewCards((prev) => prev.filter((c) => c._clientId !== clientId));
     setSelectedIds((prev) => { const s = new Set(prev); s.delete(clientId); return s; });
-    // Card list changed — any commit is now stale
-    setCommittedResult(null);
   }
 
   function toggleSelected(clientId: string) {
@@ -278,8 +269,6 @@ export default function Generate() {
     const idsToReplace = Array.from(selectedIds);
     setReplacingIds(new Set(idsToReplace));
     setSelectedIds(new Set());
-    // Replacements invalidate any commit
-    setCommittedResult(null);
 
     try {
       const result = await generateReplacements(session.access_token, {
@@ -310,9 +299,121 @@ export default function Generate() {
     setPreviewCards([]);
     setSelectedIds(new Set());
     setReplacingIds(new Set());
-    setCommittedResult(null);
     setStatus("idle");
     setErrorMessage("");
+    setShowDeckModal(false);
+    void clearGeneratedDeckImport();
+  }
+
+  function renderDeckModal() {
+    return (
+      <Modal
+        visible={deckModalMounted}
+        animationType="none"
+        transparent
+        onRequestClose={() => setShowDeckModal(false)}
+      >
+        <View style={{ flex: 1, overflow: "hidden" }}>
+          <Animated.View style={{ flex: 1, opacity: deckModalOpacity }}>
+            <Pressable
+              style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }}
+              onPress={() => setShowDeckModal(false)}
+            />
+          </Animated.View>
+          <Animated.View
+            style={{ transform: [{ translateY: deckModalTranslateY }], maxHeight: 480 }}
+            className="bg-background rounded-t-3xl p-6"
+          >
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-lg font-semibold text-foreground" style={{ fontFamily }}>
+                Save Flashcards
+              </Text>
+              <Pressable onPress={() => setShowDeckModal(false)}>
+                <Ionicons name="close" size={22} color="#6B7280" />
+              </Pressable>
+            </View>
+
+            <Pressable
+              onPress={() => void handleCreateNewDeck()}
+              className="flex-row items-center gap-3 py-3 px-4 rounded-2xl bg-accent border border-primary mb-3"
+            >
+              <View className="w-9 h-9 rounded-xl bg-primary items-center justify-center">
+                <Ionicons name="add" size={20} color="#FFFFFF" />
+              </View>
+              <Text className="text-foreground font-semibold flex-1" style={{ fontFamily }}>
+                Create new deck
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#FF6B4A" />
+            </Pressable>
+
+            {matchingDecks.length > 0 && (
+              <>
+                <Text className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 pl-1" style={{ fontFamily }}>
+                  My Decks
+                </Text>
+                {matchingDecks.length > 4 && (
+                  <View className="flex-row items-center bg-card border border-border rounded-2xl px-3 py-2.5 gap-2 mb-3">
+                    <Ionicons name="search" size={15} color="#A0A0A0" />
+                    <TextInput
+                      value={deckSearch}
+                      onChangeText={setDeckSearch}
+                      placeholder="Search decks…"
+                      placeholderTextColor="#A0A0A0"
+                      className="flex-1 text-foreground"
+                      style={{ fontSize: 15, fontFamily }}
+                      returnKeyType="search"
+                      clearButtonMode="while-editing"
+                      autoCorrect={false}
+                    />
+                  </View>
+                )}
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View className="gap-2">
+                    {filteredDecks.map((deck) => (
+                      <Pressable
+                        key={deck.id}
+                        onPress={() => void handleAddToDeck(deck.id)}
+                        disabled={!!addingToDeckId}
+                        className="flex-row items-center gap-3 py-3 px-4 rounded-2xl bg-secondary"
+                      >
+                        <View className="w-9 h-9 rounded-xl bg-card items-center justify-center">
+                          {deck.icon ? (
+                            <Text style={{ fontSize: 18 }}>{deck.icon}</Text>
+                          ) : (
+                            <Ionicons name="albums" size={18} color="#FF6B4A" />
+                          )}
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-foreground font-medium" style={{ fontFamily }}>
+                            {deck.name}
+                          </Text>
+                          <Text className="text-muted text-xs" style={{ fontFamily }}>
+                            {deck.card_count ?? 0} card{(deck.card_count ?? 0) !== 1 ? "s" : ""}
+                          </Text>
+                        </View>
+                        {addingToDeckId === deck.id ? (
+                          <ActivityIndicator size="small" color="#FF6B4A" />
+                        ) : (
+                          <Ionicons name="chevron-forward" size={16} color="#A0A0A0" />
+                        )}
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
+
+            {matchingDecks.length === 0 && (
+              <View className="items-center py-4 gap-1">
+                <Text className="text-muted text-sm text-center" style={{ fontFamily }}>
+                  No matching decks — create one above.
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        </View>
+      </Modal>
+    );
   }
 
   // ── Preview ─────────────────────────────────────────────────────────────────
@@ -445,8 +546,8 @@ export default function Generate() {
                 </Pressable>
               ) : (
                 <Pressable
-                  onPress={handleStartLesson}
-                  disabled={status === "starting"}
+                  onPress={() => setShowDeckModal(true)}
+                  disabled={status === "saving"}
                   className="py-4 rounded-2xl items-center bg-primary"
                   style={{
                     shadowColor: "#FF6B4A",
@@ -456,18 +557,18 @@ export default function Generate() {
                     elevation: 4,
                   }}
                 >
-                  {status === "starting" ? (
+                  {status === "saving" ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text className="text-base font-semibold text-primary-foreground">
-                      Start Lesson ({previewCards.length} cards)
+                      Save Flashcards ({previewCards.length})
                     </Text>
                   )}
                 </Pressable>
               )}
               <Pressable
                 onPress={handleBackToForm}
-                disabled={status === "starting" || replacingIds.size > 0}
+                disabled={status === "saving" || replacingIds.size > 0}
                 className="py-3 rounded-2xl items-center bg-secondary"
               >
                 <Text className="text-sm font-medium text-muted">Regenerate All</Text>
@@ -475,6 +576,7 @@ export default function Generate() {
             </View>
           )}
         </View>
+        {renderDeckModal()}
       </SafeAreaView>
     );
   }
@@ -497,9 +599,9 @@ export default function Generate() {
             </Pressable>
             <View>
               <Text className="text-2xl font-semibold text-foreground tracking-tight">
-                Generate a Lesson
+                Generate Flashcards
               </Text>
-              <Text className="text-muted text-sm">AI builds cards from any topic</Text>
+              <Text className="text-muted text-sm">AI builds flashcards from any topic</Text>
             </View>
           </View>
 
@@ -518,7 +620,7 @@ export default function Generate() {
                 <Text className="text-base font-medium text-foreground">
                   {languages.find((l) => l.id === selectedLanguageId)?.language ?? "Select a language"}
                 </Text>
-                <Text className="text-xs text-muted mt-1">Choose the language for this lesson.</Text>
+                <Text className="text-xs text-muted mt-1">Choose the language for these flashcards.</Text>
               </View>
               <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
             </Pressable>
@@ -608,7 +710,7 @@ export default function Generate() {
             {status === "generating" && (
               <View className="items-center py-6 gap-3">
                 <ActivityIndicator size="large" color="#FF6B4A" />
-                <Text className="text-muted text-sm">Building your lesson…</Text>
+                <Text className="text-muted text-sm">Building your flashcards…</Text>
               </View>
             )}
           </ScrollView>
@@ -635,13 +737,14 @@ export default function Generate() {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text className={`text-base font-semibold ${canGenerate ? "text-primary-foreground" : "text-muted"}`}>
-                  Generate Lesson
+                  Generate Flashcards
                 </Text>
               )}
             </Pressable>
           </View>
         </View>
       </KeyboardAvoidingView>
+      {renderDeckModal()}
       <LanguagePickerModal
         visible={showLanguagePicker}
         languages={languages}

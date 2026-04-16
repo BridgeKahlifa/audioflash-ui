@@ -82,6 +82,7 @@ export default function Categories() {
   }, [preferredLanguageId, languages, switchingLanguage]);
 
   const topics: Topic[] = contextCategories
+    .filter((category) => category.is_public !== false)
     .filter((category) => typeof category.total_cards !== "number" || category.total_cards > 0)
     .map((category, index) => ({
       id: `category-${category.id}`,

@@ -19,6 +19,10 @@ import { queryKeys } from "../../lib/query-keys";
 import { createDeck, fetchLessonsByCategory, bulkCreateDeckCards } from "../../lib/api";
 import { DeckEmojiInput } from "../../components/DeckEmojiInput";
 import { LanguagePickerModal } from "../../components/LanguagePickerModal";
+import {
+  clearGeneratedDeckImport,
+  getGeneratedDeckImport,
+} from "../../lib/storage";
 
 export default function NewDeck() {
   const { session, isDevAuth, profile } = useAuth();
@@ -26,9 +30,10 @@ export default function NewDeck() {
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
 
-  const { categoryId, languageId: languageIdParam } = useLocalSearchParams<{
+  const { categoryId, languageId: languageIdParam, importSource } = useLocalSearchParams<{
     categoryId?: string;
     languageId?: string;
+    importSource?: string;
   }>();
 
   const { data: languages } = useLanguages();
@@ -70,19 +75,30 @@ export default function NewDeck() {
         description: description.trim() || null,
       });
 
-      // If launched from a category, bulk-import its cards into the new deck
-      if (categoryId) {
+      // If launched from a category, bulk-import its cards into the new deck.
+      // If launched from generated flashcards, import the staged cards instead.
+      if (categoryId || importSource === "generated") {
         try {
-          const categoryCards = await fetchLessonsByCategory({ categoryId, languageId: selectedLanguageId ?? undefined, shuffle: false });
-          if (categoryCards.length > 0) {
-            await bulkCreateDeckCards(session?.access_token ?? null, deck.id, {
-              cards: categoryCards.map((c) => ({
-                source_text: c.source_text,
-                translation: c.translation,
-                romanization: c.romanization ?? null,
-                difficulty: c.difficulty ?? null,
-              })),
-            });
+          if (importSource === "generated") {
+            const generatedImport = await getGeneratedDeckImport();
+            if (generatedImport?.cards.length) {
+              await bulkCreateDeckCards(session?.access_token ?? null, deck.id, {
+                cards: generatedImport.cards,
+              });
+              await clearGeneratedDeckImport();
+            }
+          } else if (categoryId) {
+            const categoryCards = await fetchLessonsByCategory({ categoryId, languageId: selectedLanguageId ?? undefined, shuffle: false });
+            if (categoryCards.length > 0) {
+              await bulkCreateDeckCards(session?.access_token ?? null, deck.id, {
+                cards: categoryCards.map((c) => ({
+                  source_text: c.source_text,
+                  translation: c.translation,
+                  romanization: c.romanization ?? null,
+                  difficulty: c.difficulty ?? null,
+                })),
+              });
+            }
           }
           qc.invalidateQueries({ queryKey: queryKeys.deckCards(userId, deck.id) });
           qc.invalidateQueries({ queryKey: queryKeys.deck(userId, deck.id) });
@@ -98,6 +114,19 @@ export default function NewDeck() {
       setSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    if (importSource !== "generated") return;
+    void getGeneratedDeckImport().then((generatedImport) => {
+      if (!generatedImport) return;
+      if (!selectedLanguageId) {
+        setSelectedLanguageId(generatedImport.languageId);
+      }
+    });
+    return () => {
+      void clearGeneratedDeckImport();
+    };
+  }, [importSource, selectedLanguageId]);
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
@@ -119,7 +148,9 @@ export default function NewDeck() {
                 New Deck
               </Text>
               <Text className="text-muted text-sm">
-                {categoryId ? "Cards will be imported automatically" : "Create a custom flashcard deck"}
+                {categoryId || importSource === "generated"
+                  ? "Cards will be imported automatically"
+                  : "Create a custom flashcard deck"}
               </Text>
             </View>
           </View>
@@ -146,19 +177,23 @@ export default function NewDeck() {
             {/* Language */}
             <Text className="text-sm font-semibold text-foreground mb-2">Language</Text>
             <Pressable
-              onPress={() => { if (!languageIdParam) setShowLanguagePicker(true); }}
+              onPress={() => { if (!languageIdParam && importSource !== "generated") setShowLanguagePicker(true); }}
               className="bg-card border border-border rounded-2xl px-4 py-4 mb-5 flex-row items-center justify-between"
-              style={languageIdParam ? { opacity: 0.6 } : undefined}
+              style={languageIdParam || importSource === "generated" ? { opacity: 0.6 } : undefined}
             >
               <View className="flex-1 pr-3">
                 <Text className="text-base font-medium text-foreground">
                   {selectedLanguageLabel}
                 </Text>
                 <Text className="text-xs text-muted mt-1">
-                  {languageIdParam ? "Inherited from category." : "Choose the language for this deck."}
+                  {languageIdParam
+                    ? "Inherited from category."
+                    : importSource === "generated"
+                      ? "Inherited from generated flashcards."
+                      : "Choose the language for this deck."}
                 </Text>
               </View>
-              {languageIdParam ? (
+              {languageIdParam || importSource === "generated" ? (
                 <Ionicons name="lock-closed" size={16} color="#9CA3AF" />
               ) : (
                 <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
@@ -224,7 +259,9 @@ export default function NewDeck() {
                   className={`text-base font-semibold ${canSubmit ? "text-primary-foreground" : "text-muted"
                     }`}
                 >
-                  {categoryId ? "Create Deck & Import Cards" : "Create Deck"}
+                  {categoryId || importSource === "generated"
+                    ? "Create Deck & Import Cards"
+                    : "Create Deck"}
                 </Text>
               )}
             </Pressable>
