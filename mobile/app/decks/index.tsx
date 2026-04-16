@@ -15,7 +15,7 @@ import { useAppTheme } from "../../lib/theme-context";
 
 export default function DecksIndex() {
   const { data: decks, isLoading, error, refetch, isStale } = useDecks();
-  const { matrixMode } = useAppTheme();
+  const { matrixMode, fontFamily } = useAppTheme();
   const isStaleRef = useRef(false);
   isStaleRef.current = isStale;
   const [query, setQuery] = useState("");
@@ -57,10 +57,10 @@ export default function DecksIndex() {
             <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
           </Pressable>
           <View className="flex-1">
-            <Text className="text-2xl font-semibold text-foreground tracking-tight">
+            <Text className="text-2xl font-semibold text-foreground tracking-tight" style={{ fontFamily }}>
               My Decks
             </Text>
-            <Text className="text-muted text-sm">Your custom flashcard decks</Text>
+            <Text className="text-muted text-sm" style={{ fontFamily }}>Your custom flashcard decks</Text>
           </View>
           <Pressable
             onPress={() => router.push("/decks/new")}
@@ -105,7 +105,7 @@ export default function DecksIndex() {
             </View>
           ) : error ? (
             <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
-              <Text className="text-red-600 text-sm">
+              <Text className="text-red-600 text-sm" style={{ fontFamily }}>
                 Couldn't load decks. Please try again.
               </Text>
             </View>
@@ -114,10 +114,10 @@ export default function DecksIndex() {
               <View className="w-16 h-16 rounded-full bg-secondary items-center justify-center">
                 <Ionicons name="albums-outline" size={28} color="#A0A0A0" />
               </View>
-              <Text className="text-foreground font-medium text-center">
+              <Text className="text-foreground font-medium text-center" style={{ fontFamily }}>
                 No decks yet
               </Text>
-              <Text className="text-muted text-sm text-center">
+              <Text className="text-muted text-sm text-center" style={{ fontFamily }}>
                 Create a deck to build your own flashcard sets.
               </Text>
               <Pressable
@@ -131,7 +131,7 @@ export default function DecksIndex() {
                   elevation: 4,
                 }}
               >
-                <Text className="text-primary-foreground font-semibold">
+                <Text className="text-primary-foreground font-semibold" style={{ fontFamily }}>
                   Create a Deck
                 </Text>
               </Pressable>
@@ -169,13 +169,13 @@ export default function DecksIndex() {
                     )}
                   </View>
                   <View className="flex-1">
-                    <Text className="text-foreground font-semibold">{deck.name}</Text>
+                    <Text className="text-foreground font-semibold" style={{ fontFamily }}>{deck.name}</Text>
                     {deck.description ? (
-                      <Text className="text-muted text-xs mt-0.5" numberOfLines={1}>
+                      <Text className="text-muted text-xs mt-0.5" numberOfLines={1} style={{ fontFamily }}>
                         {deck.description}
                       </Text>
                     ) : null}
-                    <Text className="text-muted text-xs mt-0.5">
+                    <Text className="text-muted text-xs mt-0.5" style={{ fontFamily }}>
                       {deck.card_count ?? 0} card
                       {(deck.card_count ?? 0) !== 1 ? "s" : ""}
                     </Text>
@@ -189,7 +189,7 @@ export default function DecksIndex() {
                 ).length === 0 && (
                 <View className="items-center py-10 gap-2">
                   <Ionicons name="search" size={28} color="#A0A0A0" />
-                  <Text className="text-muted text-sm text-center">
+                  <Text className="text-muted text-sm text-center" style={{ fontFamily }}>
                     No decks match "{query}"
                   </Text>
                 </View>

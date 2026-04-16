@@ -75,7 +75,7 @@ export default function FlashcardPractice() {
 
   const { session } = useAuth();
   const posthog = useAnalytics();
-  const { matrixMode } = useAppTheme();
+  const { matrixMode, fontFamily } = useAppTheme();
 
   const palette = matrixMode
     ? {
@@ -90,6 +90,7 @@ export default function FlashcardPractice() {
         foreground: "#ff8c42",
         muted: "#c9714d",
         icon: "#ff8c42",
+        fontFamily: fontFamily,
       }
     : {
         screenBackground: "#FFF7F2",
@@ -103,6 +104,7 @@ export default function FlashcardPractice() {
         foreground: "#2F1E19",
         muted: "#8B6E66",
         icon: "#1A1A1A",
+        fontFamily: fontFamily,
       };
 
   // ── Card state ─────────────────────────────────────────────────────────────
@@ -485,7 +487,7 @@ export default function FlashcardPractice() {
         style={{ backgroundColor: palette.screenBackground }}
       >
         <View className="flex-1 items-center justify-center max-w-md w-full mx-auto">
-          <Text className="text-muted" style={{ color: palette.muted }}>Loading cards...</Text>
+          <Text className="text-muted" style={{ color: palette.muted, fontFamily: palette.fontFamily }}>Loading cards...</Text>
         </View>
       </SafeAreaView>
     );
@@ -529,7 +531,7 @@ export default function FlashcardPractice() {
           </Pressable>
           <View className="w-10 h-10" />
         </View>
-        <Text className="text-sm text-muted text-center mb-2" style={{ color: palette.muted }}>
+        <Text className="text-sm text-muted text-center mb-2" style={{ color: palette.muted, fontFamily: palette.fontFamily }}>
           {currentIndex + 1} / {cards.length}
         </Text>
 
@@ -601,11 +603,11 @@ export default function FlashcardPractice() {
 
                   <View className="mt-4 w-full px-3">
                     <View className="mb-1 flex-row items-center justify-between">
-                      <Text className="text-sm text-muted" style={{ color: palette.muted }}>Slow</Text>
-                      <Text className="text-sm font-semibold text-primary" style={{ color: palette.primary }}>
+                      <Text className="text-sm text-muted" style={{ color: palette.muted, fontFamily: palette.fontFamily }}>Slow</Text>
+                      <Text className="text-sm font-semibold text-primary" style={{ color: palette.primary, fontFamily: palette.fontFamily }}>
                         {playbackSpeed.toFixed(1)}x
                       </Text>
-                      <Text className="text-sm text-muted" style={{ color: palette.muted }}>Normal</Text>
+                      <Text className="text-sm text-muted" style={{ color: palette.muted, fontFamily: palette.fontFamily }}>Normal</Text>
                     </View>
                     <View
                       ref={sliderRef}
@@ -674,15 +676,15 @@ export default function FlashcardPractice() {
                     Replay audio
                   </Text>
                 ) : null}
-                <Text className="text-4xl text-foreground text-center mb-3" style={{ alignSelf: "stretch", color: palette.foreground }}>
+                <Text className="text-4xl text-foreground text-center mb-3" style={{ alignSelf: "stretch", color: palette.foreground, fontFamily: palette.fontFamily }}>
                   {currentCard.sourceText}
                 </Text>
                 {currentCard.romanization ? (
-                  <Text className="text-xl text-muted text-center mb-6" style={{ alignSelf: "stretch", color: palette.muted }}>
+                  <Text className="text-xl text-muted text-center mb-6" style={{ alignSelf: "stretch", color: palette.muted, fontFamily: palette.fontFamily }}>
                     {currentCard.romanization}
                   </Text>
                 ) : null}
-                <Text className="text-xl text-foreground text-center" style={{ alignSelf: "stretch", color: palette.foreground }}>
+                <Text className="text-xl text-foreground text-center" style={{ alignSelf: "stretch", color: palette.foreground, fontFamily: palette.fontFamily }}>
                   {currentCard.translation}
                 </Text>
               </View>
@@ -703,14 +705,14 @@ export default function FlashcardPractice() {
               }}
               disabled={submitting}
             >
-              <Text className="text-base font-medium text-muted" style={{ color: palette.foreground }}>Reveal Answer</Text>
+              <Text className="text-base font-medium text-muted" style={{ color: palette.foreground, fontFamily: palette.fontFamily }}>Reveal Answer</Text>
             </Pressable>
           ) : null}
 
           {shouldShowAnswerActions ? (
             <>
               <View className="items-center gap-3">
-                <Text className="text-sm font-medium text-muted" style={{ color: palette.muted }}>How confident were you?</Text>
+                <Text className="text-sm font-medium text-muted" style={{ color: palette.muted, fontFamily: palette.fontFamily }}>How confident were you?</Text>
                 <View className="flex-row gap-2">
                   {[1, 2, 3, 4, 5].map((value) => {
                     const selected = selectedConfidence === value;
@@ -749,7 +751,7 @@ export default function FlashcardPractice() {
                     borderColor: palette.secondaryBorder,
                   }}
                 >
-                  <Text className="text-base font-medium text-foreground" style={{ color: palette.foreground }}>
+                  <Text className="text-base font-medium text-foreground" style={{ color: palette.foreground, fontFamily: palette.fontFamily }}>
                     {submittingResult === "didnt-know" ? "Saving..." : "Didn't Know"}
                   </Text>
                 </Pressable>
@@ -766,13 +768,13 @@ export default function FlashcardPractice() {
                     elevation: matrixMode ? 7 : 4,
                   }}
                 >
-                  <Text className="text-base font-semibold text-primary-foreground" style={{ color: palette.primaryForeground }}>
+                  <Text className="text-base font-semibold text-primary-foreground" style={{ color: palette.primaryForeground, fontFamily: palette.fontFamily }}>
                     {submittingResult === "knew" ? "Saving..." : "I Knew It"}
                   </Text>
                 </Pressable>
               </View>
               {attemptError ? (
-                <Text className="text-center text-sm text-red-500">{attemptError}</Text>
+                <Text className="text-center text-sm text-red-500" style={{ fontFamily: palette.fontFamily }}>{attemptError}</Text>
               ) : null}
             </>
           ) : null}
