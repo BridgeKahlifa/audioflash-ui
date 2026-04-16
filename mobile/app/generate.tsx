@@ -72,7 +72,7 @@ export default function Generate() {
   const [topic, setTopic] = useState("");
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(null);
-  const [difficultyLevel, setDifficultyLevel] = useState(3);
+  const [difficultyLevel, setDifficultyLevel] = useState(1);
   const [cardCount, setCardCount] = useState(10);
   const [status, setStatus] = useState<"idle" | "generating" | "starting" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -530,14 +530,15 @@ export default function Generate() {
               onChangeText={setTopic}
               placeholder="e.g. Ordering coffee, At the airport…"
               placeholderTextColor="#A0A0A0"
-              maxLength={150}
-              className="bg-card border border-border rounded-2xl px-4 py-4 text-foreground text-base mb-1"
+              maxLength={300}
+              className="bg-card border border-border rounded-2xl px-4 py-6 text-foreground text-base mb-1"
               style={{ fontFamily: undefined }}
               returnKeyType="done"
               onSubmitEditing={handleGenerate}
               editable={status !== "generating"}
+              multiline
             />
-            <Text className="text-xs text-muted mb-5 pl-1">{topic.length}/150</Text>
+            <Text className="text-xs text-muted mb-5 pl-1">{topic.length}/300</Text>
 
             {/* Difficulty */}
             <Text className="text-sm font-semibold text-foreground mb-2">Difficulty</Text>
