@@ -17,7 +17,7 @@ jobs:
       - run: npm install -g eas-cli
       - run: npm install
 
-      - run: npx eas-cli build --platform all --non-interactive --no-wait
+      - run: npx eas-cli build --platform all --profile preview --non-interactive --no-wait
         working-directory: ./mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
