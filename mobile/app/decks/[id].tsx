@@ -319,11 +319,6 @@ export default function DeckDetail() {
                       <Text className="text-sm text-muted">{card.translation}</Text>
                     </View>
                     <View className="items-end gap-2">
-                      <View className="bg-secondary rounded-lg px-2 py-0.5">
-                        <Text className="text-xs text-muted capitalize">
-                          {card.created_by}
-                        </Text>
-                      </View>
                       <View className="flex-row gap-1">
                         <Pressable
                           onPress={() =>

@@ -10,13 +10,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../lib/auth-context";
 import { useLanguages } from "../../lib/queries";
 import { queryKeys } from "../../lib/query-keys";
-import { createDeck } from "../../lib/api";
+import { createDeck, fetchLessonsByCategory, bulkCreateDeckCards } from "../../lib/api";
 import { DeckEmojiInput } from "../../components/DeckEmojiInput";
 import { LanguagePickerModal } from "../../components/LanguagePickerModal";
 
@@ -26,10 +26,17 @@ export default function NewDeck() {
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
 
+  const { categoryId, languageId: languageIdParam } = useLocalSearchParams<{
+    categoryId?: string;
+    languageId?: string;
+  }>();
+
   const { data: languages } = useLanguages();
 
   const [name, setName] = useState("");
-  const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(null);
+  const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(
+    languageIdParam ?? null,
+  );
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [icon, setIcon] = useState<string | null>(null);
   const [description, setDescription] = useState("");
@@ -62,6 +69,28 @@ export default function NewDeck() {
         icon: icon ?? null,
         description: description.trim() || null,
       });
+
+      // If launched from a category, bulk-import its cards into the new deck
+      if (categoryId) {
+        try {
+          const categoryCards = await fetchLessonsByCategory({ categoryId, shuffle: false });
+          if (categoryCards.length > 0) {
+            await bulkCreateDeckCards(session?.access_token ?? null, deck.id, {
+              cards: categoryCards.map((c) => ({
+                source_text: c.source_text,
+                translation: c.translation,
+                romanization: c.romanization ?? null,
+                difficulty: c.difficulty ?? null,
+              })),
+            });
+          }
+          qc.invalidateQueries({ queryKey: queryKeys.deckCards(userId, deck.id) });
+          qc.invalidateQueries({ queryKey: queryKeys.deck(userId, deck.id) });
+        } catch {
+          // Cards failed to import — still navigate to the deck, user can add manually
+        }
+      }
+
       qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
       router.replace({ pathname: "/decks/[id]", params: { id: deck.id } });
     } catch {
@@ -89,7 +118,9 @@ export default function NewDeck() {
               <Text className="text-2xl font-semibold text-foreground tracking-tight">
                 New Deck
               </Text>
-              <Text className="text-muted text-sm">Create a custom flashcard deck</Text>
+              <Text className="text-muted text-sm">
+                {categoryId ? "Cards will be imported automatically" : "Create a custom flashcard deck"}
+              </Text>
             </View>
           </View>
 
@@ -103,7 +134,7 @@ export default function NewDeck() {
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="e.g. Korean Travel Phrases"
+              placeholder={selectedLanguageId && selectedLanguageLabel !== "Select a language" ? `e.g. ${selectedLanguageLabel} Travel Phrases` : "e.g. Travel Phrases"}
               placeholderTextColor="#A0A0A0"
               maxLength={80}
               className="bg-card border border-border rounded-2xl px-4 py-4 text-foreground text-base mb-1"
@@ -115,18 +146,23 @@ export default function NewDeck() {
             {/* Language */}
             <Text className="text-sm font-semibold text-foreground mb-2">Language</Text>
             <Pressable
-              onPress={() => setShowLanguagePicker(true)}
+              onPress={() => { if (!languageIdParam) setShowLanguagePicker(true); }}
               className="bg-card border border-border rounded-2xl px-4 py-4 mb-5 flex-row items-center justify-between"
+              style={languageIdParam ? { opacity: 0.6 } : undefined}
             >
               <View className="flex-1 pr-3">
                 <Text className="text-base font-medium text-foreground">
                   {selectedLanguageLabel}
                 </Text>
                 <Text className="text-xs text-muted mt-1">
-                  Choose the language for this deck.
+                  {languageIdParam ? "Inherited from category." : "Choose the language for this deck."}
                 </Text>
               </View>
-              <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
+              {languageIdParam ? (
+                <Ionicons name="lock-closed" size={16} color="#9CA3AF" />
+              ) : (
+                <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
+              )}
             </Pressable>
 
             {/* Icon */}
@@ -167,18 +203,17 @@ export default function NewDeck() {
             <Pressable
               onPress={handleCreate}
               disabled={!canSubmit}
-              className={`py-4 rounded-2xl items-center ${
-                canSubmit ? "bg-primary" : "bg-secondary"
-              }`}
+              className={`py-4 rounded-2xl items-center ${canSubmit ? "bg-primary" : "bg-secondary"
+                }`}
               style={
                 canSubmit
                   ? {
-                      shadowColor: "#FF6B4A",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }
+                    shadowColor: "#FF6B4A",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }
                   : undefined
               }
             >
@@ -186,11 +221,10 @@ export default function NewDeck() {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text
-                  className={`text-base font-semibold ${
-                    canSubmit ? "text-primary-foreground" : "text-muted"
-                  }`}
+                  className={`text-base font-semibold ${canSubmit ? "text-primary-foreground" : "text-muted"
+                    }`}
                 >
-                  Create Deck
+                  {categoryId ? "Create Deck & Import Cards" : "Create Deck"}
                 </Text>
               )}
             </Pressable>

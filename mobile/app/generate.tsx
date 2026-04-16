@@ -25,6 +25,7 @@ import {
 import { useAuth } from "../lib/auth-context";
 import { setCurrentCards } from "../lib/storage";
 import type { Flashcard } from "../lib/types";
+import { LanguagePickerModal } from "../components/LanguagePickerModal";
 
 const TOPIC_SUGGESTIONS = [
   "Ordering coffee",
@@ -76,6 +77,7 @@ export default function Generate() {
   const [status, setStatus] = useState<"idle" | "generating" | "starting" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [loadError, setLoadError] = useState("");
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
   // Preview step
   const [generatedResult, setGeneratedResult] = useState<GeneratedResult | null>(null);
@@ -547,28 +549,18 @@ export default function Generate() {
           >
             {/* Language */}
             <Text className="text-sm font-semibold text-foreground mb-2">Language</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="mb-5"
-              contentContainerStyle={{ gap: 8 }}
+            <Pressable
+              onPress={() => setShowLanguagePicker(true)}
+              className="bg-card border border-border rounded-2xl px-4 py-4 mb-5 flex-row items-center justify-between"
             >
-              {languages.map((lang) => {
-                const selected = selectedLanguageId === lang.id;
-                return (
-                  <Pressable
-                    key={lang.id}
-                    onPress={() => setSelectedLanguageId(lang.id)}
-                    className={`rounded-xl px-4 py-2 border ${selected ? "bg-primary border-primary" : "bg-card border-border"
-                      }`}
-                  >
-                    <Text className={`font-medium text-sm ${selected ? "text-primary-foreground" : "text-foreground"}`}>
-                      {lang.language}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+              <View className="flex-1 pr-3">
+                <Text className="text-base font-medium text-foreground">
+                  {languages.find((l) => l.id === selectedLanguageId)?.language ?? "Select a language"}
+                </Text>
+                <Text className="text-xs text-muted mt-1">Choose the language for this lesson.</Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
+            </Pressable>
 
             {/* Topic */}
             <Text className="text-sm font-semibold text-foreground mb-2">Topic</Text>
@@ -689,6 +681,13 @@ export default function Generate() {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <LanguagePickerModal
+        visible={showLanguagePicker}
+        languages={languages}
+        selectedIds={selectedLanguageId ? [selectedLanguageId] : []}
+        onToggle={setSelectedLanguageId}
+        onClose={() => setShowLanguagePicker(false)}
+      />
     </SafeAreaView>
   );
 }
