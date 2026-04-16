@@ -85,8 +85,6 @@ export default function Generate() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [replacingIds, setReplacingIds] = useState<Set<string>>(new Set());
   const [committedResult, setCommittedResult] = useState<CommittedResult | null>(null);
-  const [isSaved, setIsSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setLoadError("");
@@ -145,7 +143,6 @@ export default function Generate() {
       });
       setPreviewCards(result.flashcards);
       setCommittedResult(null);
-      setIsSaved(false);
       posthog?.capture("lesson_generated", {
         language: selectedLang?.language,
         difficulty: difficultyLevel,
@@ -264,7 +261,6 @@ export default function Generate() {
     setSelectedIds((prev) => { const s = new Set(prev); s.delete(clientId); return s; });
     // Card list changed — any commit is now stale
     setCommittedResult(null);
-    setIsSaved(false);
   }
 
   function toggleSelected(clientId: string) {
@@ -284,7 +280,6 @@ export default function Generate() {
     setSelectedIds(new Set());
     // Replacements invalidate any commit
     setCommittedResult(null);
-    setIsSaved(false);
 
     try {
       const result = await generateReplacements(session.access_token, {
@@ -310,31 +305,12 @@ export default function Generate() {
     }
   }
 
-  async function handleSave() {
-    if (!generatedResult || !session?.access_token || saving) return;
-    setSaving(true);
-    try {
-      await ensureCommitted();
-      setIsSaved(true);
-      posthog?.capture("lesson_saved", {
-        language: generatedResult.languageLabel,
-        card_count: previewCards.length,
-        topic: generatedResult.topic,
-      });
-    } catch {
-      // ignore — user can still start the lesson
-    } finally {
-      setSaving(false);
-    }
-  }
-
   function handleBackToForm() {
     setGeneratedResult(null);
     setPreviewCards([]);
     setSelectedIds(new Set());
     setReplacingIds(new Set());
     setCommittedResult(null);
-    setIsSaved(false);
     setStatus("idle");
     setErrorMessage("");
   }
@@ -364,21 +340,6 @@ export default function Generate() {
                   : `${previewCards.length} card${previewCards.length !== 1 ? "s" : ""} · ${generatedResult.languageLabel} · ${diffLabel} · tap to select`}
               </Text>
             </View>
-            <Pressable
-              onPress={handleSave}
-              disabled={saving || isSaved}
-              className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#FF6B4A" />
-              ) : (
-                <Ionicons
-                  name={isSaved ? "bookmark" : "bookmark-outline"}
-                  size={20}
-                  color={isSaved ? "#FF6B4A" : "#1A1A1A"}
-                />
-              )}
-            </Pressable>
           </View>
 
           <ScrollView

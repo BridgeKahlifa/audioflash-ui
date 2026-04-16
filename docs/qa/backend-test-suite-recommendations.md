@@ -25,7 +25,6 @@ Last updated: 2026-04-03
 - `flash_attempt_update_reconciles_cards_correct`
 - `review_create_is_idempotent_by_parent_session`
 - `review_complete_updates_activity_status`
-- `library_save_idempotent_and_unsave_missing_is_204`
 - `srs_queue_reflects_sm2_updates`
 - `generate_rate_limit_and_ai_unconfigured_errors`
 - `generate_replace_reuses_pool_then_falls_back_to_llm`
@@ -34,7 +33,7 @@ Last updated: 2026-04-03
 ### 3. Integration / DB-Focused Tests
 - Active lesson unique index behavior under race
 - Review unique constraints
-- Cascade delete integrity across profile -> sessions/reviews/saved lessons/user_card_state/activities
+- Cascade delete integrity across profile -> sessions/reviews/user_card_state/activities
 - Startup migration replay on pre-existing schema
 - Legacy lesson session with empty `card_ids` gets initialized on read
 - SRS scheduling progression across multiple answers/confidence values
@@ -44,7 +43,7 @@ Last updated: 2026-04-03
 - Supabase JWKS or admin endpoint unavailable
 - LLM returns malformed JSON or fenced JSON
 - Moderation flags topic or output
-- Large saved-library and flashcard volumes
+- Large flashcard and SRS-state volumes
 - Multi-device concurrency for same user
 
 ## Recommended Automation Split

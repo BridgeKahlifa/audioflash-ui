@@ -517,24 +517,6 @@ export async function commitGeneratedLesson(
 
 // ── Library ──────────────────────────────────────────────────────────────────
 
-export interface ApiSavedLesson {
-  id: string;
-  category_id: string;
-  category_name: string;
-  language_id: string | null;
-  saved_at: string;
-  supported_difficulties: number[];
-}
-
-export interface ApiLibraryCategory {
-  id: string;
-  name: string;
-  language_id: string | null;
-  source: string;
-  supported_difficulties: number[];
-  is_saved: boolean;
-}
-
 export interface ApiSRSQueue {
   due_count: number;
   cards: ApiLessonCard[];
@@ -551,53 +533,10 @@ export interface ApiGradeChartResponse {
   points: ApiGradeChartPoint[];
 }
 
-export async function fetchLibrary(
-  token: string | null | undefined,
-  languageId?: string,
-): Promise<ApiLibraryCategory[]> {
-  const query = languageId ? `?language_id=${languageId}` : "";
-  const res = await fetch(`${API_BASE_URL}/library/browse${query}`, {
-    headers: authHeaders(token),
-  });
-  return parseJson<ApiLibraryCategory[]>(res);
-}
-
-export async function fetchSavedLessons(
-  token: string | null | undefined,
-): Promise<ApiSavedLesson[]> {
-  const res = await fetch(`${API_BASE_URL}/library/saved`, {
-    headers: authHeaders(token),
-  });
-  return parseJson<ApiSavedLesson[]>(res);
-}
-
-export async function saveLesson(
-  token: string | null | undefined,
-  categoryId: string,
-): Promise<ApiSavedLesson> {
-  const res = await fetch(`${API_BASE_URL}/library/saved`, {
-    method: "POST",
-    headers: authHeaders(token),
-    body: JSON.stringify({ category_id: categoryId }),
-  });
-  return parseJson<ApiSavedLesson>(res);
-}
-
-export async function unsaveLesson(
-  token: string | null | undefined,
-  categoryId: string,
-): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/library/saved/${categoryId}`, {
-    method: "DELETE",
-    headers: authHeaders(token),
-  });
-  if (!res.ok && res.status !== 404) throw await buildApiError(res);
-}
-
 export async function fetchSRSQueue(
   token: string | null | undefined,
 ): Promise<ApiSRSQueue> {
-  const res = await apiFetch(`${API_BASE_URL}/library/srs/queue`, {
+  const res = await apiFetch(`${API_BASE_URL}/review/srs/queue`, {
     headers: authHeaders(token),
   });
   return parseJson<ApiSRSQueue>(res);

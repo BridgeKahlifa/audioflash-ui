@@ -27,7 +27,6 @@ Last updated: 2026-04-03
 - `summary_retry_missed_cards_review_branch`
 - `settings_unsaved_changes_tab_switch_guard`
 - `settings_language_change_rolls_back_on_failure`
-- `library_remove_saved_lesson`
 - `delete_account_failure_and_success`
 
 ### 3. Integration / Component Tests
@@ -89,6 +88,6 @@ Last updated: 2026-04-03
 - Add explicit retry CTA where network failures are currently passive banners.
 - Differentiate practice `loading` from `failed to load cards`.
 - Implement real reminder permission + scheduling or relabel the setting.
-- Surface save/unsave lesson failures and OTP resend failures.
+- Surface OTP resend failures.
 - Add defensive handling for missing route params on verify/practice/lesson-ready.
 
