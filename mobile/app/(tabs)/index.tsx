@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
 import { useAnalytics } from "../../lib/analytics";
 import { useSRSQueue, useInProgressLesson, useInProgressLessonName } from "../../lib/queries";
+import { useAppTheme } from "../../lib/theme-context";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
 
@@ -13,6 +14,7 @@ const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
 export default function Home() {
   const { profile } = useAuth();
   const posthog = useAnalytics();
+  const { matrixMode } = useAppTheme();
   const {
     data: srsQueue,
     refetch: refetchSRS,
@@ -61,6 +63,16 @@ export default function Home() {
   })();
 
   const firstName = profile?.name?.split(" ")[0] ?? null;
+  const quickActionPalette = matrixMode
+    ? {
+        iconContainer: "#2f140d",
+        iconColor: "#ff6b4a",
+      }
+    : {
+        iconContainer: "#FBE7DE",
+        iconColor: "#FF6B4A",
+      };
+
   async function handleContinueLesson() {
     if (!inProgressLesson || continuingLesson) return;
 
@@ -212,8 +224,11 @@ export default function Home() {
                 elevation: 2,
               }}
             >
-              <View className="w-12 h-12 rounded-xl bg-accent items-center justify-center mr-4">
-                <Ionicons name="sparkles" size={24} color="#FF6B4A" />
+              <View
+                className="w-12 h-12 rounded-xl items-center justify-center mr-4"
+                style={{ backgroundColor: quickActionPalette.iconContainer }}
+              >
+                <Ionicons name="sparkles" size={24} color={quickActionPalette.iconColor} />
               </View>
               <View className="flex-1">
                 <Text className="text-foreground font-semibold text-base">Generate a Lesson</Text>
@@ -236,8 +251,11 @@ export default function Home() {
                 elevation: 2,
               }}
             >
-              <View className="w-12 h-12 rounded-xl bg-secondary items-center justify-center mr-4">
-                <Ionicons name="grid" size={24} color="#1A1A1A" />
+              <View
+                className="w-12 h-12 rounded-xl items-center justify-center mr-4"
+                style={{ backgroundColor: quickActionPalette.iconContainer }}
+              >
+                <Ionicons name="grid" size={24} color={quickActionPalette.iconColor} />
               </View>
               <View className="flex-1">
                 <Text className="text-foreground font-semibold text-base">Browse Categories</Text>
@@ -258,8 +276,11 @@ export default function Home() {
                 elevation: 2,
               }}
             >
-              <View className="w-12 h-12 rounded-xl bg-secondary items-center justify-center mr-4">
-                <Ionicons name="bookmark" size={24} color="#1A1A1A" />
+              <View
+                className="w-12 h-12 rounded-xl items-center justify-center mr-4"
+                style={{ backgroundColor: quickActionPalette.iconContainer }}
+              >
+                <Ionicons name="bookmark" size={24} color={quickActionPalette.iconColor} />
               </View>
               <View className="flex-1">
                 <Text className="text-foreground font-semibold text-base">My Library</Text>
@@ -282,8 +303,11 @@ export default function Home() {
                 elevation: 2,
               }}
             >
-              <View className="w-12 h-12 rounded-xl bg-accent items-center justify-center mr-4">
-                <Ionicons name="albums" size={24} color="#FF6B4A" />
+              <View
+                className="w-12 h-12 rounded-xl items-center justify-center mr-4"
+                style={{ backgroundColor: quickActionPalette.iconContainer }}
+              >
+                <Ionicons name="albums" size={24} color={quickActionPalette.iconColor} />
               </View>
               <View className="flex-1">
                 <Text className="text-foreground font-semibold text-base">My Decks</Text>

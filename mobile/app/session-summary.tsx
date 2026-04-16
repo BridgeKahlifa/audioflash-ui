@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import Svg, { Circle, Line, Polyline } from "react-native-svg";
 import { SessionHistoryItem } from "../lib/types";
@@ -39,11 +39,6 @@ function formatChartDateTime(dateInput: string | number): string {
   });
 }
 
-function getLocalDayStart(dateInput: string | number): number {
-  const date = new Date(dateInput);
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-}
-
 function getLocalDayKey(dateInput: string | number): string {
   const date = new Date(dateInput);
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
@@ -55,7 +50,7 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
   const yMin = 0;
   const yMax = 100;
   const yTicks = [100, 50, 0];
-  const dayMs = 24 * 60 * 60 * 1000;
+  const plotInset = 12;
   const [chartAreaWidth, setChartAreaWidth] = useState(240);
   const sortedPoints = [...points]
     .map((point, index) => ({ ...point, originalIndex: index }))
@@ -65,38 +60,20 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
     });
   const dayKeys = Array.from(new Set(sortedPoints.map((point) => getLocalDayKey(point.endedAt))));
   const spansMultipleDays = dayKeys.length > 1;
-  const pointsPerDay = new Map<string, number>();
-
-  sortedPoints.forEach((point) => {
-    const dayKey = getLocalDayKey(point.endedAt);
-    pointsPerDay.set(dayKey, (pointsPerDay.get(dayKey) ?? 0) + 1);
-  });
-
-  const seenPerDay = new Map<string, number>();
-  const times = sortedPoints.map((point) => {
-    if (!spansMultipleDays) {
-      return new Date(point.endedAt).getTime();
-    }
-
-    const dayKey = getLocalDayKey(point.endedAt);
-    const countForDay = pointsPerDay.get(dayKey) ?? 1;
-    const indexWithinDay = seenPerDay.get(dayKey) ?? 0;
-    seenPerDay.set(dayKey, indexWithinDay + 1);
-
-    const fractionOfDay = countForDay === 1 ? 0.5 : (indexWithinDay + 1) / (countForDay + 1);
-    return getLocalDayStart(point.endedAt) + fractionOfDay * dayMs;
-  });
+  const times = sortedPoints.map((point) => new Date(point.endedAt).getTime());
   const minTime = Math.min(...times);
   const maxTime = Math.max(...times);
   const timeRange = Math.max(maxTime - minTime, 1);
   const chartWidth = Math.max(chartAreaWidth, 240);
+  const svgWidth = chartWidth;
+  const plotWidth = Math.max(svgWidth - plotInset * 2, 1);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const lineColor = "#F26B4A";
   const gridColor = "#E7DDD6";
 
   const normalizedPoints = sortedPoints.map((point, index) => {
     const timestamp = times[index];
-    const x = 16 + ((timestamp - minTime) / timeRange) * (chartWidth - 32);
+    const x = plotInset + ((timestamp - minTime) / timeRange) * plotWidth;
     const y =
       chartHeight - ((point.grade - yMin) / Math.max(yMax - yMin, 1)) * (chartHeight - 24) - 12;
     return { ...point, x, y, index };
@@ -107,7 +84,7 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
   const timeTicks = Array.from({ length: tickCount }, (_, index) => {
     const ratio = tickCount === 1 ? 0 : index / (tickCount - 1);
     const tickTime = minTime + timeRange * ratio;
-    const x = 16 + ((tickTime - minTime) / timeRange) * (chartWidth - 32);
+    const x = plotInset + ((tickTime - minTime) / timeRange) * plotWidth;
     return { tickTime, x, label: spansMultipleDays ? formatChartDate(tickTime) : formatChartTime(tickTime) };
   });
 
@@ -150,9 +127,9 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
                 </Text>
               ))}
             </View>
-            <View style={{ width: chartWidth + 24 }}>
+            <View style={{ width: chartWidth }}>
               <View style={{ height: chartHeight, position: "relative" }}>
-                <Svg width={chartWidth + 24} height={chartHeight} style={{ position: "absolute", left: 0, top: 0 }}>
+                <Svg width={svgWidth} height={chartHeight} style={{ position: "absolute", left: 0, top: 0 }}>
                   {yTicks.map((tick) => {
                     const y =
                       chartHeight - ((tick - yMin) / Math.max(yMax - yMin, 1)) * (chartHeight - 24) - 12;
@@ -161,7 +138,7 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
                         key={tick}
                         x1="0"
                         y1={y}
-                        x2={chartWidth + 24}
+                        x2={svgWidth}
                         y2={y}
                         stroke={gridColor}
                         strokeWidth="1"
@@ -195,7 +172,7 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
                   <View
                     style={{
                       position: "absolute",
-                      left: Math.max(8, Math.min(activePoint.x - 52, chartWidth - 96)),
+                      left: Math.max(8, Math.min(activePoint.x - 52, chartWidth - 116)),
                       top: Math.max(0, activePoint.y - 76),
                       width: 116,
                       backgroundColor: "#FFFFFF",
@@ -257,7 +234,7 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
         </View>
       </View>
       <View className="flex-row mt-3" style={{ paddingLeft: 56 }}>
-        <Text className="text-xs text-muted" style={{ width: chartWidth + 24, textAlign: "center" }}>
+        <Text className="text-xs text-muted" style={{ width: chartWidth, textAlign: "center" }}>
           Time
         </Text>
       </View>
@@ -266,6 +243,7 @@ function SimpleGradeHistoryChart({ points }: { points: GradeHistoryPoint[] }) {
 }
 
 export default function SessionSummary() {
+  const insets = useSafeAreaInsets();
   const { session: authSession } = useAuth();
   const posthog = useAnalytics();
   const { categoryId: categoryIdParam, difficulty: difficultyParam } = useLocalSearchParams<{
@@ -443,13 +421,16 @@ export default function SessionSummary() {
   }
 
   return (
-    <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
+    <SafeAreaView edges={["top", "left", "right", "bottom"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
         <View className="flex-row items-center justify-between px-6 pt-6 pb-4">
           <Text className="text-2xl font-semibold text-foreground">Session Summary</Text>
         </View>
 
-        <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView
+          className="flex-1 px-6"
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 24 }}
+        >
           {error ? (
             <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
               <Text className="text-red-600 text-sm">{error}</Text>

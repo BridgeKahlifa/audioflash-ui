@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../lib/auth-context";
 import { useDeck, useDeckCards, useLanguages } from "../../lib/queries";
 import { queryKeys } from "../../lib/query-keys";
+import { useAppTheme } from "../../lib/theme-context";
 import {
   deleteDeckCard,
   deleteDeck,
@@ -24,10 +25,22 @@ import {
 export default function DeckDetail() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
   const { session, isDevAuth } = useAuth();
+  const { matrixMode } = useAppTheme();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
   const [cardQuery, setCardQuery] = useState("");
+  const palette = matrixMode
+    ? {
+        secondaryButtonBackground: "#202020",
+        secondaryButtonIcon: "#ff8c42",
+        secondaryButtonMutedIcon: "#A0A0A0",
+      }
+    : {
+        secondaryButtonBackground: "#FBE7DE",
+        secondaryButtonIcon: "#1A1A1A",
+        secondaryButtonMutedIcon: "#737373",
+      };
 
   const {
     data: deck,
@@ -127,9 +140,10 @@ export default function DeckDetail() {
         <View className="px-6 pt-6 pb-2 flex-row items-center gap-3">
           <Pressable
             onPress={() => router.back()}
-            className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+            className="w-10 h-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: palette.secondaryButtonBackground }}
           >
-            <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+            <Ionicons name="chevron-back" size={22} color={palette.secondaryButtonIcon} />
           </Pressable>
           <View className="flex-1">
             {deckLoading ? (
@@ -147,13 +161,15 @@ export default function DeckDetail() {
             onPress={() =>
               router.push({ pathname: "/decks/[id]/edit", params: { id: deckId! } })
             }
-            className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+            className="w-10 h-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: palette.secondaryButtonBackground }}
           >
-            <Ionicons name="pencil" size={18} color="#1A1A1A" />
+            <Ionicons name="pencil" size={18} color={palette.secondaryButtonIcon} />
           </Pressable>
           <Pressable
             onPress={handleDeleteDeck}
-            className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+            className="w-10 h-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: palette.secondaryButtonBackground }}
           >
             <Ionicons name="trash-outline" size={18} color="#EF4444" />
           </Pressable>
@@ -316,19 +332,21 @@ export default function DeckDetail() {
                               params: { id: deckId!, editCardId: card.id },
                             })
                           }
-                          className="w-8 h-8 rounded-full bg-secondary items-center justify-center"
+                          className="w-8 h-8 rounded-full items-center justify-center"
+                          style={{ backgroundColor: palette.secondaryButtonBackground }}
                         >
-                          <Ionicons name="pencil" size={14} color="#737373" />
+                          <Ionicons name="pencil" size={14} color={palette.secondaryButtonMutedIcon} />
                         </Pressable>
                         <Pressable
                           onPress={() => handleDeleteCard(card)}
                           disabled={deletingCardId === card.id}
-                          className="w-8 h-8 rounded-full bg-secondary items-center justify-center"
+                          className="w-8 h-8 rounded-full items-center justify-center"
+                          style={{ backgroundColor: palette.secondaryButtonBackground }}
                         >
                           {deletingCardId === card.id ? (
                             <ActivityIndicator size="small" color="#A0A0A0" />
                           ) : (
-                            <Ionicons name="close" size={16} color="#737373" />
+                            <Ionicons name="close" size={16} color={palette.secondaryButtonMutedIcon} />
                           )}
                         </Pressable>
                       </View>
