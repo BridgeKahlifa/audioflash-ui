@@ -44,15 +44,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const results = useQueries({
     queries: [
-      { queryKey: queryKeys.srsQueue(userId),         queryFn: () => fetchSRSQueue(token),         enabled, staleTime: 60_000 },
+      { queryKey: queryKeys.srsQueue(userId), queryFn: () => fetchSRSQueue(token), enabled, staleTime: 60_000 },
       { queryKey: queryKeys.inProgressLesson(userId), queryFn: () => fetchInProgressLesson(token), enabled, staleTime: 60_000 },
-      { queryKey: queryKeys.categories(),             queryFn: fetchCategories,                    staleTime: 10 * 60_000 },
-      { queryKey: queryKeys.languages(),              queryFn: fetchLanguages,                     staleTime: 10 * 60_000 },
-      { queryKey: queryKeys.sessions(userId),         queryFn: () => fetchSessions(token),         enabled, staleTime: 60_000 },
-      { queryKey: queryKeys.sessionStats(userId),     queryFn: () => fetchSessionStats(token),     enabled, staleTime: 60_000 },
+      { queryKey: queryKeys.categories(), queryFn: () => fetchCategories(), staleTime: 10 * 60_000 },
+      { queryKey: queryKeys.languages(), queryFn: fetchLanguages, staleTime: 10 * 60_000 },
+      { queryKey: queryKeys.sessions(userId), queryFn: () => fetchSessions(token), enabled, staleTime: 60_000 },
+      { queryKey: queryKeys.sessionStats(userId), queryFn: () => fetchSessionStats(token), enabled, staleTime: 60_000 },
       {
         queryKey: queryKeys.savedReviews(userId),
-        queryFn:  async () => filterActiveReviews(await fetchReviews(token)),
+        queryFn: async () => filterActiveReviews(await fetchReviews(token)),
         enabled,
         staleTime: 60_000,
       },
@@ -60,8 +60,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   });
 
   const queriesSettled = !enabled || results.every((r) => r.isFetched);
-  const hasCachedData  = results.some((r) => r.data !== undefined);
-  const needsMinTime   = !hasCachedData;
+  const hasCachedData = results.some((r) => r.data !== undefined);
+  const needsMinTime = !hasCachedData;
   const ready =
     !isRestoring &&
     !cacheReset.inProgress &&

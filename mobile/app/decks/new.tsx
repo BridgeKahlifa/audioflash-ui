@@ -73,7 +73,7 @@ export default function NewDeck() {
       // If launched from a category, bulk-import its cards into the new deck
       if (categoryId) {
         try {
-          const categoryCards = await fetchLessonsByCategory({ categoryId, shuffle: false });
+          const categoryCards = await fetchLessonsByCategory({ categoryId, languageId: selectedLanguageId ?? undefined, shuffle: false });
           if (categoryCards.length > 0) {
             await bulkCreateDeckCards(session?.access_token ?? null, deck.id, {
               cards: categoryCards.map((c) => ({

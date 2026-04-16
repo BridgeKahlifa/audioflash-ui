@@ -303,8 +303,9 @@ export async function fetchLanguages(): Promise<ApiLanguage[]> {
   return parseJson<ApiLanguage[]>(res);
 }
 
-export async function fetchCategories(): Promise<ApiCategory[]> {
-  const res = await apiFetch(`${API_BASE_URL}/lessons/categories`);
+export async function fetchCategories(languageId?: string): Promise<ApiCategory[]> {
+  const query = languageId ? `?language_id=${encodeURIComponent(languageId)}` : "";
+  const res = await apiFetch(`${API_BASE_URL}/lessons/categories${query}`);
   return parseJson<ApiCategory[]>(res);
 }
 
@@ -315,6 +316,7 @@ export async function fetchConfig(): Promise<ApiConfig> {
 
 export async function fetchLessonsByCategory(params: {
   categoryId: string;
+  languageId?: string;
   limit?: number;
   difficulty?: number;
   shuffle?: boolean;
@@ -324,6 +326,9 @@ export async function fetchLessonsByCategory(params: {
   }
 
   const query = new URLSearchParams();
+  if (params.languageId) {
+    query.set("language_id", params.languageId);
+  }
   if (typeof params.limit === "number") {
     query.set("limit", String(params.limit));
   }
