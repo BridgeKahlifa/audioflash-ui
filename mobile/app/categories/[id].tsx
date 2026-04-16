@@ -158,9 +158,13 @@ export default function CategoryDetail() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["category-cards", apiCategoryId],
+    queryKey: ["category-cards", apiCategoryId, apiLanguageId],
     queryFn: () =>
-      fetchLessonsByCategory({ categoryId: apiCategoryId ?? "", shuffle: false }),
+      fetchLessonsByCategory({
+        categoryId: apiCategoryId ?? "",
+        languageId: apiLanguageId ?? undefined,
+        shuffle: false,
+      }),
     enabled: !!apiCategoryId,
   });
 

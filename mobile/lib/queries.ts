@@ -56,10 +56,10 @@ export function useInProgressLesson() {
   });
 }
 
-export function useCategories() {
+export function useCategories(languageId?: string) {
   return useQuery({
-    queryKey: queryKeys.categories(),
-    queryFn:  fetchCategories,
+    queryKey: queryKeys.categories(languageId),
+    queryFn:  () => fetchCategories(languageId),
     staleTime: STALE.stable,
   });
 }

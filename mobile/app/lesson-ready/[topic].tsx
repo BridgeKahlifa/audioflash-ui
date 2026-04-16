@@ -213,6 +213,7 @@ export default function LessonReady() {
     try {
       const lessonCards = await fetchLessonsByCategory({
         categoryId: apiCategoryId,
+        languageId: apiLanguageId ?? undefined,
         limit: cardCount,
         difficulty: selectedDifficulty,
         shuffle: shuffleEnabled,

@@ -32,7 +32,7 @@ export default function Categories() {
     isPending: categoriesLoading,
     error: categoriesError,
     refetch: refetchCategories,
-  } = useCategories();
+  } = useCategories(profile?.target_language_ids?.[0] ?? undefined);
 
   const preferredLanguageId = profile?.target_language_ids?.[0] ?? null;
   const needsLanguagePicker = profile !== null && !preferredLanguageId;
@@ -81,15 +81,17 @@ export default function Categories() {
     if (found) setResolvedLanguage(found);
   }, [preferredLanguageId, languages, switchingLanguage]);
 
-  const topics: Topic[] = contextCategories.map((category, index) => ({
-    id: `category-${category.id}`,
-    title: category.name,
-    icon: CATEGORY_ICONS[index % CATEGORY_ICONS.length],
-    apiCategoryId: String(category.id),
-    supportedDifficulties: category.supported_difficulties ?? [],
-    availableCardCount:
-      typeof category.total_cards === "number" ? category.total_cards : undefined,
-  }));
+  const topics: Topic[] = contextCategories
+    .filter((category) => typeof category.total_cards !== "number" || category.total_cards > 0)
+    .map((category, index) => ({
+      id: `category-${category.id}`,
+      title: category.name,
+      icon: CATEGORY_ICONS[index % CATEGORY_ICONS.length],
+      apiCategoryId: String(category.id),
+      supportedDifficulties: category.supported_difficulties ?? [],
+      availableCardCount:
+        typeof category.total_cards === "number" ? category.total_cards : undefined,
+    }));
 
   async function handleSelectLanguage(lang: ApiLanguage) {
     setResolvedLanguage(lang);
