@@ -112,9 +112,12 @@ export async function fetchLessonSessionFlashcards(
   token: string | null | undefined,
   sessionId: string,
 ): Promise<ApiLessonCard[]> {
-  const res = await fetch(`${API_BASE_URL}/lessons/sessions/${sessionId}/flashcards`, {
-    headers: authHeaders(token),
-  });
+  const res = await fetch(
+    `${API_BASE_URL}/lessons/sessions/${sessionId}/flashcards`,
+    {
+      headers: authHeaders(token),
+    },
+  );
   return parseJson<ApiLessonCard[]>(res);
 }
 
@@ -147,8 +150,9 @@ export interface ApiUpdateFlashcardAttempt {
   confidence_rating?: number | null;
 }
 
-export const API_BASE_URL =
-  (process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090").replace(/\/$/, "");
+export const API_BASE_URL = (
+  process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090"
+).replace(/\/$/, "");
 
 const SHOULD_LOG_API = typeof __DEV__ !== "undefined" && __DEV__;
 
@@ -167,9 +171,7 @@ async function buildApiError(res: Response): Promise<Error> {
       const data = await res.json();
       if (data && typeof data === "object") {
         const maybeMessage =
-          (data as any).message ??
-          (data as any).error ??
-          (data as any).detail;
+          (data as any).message ?? (data as any).error ?? (data as any).detail;
         if (typeof maybeMessage === "string" && maybeMessage.trim()) {
           detail = maybeMessage.trim();
         } else {
@@ -210,10 +212,7 @@ function authHeaders(
   };
 }
 
-async function apiFetch(
-  url: string,
-  init?: RequestInit,
-): Promise<Response> {
+async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
   if (SHOULD_LOG_API) {
     console.log("[api] request", init?.method ?? "GET", url);
   }
@@ -239,7 +238,9 @@ export async function updateProfile(
   return parseJson<ApiProfile>(res);
 }
 
-export async function deleteAccount(token: string | null | undefined): Promise<void> {
+export async function deleteAccount(
+  token: string | null | undefined,
+): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/profile`, {
     method: "DELETE",
     headers: authHeaders(token),
@@ -247,7 +248,9 @@ export async function deleteAccount(token: string | null | undefined): Promise<v
   if (!res.ok) throw await buildApiError(res);
 }
 
-export async function fetchSessions(token?: string | null): Promise<ApiSession[]> {
+export async function fetchSessions(
+  token?: string | null,
+): Promise<ApiSession[]> {
   const res = await apiFetch(`${API_BASE_URL}/sessions`, {
     headers: authHeaders(token),
   });
@@ -347,7 +350,9 @@ export async function fetchFlashcards(): Promise<ApiLessonCard[]> {
   return parseJson<ApiLessonCard[]>(res);
 }
 
-export async function fetchReviews(token?: string | null): Promise<ApiReview[]> {
+export async function fetchReviews(
+  token?: string | null,
+): Promise<ApiReview[]> {
   const res = await apiFetch(`${API_BASE_URL}/review`, {
     headers: authHeaders(token),
   });
@@ -457,10 +462,16 @@ export async function generateLesson(
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
-  const data = await parseJson<{ category_name: string; flashcards: Omit<ApiEphemeralCard, "_clientId">[] }>(res);
+  const data = await parseJson<{
+    category_name: string;
+    flashcards: Omit<ApiEphemeralCard, "_clientId">[];
+  }>(res);
   return {
     category_name: data.category_name,
-    flashcards: data.flashcards.map((c) => ({ ...c, _clientId: Math.random().toString(36).slice(2) })),
+    flashcards: data.flashcards.map((c) => ({
+      ...c,
+      _clientId: Math.random().toString(36).slice(2),
+    })),
   };
 }
 
@@ -484,9 +495,14 @@ export async function generateReplacements(
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
-  const data = await parseJson<{ flashcards: Omit<ApiEphemeralCard, "_clientId">[] }>(res);
+  const data = await parseJson<{
+    flashcards: Omit<ApiEphemeralCard, "_clientId">[];
+  }>(res);
   return {
-    flashcards: data.flashcards.map((c) => ({ ...c, _clientId: Math.random().toString(36).slice(2) })),
+    flashcards: data.flashcards.map((c) => ({
+      ...c,
+      _clientId: Math.random().toString(36).slice(2),
+    })),
   };
 }
 
@@ -514,8 +530,6 @@ export async function commitGeneratedLesson(
   });
   return parseJson<ApiCommitResponse>(res);
 }
-
-// ── Library ──────────────────────────────────────────────────────────────────
 
 export interface ApiSRSQueue {
   due_count: number;
@@ -667,7 +681,9 @@ export interface ApiCompleteDeckPracticeRequest {
   session_id: string;
 }
 
-export async function fetchDecks(token: string | null | undefined): Promise<ApiDeck[]> {
+export async function fetchDecks(
+  token: string | null | undefined,
+): Promise<ApiDeck[]> {
   const res = await apiFetch(`${API_BASE_URL}/decks`, {
     headers: authHeaders(token),
   });
@@ -779,7 +795,9 @@ export async function generateDeckPreview(
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
-  const data = await parseJson<{ flashcards: Omit<ApiEphemeralDeckCard, "_clientId">[] }>(res);
+  const data = await parseJson<{
+    flashcards: Omit<ApiEphemeralDeckCard, "_clientId">[];
+  }>(res);
   return {
     flashcards: data.flashcards.map((c) => ({
       ...c,
