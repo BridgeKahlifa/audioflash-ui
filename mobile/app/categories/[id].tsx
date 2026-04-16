@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Animated,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -10,8 +13,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
-import { fetchLessonsByCategory, type ApiLessonCard } from "../../lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchLessonsByCategory, bulkCreateDeckCards, type ApiLessonCard } from "../../lib/api";
+import { useAuth } from "../../lib/auth-context";
+import { useDecks, queryKeys } from "../../lib/queries";
 import { useAppTheme } from "../../lib/theme-context";
 
 function CardRow({
@@ -82,8 +87,70 @@ export default function CategoryDetail() {
   }>();
 
   const { fontFamily } = useAppTheme();
+  const { session, isDevAuth } = useAuth();
+  const qc = useQueryClient();
+  const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
+  const { data: decks } = useDecks();
   const [activeLevel, setActiveLevel] = useState<number | null>(null);
   const [cardQuery, setCardQuery] = useState("");
+  const [showDeckModal, setShowDeckModal] = useState(false);
+  const [addingToDeckId, setAddingToDeckId] = useState<string | null>(null);
+  const [deckSearch, setDeckSearch] = useState("");
+
+  // Bottom-sheet animation for deck picker
+  const deckModalOpacity = useRef(new Animated.Value(0)).current;
+  const deckModalTranslateY = useRef(new Animated.Value(400)).current;
+  const [deckModalMounted, setDeckModalMounted] = useState(false);
+
+  useEffect(() => {
+    if (showDeckModal) {
+      setDeckModalMounted(true);
+      Animated.parallel([
+        Animated.timing(deckModalOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(deckModalTranslateY, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 280, mass: 0.8 }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(deckModalOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+        Animated.timing(deckModalTranslateY, { toValue: 400, duration: 160, useNativeDriver: true }),
+      ]).start(() => { setDeckModalMounted(false); setDeckSearch(""); });
+    }
+  }, [showDeckModal, deckModalOpacity, deckModalTranslateY]);
+
+  async function handleAddToDeck(deckId: string) {
+    if (!cards || addingToDeckId) return;
+    setAddingToDeckId(deckId);
+    try {
+      await bulkCreateDeckCards(session?.access_token ?? null, deckId, {
+        cards: cards.map((c) => ({
+          source_text: c.source_text,
+          translation: c.translation,
+          romanization: c.romanization ?? null,
+          difficulty: c.difficulty ?? null,
+        })),
+      });
+      qc.invalidateQueries({ queryKey: queryKeys.deckCards(userId, deckId) });
+      qc.invalidateQueries({ queryKey: queryKeys.deck(userId, deckId) });
+      qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
+      setShowDeckModal(false);
+      router.push({ pathname: "/decks/[id]", params: { id: deckId } });
+    } catch {
+      Alert.alert("Error", "Couldn't add cards to deck. Please try again.");
+    } finally {
+      setAddingToDeckId(null);
+    }
+  }
+
+  function handleCreateNewDeck() {
+    setShowDeckModal(false);
+    router.push({
+      pathname: "/decks/new",
+      params: {
+        categoryId: apiCategoryId ?? "",
+        languageId: apiLanguageId ?? "",
+      },
+    });
+  }
 
   const {
     data: cards,
@@ -295,7 +362,7 @@ export default function CategoryDetail() {
 
         {/* Start Lesson CTA */}
         {!isLoading && !error && (cards?.length ?? 0) > 0 && (
-          <View className="px-6 pb-6 pt-3 border-t border-border bg-background">
+          <View className="px-6 pb-6 pt-3 border-t border-border bg-background gap-3">
             <Pressable
               onPress={handleStartLesson}
               className="py-4 rounded-2xl items-center bg-primary"
@@ -314,9 +381,137 @@ export default function CategoryDetail() {
                 View Lesson
               </Text>
             </Pressable>
+            {(session || isDevAuth) && (
+              <Pressable
+                onPress={() => setShowDeckModal(true)}
+                className="py-4 rounded-2xl items-center bg-card border border-border flex-row justify-center gap-2"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 4,
+                  elevation: 1,
+                }}
+              >
+                <Ionicons name="albums-outline" size={18} color="#FF6B4A" />
+                <Text className="text-base font-semibold text-primary" style={{ fontFamily }}>
+                  Add to Deck
+                </Text>
+              </Pressable>
+            )}
           </View>
         )}
       </View>
+
+      {/* Deck picker modal */}
+      <Modal
+        visible={deckModalMounted}
+        animationType="none"
+        transparent
+        onRequestClose={() => setShowDeckModal(false)}
+      >
+        <View style={{ flex: 1, overflow: "hidden" }}>
+          <Animated.View style={{ flex: 1, opacity: deckModalOpacity }}>
+            <Pressable
+              style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }}
+              onPress={() => setShowDeckModal(false)}
+            />
+          </Animated.View>
+          <Animated.View
+            style={{ transform: [{ translateY: deckModalTranslateY }], maxHeight: 480 }}
+            className="bg-background rounded-t-3xl p-6"
+          >
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-lg font-semibold text-foreground" style={{ fontFamily }}>
+                Add to Deck
+              </Text>
+              <Pressable onPress={() => setShowDeckModal(false)}>
+                <Ionicons name="close" size={22} color="#6B7280" />
+              </Pressable>
+            </View>
+
+            {/* Create new deck option */}
+            <Pressable
+              onPress={handleCreateNewDeck}
+              className="flex-row items-center gap-3 py-3 px-4 rounded-2xl bg-accent border border-primary mb-3"
+            >
+              <View className="w-9 h-9 rounded-xl bg-primary items-center justify-center">
+                <Ionicons name="add" size={20} color="#FFFFFF" />
+              </View>
+              <Text className="text-foreground font-semibold flex-1" style={{ fontFamily }}>
+                Create new deck
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#FF6B4A" />
+            </Pressable>
+
+            {/* Existing decks — filtered to same language */}
+            {decks && decks.filter((d) => d.language_id === apiLanguageId).length > 0 && (
+              <>
+                <Text className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 pl-1" style={{ fontFamily }}>
+                  My Decks
+                </Text>
+                {decks.filter((d) => d.language_id === apiLanguageId).length > 4 && (
+                  <View className="flex-row items-center bg-card border border-border rounded-2xl px-3 py-2.5 gap-2 mb-3">
+                    <Ionicons name="search" size={15} color="#A0A0A0" />
+                    <TextInput
+                      value={deckSearch}
+                      onChangeText={setDeckSearch}
+                      placeholder="Search decks…"
+                      placeholderTextColor="#A0A0A0"
+                      className="flex-1 text-foreground"
+                      style={{ fontSize: 15 }}
+                      returnKeyType="search"
+                      clearButtonMode="while-editing"
+                      autoCorrect={false}
+                    />
+                  </View>
+                )}
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View className="gap-2">
+                    {decks.filter((d) => d.language_id === apiLanguageId && (!deckSearch.trim() || d.name.toLowerCase().includes(deckSearch.toLowerCase()))).map((deck) => (
+                      <Pressable
+                        key={deck.id}
+                        onPress={() => void handleAddToDeck(deck.id)}
+                        disabled={!!addingToDeckId}
+                        className="flex-row items-center gap-3 py-3 px-4 rounded-2xl bg-secondary"
+                      >
+                        <View className="w-9 h-9 rounded-xl bg-card items-center justify-center">
+                          {deck.icon ? (
+                            <Text style={{ fontSize: 18 }}>{deck.icon}</Text>
+                          ) : (
+                            <Ionicons name="albums" size={18} color="#FF6B4A" />
+                          )}
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-foreground font-medium" style={{ fontFamily }}>
+                            {deck.name}
+                          </Text>
+                          <Text className="text-muted text-xs" style={{ fontFamily }}>
+                            {deck.card_count ?? 0} card{(deck.card_count ?? 0) !== 1 ? "s" : ""}
+                          </Text>
+                        </View>
+                        {addingToDeckId === deck.id ? (
+                          <ActivityIndicator size="small" color="#FF6B4A" />
+                        ) : (
+                          <Ionicons name="chevron-forward" size={16} color="#A0A0A0" />
+                        )}
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
+
+            {decks && decks.filter((d) => d.language_id === apiLanguageId).length === 0 && (
+              <View className="items-center py-4 gap-1">
+                <Text className="text-muted text-sm text-center" style={{ fontFamily }}>
+                  No matching decks — create one above.
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
