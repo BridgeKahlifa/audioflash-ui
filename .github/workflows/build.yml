@@ -1,23 +1,44 @@
 name: Build Mobile App
 
 on:
-  workflow_dispatch:   # manual button
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
-      - run: npm install -g eas-cli
-      - run: npm install
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
 
-      - run: npx eas-cli build --platform all --profile preview --non-interactive --no-wait
+      # 🔍 Debug: confirm structure
+      - name: Debug root
+        run: ls -la
+
+      - name: Debug mobile folder
+        run: ls -la mobile
+
+      # ✅ Install dependencies in correct folder
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./mobile
+
+      # ✅ Ensure Expo-compatible deps (fixes plugin issues like expo-router)
+      - name: Expo install (sync deps)
+        run: npx expo install
+        working-directory: ./mobile
+
+      # 🚀 Trigger build
+      - name: Build with EAS
+        run: npx eas-cli build --platform all --profile preview --non-interactive --no-wait
         working-directory: ./mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
