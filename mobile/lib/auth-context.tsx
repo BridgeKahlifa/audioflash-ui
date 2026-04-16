@@ -85,6 +85,47 @@ function looksLikeEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function getEmailTypoSuggestion(value: string): string | null {
+  const normalized = normalizeEmail(value);
+  const atIndex = normalized.lastIndexOf("@");
+  if (atIndex === -1) return null;
+
+  const domain = normalized.slice(atIndex + 1);
+  const commonCorrections: Record<string, string> = {
+    "gmail.con": "gmail.com",
+    "gmail.co": "gmail.com",
+    "gmail.cmo": "gmail.com",
+    "hotmail.con": "hotmail.com",
+    "hotmail.co": "hotmail.com",
+    "hotmail.comf": "hotmail.com",
+    "outlook.con": "outlook.com",
+    "outlook.co": "outlook.com",
+    "yahoo.con": "yahoo.com",
+    "icloud.con": "icloud.com",
+  };
+
+  return commonCorrections[domain] ?? null;
+}
+
+function getEmailValidationError(value: string): string | null {
+  const normalized = normalizeEmail(value);
+  if (!looksLikeEmail(normalized)) {
+    return "Enter a valid email address.";
+  }
+
+  const suggestedDomain = getEmailTypoSuggestion(normalized);
+  if (suggestedDomain) {
+    const [localPart = ""] = normalized.split("@");
+    return `That email looks mistyped. Did you mean ${localPart}@${suggestedDomain}?`;
+  }
+
+  return null;
+}
+
 function getEmailAuthErrorMessage(error: unknown, email?: string): string {
   const raw = typeof (error as any)?.message === "string"
     ? (error as any).message
@@ -94,6 +135,9 @@ function getEmailAuthErrorMessage(error: unknown, email?: string): string {
   const message = raw.toLowerCase();
 
   if (email && !looksLikeEmail(email.trim())) {
+    return "Enter a valid email address.";
+  }
+  if (message.includes("email address") && (message.includes("invalid") || message.includes("not authorized"))) {
     return "Enter a valid email address.";
   }
   if (message.includes("database error saving new user")) {
@@ -275,14 +319,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Auth methods ───────────────────────────────────────────────────────────
   async function sendOtp(email: string) {
     if (DEV_AUTH_MODE) return { error: "Email sign-in is disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
-    if (!looksLikeEmail(email.trim())) {
-      return { error: "Enter a valid email address." };
-    }
+    const normalizedEmail = normalizeEmail(email);
+    const validationError = getEmailValidationError(normalizedEmail);
+    if (validationError) return { error: validationError };
+
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: normalizedEmail,
       options: { shouldCreateUser: true },
     });
-    if (error) return { error: getEmailAuthErrorMessage(error, email) };
+    if (error) {
+      console.warn("[auth] signInWithOtp failed", {
+        message: typeof error.message === "string" ? error.message : String(error),
+        status: (error as any)?.status,
+        code: (error as any)?.code,
+        emailDomain: normalizedEmail.split("@")[1] ?? "",
+      });
+      return { error: getEmailAuthErrorMessage(error, normalizedEmail) };
+    }
     return { error: null };
   }
 
@@ -402,9 +455,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function updateEmail(email: string) {
     if (DEV_AUTH_MODE) return { error: "Email changes are unavailable while EXPO_PUBLIC_AUTH_MODE=dev." };
-    if (!looksLikeEmail(email.trim())) return { error: "Enter a valid email address." };
-    const { error } = await supabase.auth.updateUser({ email });
-    if (error) return { error: getEmailAuthErrorMessage(error, email) };
+    const normalizedEmail = normalizeEmail(email);
+    const validationError = getEmailValidationError(normalizedEmail);
+    if (validationError) return { error: validationError };
+
+    const { error } = await supabase.auth.updateUser({ email: normalizedEmail });
+    if (error) return { error: getEmailAuthErrorMessage(error, normalizedEmail) };
     return { error: null };
   }
 

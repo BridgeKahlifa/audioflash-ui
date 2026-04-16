@@ -470,7 +470,9 @@ export default function FlashcardPractice() {
   }
 
   function playCurrentCardAudio() {
-    setAudioPlayCount((count) => count + 1);
+    if (!showAnswer || isTraditionalMode) {
+      setAudioPlayCount((count) => count + 1);
+    }
     speakText(currentCard.sourceText, language ?? "chinese", playbackSpeed);
   }
 
@@ -642,23 +644,35 @@ export default function FlashcardPractice() {
 
             {showAnswer && (
               <View className="mt-8 items-center" style={{ alignSelf: "stretch" }}>
-                {isTraditionalMode ? (
-                  <Pressable
-                    onPress={playCurrentCardAudio}
-                    hitSlop={10}
-                    className="mb-6 w-16 h-16 bg-primary rounded-full items-center justify-center"
-                    style={{
-                      alignSelf: "center",
-                      backgroundColor: palette.primary,
-                      shadowColor: palette.primary,
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: matrixMode ? 0.5 : 0.3,
-                      shadowRadius: matrixMode ? 14 : 8,
-                      elevation: matrixMode ? 7 : 4,
-                    }}
+                <Pressable
+                  onPress={playCurrentCardAudio}
+                  hitSlop={10}
+                  className={`bg-primary rounded-full items-center justify-center ${isTraditionalMode ? "mb-6" : "mb-5"}`}
+                  style={{
+                    alignSelf: "center",
+                    width: isTraditionalMode ? 64 : 72,
+                    height: isTraditionalMode ? 64 : 72,
+                    backgroundColor: palette.primary,
+                    shadowColor: palette.primary,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: matrixMode ? 0.5 : 0.3,
+                    shadowRadius: matrixMode ? 14 : 8,
+                    elevation: matrixMode ? 7 : 4,
+                  }}
+                >
+                  <Ionicons
+                    name="volume-high"
+                    size={isTraditionalMode ? 28 : 32}
+                    color={palette.primaryForeground}
+                  />
+                </Pressable>
+                {!isTraditionalMode ? (
+                  <Text
+                    className="text-xs text-muted text-center mb-6"
+                    style={{ color: palette.muted }}
                   >
-                    <Ionicons name="volume-high" size={28} color={palette.primaryForeground} />
-                  </Pressable>
+                    Replay audio
+                  </Text>
                 ) : null}
                 <Text className="text-4xl text-foreground text-center mb-3" style={{ alignSelf: "stretch", color: palette.foreground }}>
                   {currentCard.sourceText}
