@@ -7,12 +7,10 @@ import "./globals.css";
 
 const themeInitScript = `
   (() => {
-    const storageKey = "theme";
     const root = document.documentElement;
-    const stored = window.localStorage.getItem(storageKey);
-    const theme = stored === "dark" || stored === "light" ? stored : "light";
-    root.classList.toggle("dark", theme === "dark");
-    root.style.colorScheme = theme;
+    root.classList.remove("dark");
+    root.style.colorScheme = "light";
+    window.localStorage.setItem("theme", "light");
   })();
 `;
 

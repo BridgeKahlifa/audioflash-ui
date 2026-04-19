@@ -67,6 +67,49 @@ docker build \
 docker run --rm -p 8080:80 audioflash-web
 ```
 
+## Manual GitHub Build Workflow
+
+The repo includes a manual GitHub Actions workflow at
+[`/.github/workflows/build.yml`](../.github/workflows/build.yml) named `Build Mobile App`.
+It does not run on push. You trigger it manually with `workflow_dispatch`.
+
+What it does:
+
+- checks out the repo on `ubuntu-latest`
+- installs Node 20
+- installs `eas-cli`
+- installs dependencies in `mobile/`
+- runs `npx expo install` to sync Expo-compatible packages
+- starts an EAS build for both iOS and Android with:
+  `npx eas-cli build --platform all --profile preview --non-interactive --no-wait`
+
+Before using it:
+
+- add the repository secret `EXPO_TOKEN` in GitHub
+- make sure the Expo account tied to that token has access to this project
+- confirm the `preview` EAS build profile is valid in [`mobile/eas.json`](./eas.json)
+
+How to run it in GitHub:
+
+1. Open the repository on GitHub.
+2. Go to `Actions`.
+3. Select the `Build Mobile App` workflow.
+4. Click `Run workflow`.
+5. Choose the branch you want to build.
+6. Click the green `Run workflow` button to start the job.
+
+What to expect after triggering it:
+
+- GitHub Actions will only kick off the EAS build job.
+- Because the workflow uses `--no-wait`, the GitHub job finishes before the native builds finish.
+- Check the EAS dashboard or Expo build logs to monitor completion and download the artifacts.
+
+If you prefer the GitHub CLI:
+
+```bash
+gh workflow run build.yml --ref <branch-name>
+```
+
 ## Configuration
 
 | Variable | Description |

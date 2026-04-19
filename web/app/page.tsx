@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/Card";
-import { DarkModeToggle } from "../components/DarkModeToggle";
 import { EmailForm } from "../components/EmailForm";
 import { FAQItem } from "../components/FAQItem";
 import { SectionHeading } from "../components/SectionHeading";
@@ -142,7 +141,7 @@ export default function HomePage() {
               <span className="sm:hidden">Join Free</span>
               <span className="hidden sm:inline">Get Free Early Access</span>
             </a>
-            <DarkModeToggle className="shrink-0" />
+            {/* <DarkModeToggle className="shrink-0" /> */}
           </div>
         </div>
       </nav>
@@ -150,8 +149,14 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-6 pb-16 pt-12">
         <div className="flex flex-col items-center gap-16 lg:flex-row">
           <div className="flex-1 text-center lg:text-left">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5">
-              <span className="text-xs font-medium text-primary dark:text-white">
+            <div
+              className="mb-6 inline-flex items-center gap-2 rounded-full px-4 py-2"
+              style={{ backgroundColor: "rgba(242, 100, 69, 0.08)" }}
+            >
+              <span
+                className="text-xs font-medium dark:text-white"
+                style={{ color: "#f26445" }}
+              >
                 Listen first, then speak with audio-first language practice
               </span>
             </div>
