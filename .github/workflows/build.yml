@@ -188,10 +188,13 @@ jobs:
         id: find_webhook
         working-directory: ./mobile
         run: |
-          npx eas-cli webhook:list --event BUILD --json > webhook-list.json
+          npx eas-cli webhook:list --event BUILD --json > webhook-list.json || true
           node <<'EOF'
           const fs = require('fs');
-          const data = JSON.parse(fs.readFileSync('webhook-list.json', 'utf8'));
+          const raw = fs.existsSync('webhook-list.json')
+            ? fs.readFileSync('webhook-list.json', 'utf8').trim()
+            : '';
+          const data = raw ? JSON.parse(raw) : [];
 
           function collect(node, acc = []) {
             if (Array.isArray(node)) {
