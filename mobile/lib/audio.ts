@@ -11,11 +11,16 @@ async function ensureAudioModeConfigured(): Promise<void> {
     audioModeConfigurationPromise = Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
     }).catch((error) => {
-      console.warn("Failed to configure iOS audio mode", error);
+      audioModeConfigurationPromise = null;
+      throw error;
     });
   }
 
-  await audioModeConfigurationPromise;
+  try {
+    await audioModeConfigurationPromise;
+  } catch (error) {
+    console.warn("Failed to configure iOS audio mode", error);
+  }
 }
 
 const LANGUAGE_TO_BCP47: Record<string, string> = {
