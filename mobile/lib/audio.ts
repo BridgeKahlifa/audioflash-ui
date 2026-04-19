@@ -1,19 +1,39 @@
 import { Platform } from "react-native";
 import * as Speech from "expo-speech";
-import { Audio } from "expo-av";
 
 let audioModeConfigurationPromise: Promise<void> | null = null;
+let expoAudioModulePromise: Promise<{ setAudioModeAsync: (options: { playsInSilentModeIOS: boolean }) => Promise<void> } | null> | null = null;
+
+async function loadExpoAudioModule(): Promise<{ setAudioModeAsync: (options: { playsInSilentModeIOS: boolean }) => Promise<void> } | null> {
+  if (Platform.OS !== "ios") return null;
+
+  if (!expoAudioModulePromise) {
+    expoAudioModulePromise = import("expo-av")
+      .then((module) => module.Audio ?? null)
+      .catch((error) => {
+        console.warn("expo-av is unavailable in this build; skipping iOS audio mode setup", error);
+        return null;
+      });
+  }
+
+  return expoAudioModulePromise;
+}
 
 async function ensureAudioModeConfigured(): Promise<void> {
   if (Platform.OS !== "ios") return;
 
   if (!audioModeConfigurationPromise) {
-    audioModeConfigurationPromise = Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-    }).catch((error) => {
-      audioModeConfigurationPromise = null;
-      throw error;
-    });
+    audioModeConfigurationPromise = loadExpoAudioModule()
+      .then(async (audioModule) => {
+        if (!audioModule) return;
+        await audioModule.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+        });
+      })
+      .catch((error) => {
+        audioModeConfigurationPromise = null;
+        throw error;
+      });
   }
 
   try {

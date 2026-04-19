@@ -19,6 +19,16 @@ function last7Days(): { day: string; date: string }[] {
   });
 }
 
+function formatSessionDate(dateString: string | null | undefined): string | null {
+  if (!dateString) return null;
+
+  return new Date(dateString).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function SimpleBarChart({ data, fontFamily }: { data: { day: string; cards: number }[]; fontFamily: string }) {
   const max = Math.max(...data.map((d) => d.cards), 1);
   return (
@@ -95,7 +105,7 @@ export default function ProgressDashboard() {
     : 0;
 
   const streak = stats?.streak ?? 0;
-  const recentSessions = sessions.slice(0, 8);
+  const recentSessions = sessions.slice(0, 3);
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
@@ -198,10 +208,16 @@ export default function ProgressDashboard() {
                   const sessionAccuracy = s.cards_attempted > 0
                     ? Math.round((s.cards_correct / s.cards_attempted) * 100)
                     : 0;
+                  const completedDate = formatSessionDate(s.completed_at);
                   return (
                     <View key={String(s.id)} className="bg-secondary rounded-xl px-3 py-2">
                       <Text className="text-foreground font-medium" style={{ fontFamily }}>{s.topic_title ?? "Practice"}</Text>
                       <Text className="text-xs text-muted mt-0.5" style={{ fontFamily }}>{s.language_label}</Text>
+                      {completedDate ? (
+                        <Text className="text-xs text-muted mt-1" style={{ fontFamily }}>
+                          {completedDate}
+                        </Text>
+                      ) : null}
                       <Text className="text-xs text-muted mt-1" style={{ fontFamily }}>
                         {s.cards_correct}/{s.cards_attempted} correct ({sessionAccuracy}%)
                       </Text>
