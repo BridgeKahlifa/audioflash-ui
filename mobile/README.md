@@ -78,6 +78,11 @@ What it does:
 - checks out the repo on `ubuntu-latest`
 - installs Node 20
 - installs `eas-cli`
+- resolves the mobile app version before each deploy
+- if `version` is blank, automatically increments the patch version using semantic versioning
+- if `version` is provided, uses that exact semantic version instead
+- writes the resolved version to `mobile/app.json`, `mobile/package.json`, and `mobile/package-lock.json`
+- commits and pushes the version bump back to the selected branch before building
 - installs dependencies in `mobile/`
 - runs `npx expo install` to sync Expo-compatible packages
 - starts an EAS build with workflow inputs for platform and profile
@@ -101,10 +106,15 @@ How to run it in GitHub:
 5. Choose the branch you want to build.
 6. Select `platform`: `ios`, `android`, or `all platforms`.
 7. Enter the EAS `profile` to use, such as `preview`.
-8. Click the green `Run workflow` button to start the job.
+8. Optionally enter `version` as a full semantic version like `1.4.0`.
+9. Leave `version` blank if you want the workflow to auto-bump the patch version, such as `1.4.0` -> `1.4.1`.
+10. Click the green `Run workflow` button to start the job.
 
 What to expect after triggering it:
 
+- The workflow resolves a semantic version before the build starts.
+- Every deploy bumps the patch version automatically unless you manually provide a full version.
+- The version bump is committed back to the branch so the next deploy increments from the latest released version.
 - GitHub Actions will only kick off the EAS build job.
 - Because the workflow uses `--no-wait`, the GitHub job finishes before the native builds finish.
 - Check the EAS dashboard or Expo build logs to monitor completion and download the artifacts.
