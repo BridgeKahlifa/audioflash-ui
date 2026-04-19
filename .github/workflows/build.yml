@@ -18,7 +18,7 @@ on:
         default: preview
         type: string
       version:
-        description: Optional semantic version override (for example 1.2.3). Leave blank to auto-bump patch.
+        description: Optional semantic version override (for example 1.2.3). The current version is read from mobile/app.json at runtime. Leave blank to auto-bump patch.
         required: false
         default: ""
         type: string
@@ -60,13 +60,44 @@ jobs:
             NEXT_VERSION="$(node -e "const [major, minor, patch] = process.argv[1].split('.').map(Number); if (![major, minor, patch].every(Number.isInteger)) process.exit(1); console.log([major, minor, patch + 1].join('.'));" "$CURRENT_VERSION")"
           fi
 
+          if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Current version must use semantic versioning in the form x.y.z. Found: $CURRENT_VERSION" >&2
+            exit 1
+          fi
+
           if ! [[ "$NEXT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Version must use semantic versioning in the form x.y.z" >&2
             exit 1
           fi
 
+          node -e "
+            const current = process.argv[1].split('.').map(Number);
+            const next = process.argv[2].split('.').map(Number);
+            const compare = (a, b) => {
+              for (let i = 0; i < 3; i += 1) {
+                if (a[i] > b[i]) return 1;
+                if (a[i] < b[i]) return -1;
+              }
+              return 0;
+            };
+            if (compare(next, current) < 0) {
+              console.error(\`Manual version \${process.argv[2]} cannot be lower than current version \${process.argv[1]}\`);
+              process.exit(1);
+            }
+          " "$CURRENT_VERSION" "$NEXT_VERSION"
+
           echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
           echo "next_version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Show resolved version
+        shell: bash
+        run: |
+          {
+            echo "## Mobile Build Version"
+            echo ""
+            echo "- Current version: \`${{ steps.resolve_version.outputs.current_version }}\`"
+            echo "- Resolved version: \`${{ steps.resolve_version.outputs.next_version }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Update mobile version files
         shell: bash
