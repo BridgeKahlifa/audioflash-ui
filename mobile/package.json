@@ -20,6 +20,7 @@
     "babel-preset-expo": "~54.0.10",
     "expo": "~54.0.0",
     "expo-application": "~7.0.8",
+    "expo-av": "~16.0.8",
     "expo-dev-client": "~6.0.20",
     "expo-device": "~8.0.10",
     "expo-linking": "~8.0.11",
