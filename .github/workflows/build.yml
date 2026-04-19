@@ -21,6 +21,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      EAS_BUILD_WEBHOOK_URL: ${{ secrets.EAS_BUILD_WEBHOOK_URL }}
+      EAS_BUILD_WEBHOOK_SECRET: ${{ secrets.EAS_BUILD_WEBHOOK_SECRET }}
 
     steps:
       - name: Checkout repo
@@ -33,6 +36,9 @@ jobs:
 
       - name: Install EAS CLI
         run: npm install -g eas-cli
+
+      - name: Set build message
+        run: echo "EAS_BUILD_MESSAGE=github-build:${{ github.run_id }}:${{ github.run_attempt }}" >> "$GITHUB_ENV"
 
       - name: Debug root
         run: ls -la
@@ -68,8 +74,87 @@ jobs:
               ;;
           esac
 
+      - name: Find existing EAS BUILD webhook
+        id: find_webhook
+        working-directory: ./mobile
+        run: |
+          npx eas-cli webhook:list --non-interactive --json > webhook-list.json
+          node <<'EOF'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('webhook-list.json', 'utf8'));
+
+          function collect(node, acc = []) {
+            if (Array.isArray(node)) {
+              for (const item of node) collect(item, acc);
+              return acc;
+            }
+            if (!node || typeof node !== 'object') {
+              return acc;
+            }
+
+            const id = node.id ?? node.webhookId ?? null;
+            const url = node.url ?? node.webhookUrl ?? null;
+            const event = node.event ?? node.webhookEvent ?? node.type ?? null;
+
+            if (id && url && event) {
+              acc.push({ id, url, event: String(event).toUpperCase() });
+            }
+
+            for (const value of Object.values(node)) {
+              collect(value, acc);
+            }
+
+            return acc;
+          }
+
+          const webhooks = collect(data);
+          const match = webhooks.find(
+            (webhook) =>
+              webhook.event === 'BUILD' &&
+              webhook.url === process.env.EAS_BUILD_WEBHOOK_URL
+          );
+
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `webhook_id=${match ? match.id : ''}\n`
+          );
+          EOF
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Create EAS BUILD webhook
+        if: steps.find_webhook.outputs.webhook_id == ''
+        working-directory: ./mobile
+        run: >
+          npx eas-cli webhook:create
+          --event BUILD
+          --url "${EAS_BUILD_WEBHOOK_URL}"
+          --secret "${EAS_BUILD_WEBHOOK_SECRET}"
+          --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Update EAS BUILD webhook
+        if: steps.find_webhook.outputs.webhook_id != ''
+        working-directory: ./mobile
+        run: >
+          npx eas-cli webhook:update
+          --id "${{ steps.find_webhook.outputs.webhook_id }}"
+          --event BUILD
+          --url "${EAS_BUILD_WEBHOOK_URL}"
+          --secret "${EAS_BUILD_WEBHOOK_SECRET}"
+          --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
       - name: Build with EAS
-        run: npx eas-cli build --platform ${{ steps.resolve_platform.outputs.eas_platform }} --profile ${{ inputs.profile }} --non-interactive --no-wait
+        run: >
+          npx eas-cli build
+          --platform ${{ steps.resolve_platform.outputs.eas_platform }}
+          --profile ${{ inputs.profile }}
+          --message "${EAS_BUILD_MESSAGE}"
+          --non-interactive
+          --no-wait
         working-directory: ./mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

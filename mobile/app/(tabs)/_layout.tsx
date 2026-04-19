@@ -8,7 +8,7 @@ import { useAppTheme } from "../../lib/theme-context";
 const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: "home",
   categories: "grid",
-  review: "refresh-circle",
+  decks: "albums",
   progress: "stats-chart",
   settings: "settings",
 };
@@ -116,7 +116,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: "Home" }} />
       <Tabs.Screen name="categories" options={{ title: "Browse" }} />
-      <Tabs.Screen name="review" options={{ title: "Review" }} />
+      <Tabs.Screen name="decks" options={{ title: "Decks" }} />
       <Tabs.Screen name="progress" options={{ title: "Progress" }} />
       <Tabs.Screen name="goals" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ title: "Settings" }} />

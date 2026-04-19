@@ -1,6 +1,21 @@
 import { Platform } from "react-native";
 import * as Speech from "expo-speech";
 
+let audioModeConfigured = false;
+
+async function ensureAudioModeConfigured(): Promise<void> {
+  if (Platform.OS !== "ios" || audioModeConfigured) return;
+
+  try {
+    const { Audio } = await import("expo-av");
+    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+    audioModeConfigured = true;
+  } catch (error) {
+    console.warn("Failed to configure iOS audio mode:", error);
+    // audioModeConfigured stays false so the next speak call retries
+  }
+}
+
 const LANGUAGE_TO_BCP47: Record<string, string> = {
   chinese: "zh-CN",
   mandarin: "zh-CN",
@@ -33,6 +48,7 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
       Speech.speak(text, { language: bcp47, rate, pitch: 1.0 });
     }, 100);
   } else {
+    await ensureAudioModeConfigured();
     const speaking = await Speech.isSpeakingAsync();
     if (speaking) Speech.stop();
     Speech.speak(text, { language: bcp47, rate });
