@@ -8,6 +8,7 @@ export const queryKeys = {
   sessionStats:     (userId: string) => ["sessionStats",     userId] as const,
   savedReviews:     (userId: string) => ["savedReviews",     userId] as const,
   decks:            (userId: string) => ["decks",            userId] as const,
-  deck:             (userId: string, deckId: string) => ["deck",      userId, deckId] as const,
-  deckCards:        (userId: string, deckId: string) => ["deckCards", userId, deckId] as const,
+  deck:             (userId: string, deckId: string) => ["deck",            userId, deckId] as const,
+  deckCards:        (userId: string, deckId: string) => ["deckCards",       userId, deckId] as const,
+  deckFlashcards:   (userId: string, deckId: string) => ["deckFlashcards",  userId, deckId] as const,
 };

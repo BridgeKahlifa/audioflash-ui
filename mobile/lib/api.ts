@@ -868,3 +868,86 @@ export async function completeDeckPractice(
   });
   return parseJson<ApiDeckPracticeSession>(res);
 }
+
+// ── Deck flashcards (junction) ─────────────────────────────────────────────────
+
+export interface ApiDeckFlashcard {
+  id: string;
+  deck_id: string;
+  flashcard_id: string;
+  position: number;
+  added_at: string;
+}
+
+export interface ApiAddDeckFlashcardRequest {
+  flashcard_id: string;
+  position?: number;
+}
+
+export interface ApiEditDeckFlashcardRequest {
+  source_text?: string;
+  translation?: string;
+  romanization?: string | null;
+  difficulty?: number | null;
+}
+
+export interface ApiDeckFlashcardWithCard extends ApiDeckFlashcard {
+  source_text: string;
+  translation: string;
+  romanization: string | null;
+  difficulty: number;
+  audio_url: string | null;
+}
+
+export async function fetchDeckFlashcards(
+  token: string | null | undefined,
+  deckId: string,
+): Promise<ApiDeckFlashcard[]> {
+  const res = await apiFetch(`${API_BASE_URL}/decks/${deckId}/flashcards`, {
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiDeckFlashcard[]>(res);
+}
+
+export async function addDeckFlashcard(
+  token: string | null | undefined,
+  deckId: string,
+  body: ApiAddDeckFlashcardRequest,
+): Promise<ApiDeckFlashcard> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/flashcards`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiDeckFlashcard>(res);
+}
+
+export async function editDeckFlashcard(
+  token: string | null | undefined,
+  deckId: string,
+  flashcardId: string,
+  body: ApiEditDeckFlashcardRequest,
+): Promise<ApiDeckFlashcardWithCard> {
+  const res = await fetch(
+    `${API_BASE_URL}/decks/${deckId}/flashcards/${flashcardId}`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify(body),
+    },
+  );
+  return parseJson<ApiDeckFlashcardWithCard>(res);
+}
+
+export async function removeDeckFlashcard(
+  token: string | null | undefined,
+  deckId: string,
+  flashcardId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/decks/${deckId}/flashcards/${flashcardId}`,
+    { method: "DELETE", headers: authHeaders(token) },
+  );
+  if (!res.ok && res.status !== 404) throw await buildApiError(res);
+}
+

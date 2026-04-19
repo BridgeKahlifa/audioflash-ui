@@ -277,12 +277,15 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
 
     // Fire-and-forget — don't block navigation
     if (shouldPersistAttempts && session?.access_token) {
+      const sessionType: "lesson" | "deck" | "review" | null =
+        reviewId ? "review" : deckId && deckSessionId ? "deck" : lessonSessionId ? "lesson" : null;
       createSession(session.access_token, {
         topic_title: topicTitle ?? topic,
         language_label: languageLabel,
         cards_attempted: aggregateTotal,
         cards_correct: aggregateCorrect,
         completed_at: new Date().toISOString(),
+        ...(sessionType ? { type: sessionType } : {}),
       }).catch(() => {});
     }
 

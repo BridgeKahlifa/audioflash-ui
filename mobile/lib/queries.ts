@@ -12,6 +12,7 @@ import {
   fetchDecks,
   fetchDeck,
   fetchDeckCards,
+  fetchDeckFlashcards,
 } from "./api";
 import { queryKeys } from "./query-keys";
 
@@ -155,6 +156,18 @@ export function useDeckCards(deckId: string) {
   return useQuery({
     queryKey: queryKeys.deckCards(userId, deckId),
     queryFn:  () => fetchDeckCards(token ?? null, deckId),
+    enabled:  !!(token || isDevAuth) && !!deckId,
+    staleTime: STALE.user,
+  });
+}
+
+export function useDeckFlashcards(deckId: string) {
+  const { session, isDevAuth } = useAuth();
+  const token = session?.access_token;
+  const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
+  return useQuery({
+    queryKey: queryKeys.deckFlashcards(userId, deckId),
+    queryFn:  () => fetchDeckFlashcards(token ?? null, deckId),
     enabled:  !!(token || isDevAuth) && !!deckId,
     staleTime: STALE.user,
   });
