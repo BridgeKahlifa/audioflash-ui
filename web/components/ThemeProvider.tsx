@@ -18,6 +18,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return "light";
     }
 
+    const root = document.documentElement;
+    if (root.classList.contains("dark")) {
+      return "dark";
+    }
+
     const stored = window.localStorage.getItem(STORAGE_KEY);
     return stored === "dark" || stored === "light" ? stored : "light";
   });

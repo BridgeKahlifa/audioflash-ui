@@ -5,6 +5,17 @@ import { ThemeProvider } from "../components/ThemeProvider";
 import { PostHogProvider } from "./providers";
 import "./globals.css";
 
+const themeInitScript = `
+  (() => {
+    const storageKey = "theme";
+    const root = document.documentElement;
+    const stored = window.localStorage.getItem(storageKey);
+    const theme = stored === "dark" || stored === "light" ? stored : "light";
+    root.classList.toggle("dark", theme === "dark");
+    root.style.colorScheme = theme;
+  })();
+`;
+
 export const metadata: Metadata = {
   title: "Audio Flashcards for Language Learning | AudioFlash",
   description:
@@ -41,8 +52,9 @@ export default function RootLayout({
   const dbEnv = process.env.DB_ENV;
 
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="bg-background text-foreground font-sans antialiased">
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <PostHogProvider>
           <ThemeProvider>
             <MatrixRain />
