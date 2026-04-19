@@ -5,7 +5,7 @@ import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
 import { useAnalytics } from "../../lib/analytics";
-import { useSRSQueue, useInProgressLesson, useInProgressLessonName } from "../../lib/queries";
+import { useSRSQueue, useSavedReviews, useInProgressLesson, useInProgressLessonName } from "../../lib/queries";
 import { useAppTheme } from "../../lib/theme-context";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
@@ -22,6 +22,12 @@ export default function Home() {
     error: srsError,
   } = useSRSQueue();
   const {
+    data: savedReviews = [],
+    refetch: refetchSavedReviews,
+    isStale: isSavedReviewsStale,
+    error: savedReviewsError,
+  } = useSavedReviews();
+  const {
     data: inProgressLesson,
     refetch: refetchLesson,
     isStale: isLessonStale,
@@ -33,11 +39,11 @@ export default function Home() {
 
   async function onRefresh() {
     setRefreshing(true);
-    await Promise.all([refetchSRS(), refetchLesson()]);
+    await Promise.all([refetchSRS(), refetchSavedReviews(), refetchLesson()]);
     setRefreshing(false);
   }
   const loadError =
-    srsError || lessonError
+    srsError || savedReviewsError || lessonError
       ? "We had trouble loading part of your home screen. Please try again in a moment."
       : "";
 
@@ -45,14 +51,17 @@ export default function Home() {
   // live value without needing to be recreated every time isStale changes.
   const isSRSStaleRef = useRef(false);
   isSRSStaleRef.current = isSRSStale;
+  const isSavedReviewsStaleRef = useRef(false);
+  isSavedReviewsStaleRef.current = isSavedReviewsStale;
   const isLessonStaleRef = useRef(false);
   isLessonStaleRef.current = isLessonStale;
 
   useFocusEffect(
     useCallback(() => {
       if (isSRSStaleRef.current) refetchSRS();
+      if (isSavedReviewsStaleRef.current) refetchSavedReviews();
       if (isLessonStaleRef.current) refetchLesson();
-    }, [refetchSRS, refetchLesson]),
+    }, [refetchSRS, refetchSavedReviews, refetchLesson]),
   );
 
   const greeting = (() => {
@@ -65,13 +74,24 @@ export default function Home() {
   const firstName = profile?.name?.split(" ")[0] ?? null;
   const quickActionPalette = matrixMode
     ? {
-        iconContainer: "#2f140d",
-        iconColor: "#ff6b4a",
-      }
+      iconContainer: "#2f140d",
+      iconColor: "#ff6b4a",
+    }
     : {
-        iconContainer: "#FBE7DE",
-        iconColor: "#FF6B4A",
-      };
+      iconContainer: "#FBE7DE",
+      iconColor: "#FF6B4A",
+    };
+  const dueCount = srsQueue?.due_count ?? 0;
+  const savedReviewCount = savedReviews.length;
+
+  function handleOpenReview() {
+    posthog?.capture("home_action_tapped", {
+      action: "review_center",
+      due_count: dueCount,
+      saved_review_count: savedReviewCount,
+    });
+    router.push("/(tabs)/review");
+  }
 
   async function handleContinueLesson() {
     if (!inProgressLesson || continuingLesson) return;
@@ -151,7 +171,7 @@ export default function Home() {
           {/* SRS due card */}
           {srsQueue != null && srsQueue.due_count > 0 && (
             <Pressable
-              onPress={() => { posthog?.capture("home_action_tapped", { action: "srs_review", due_count: srsQueue.due_count }); router.push("/(tabs)/review"); }}
+              onPress={handleOpenReview}
               className="mx-6 mb-4 rounded-2xl p-4 flex-row items-center bg-primary"
               style={{
                 shadowColor: "#FF6B4A",
@@ -171,6 +191,36 @@ export default function Home() {
                 <Text className="text-white/75 text-xs mt-0.5" style={{ fontFamily }}>Tap to start your review session</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+            </Pressable>
+          )}
+
+          {savedReviewCount > 0 && (
+            <Pressable
+              onPress={handleOpenReview}
+              className="mx-6 mb-5 rounded-2xl p-4 flex-row items-center bg-card border border-primary/20"
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                elevation: 2,
+              }}
+            >
+              <View
+                className="w-12 h-12 rounded-xl items-center justify-center mr-4"
+                style={{ backgroundColor: quickActionPalette.iconContainer }}
+              >
+                <Ionicons name="refresh-circle" size={24} color={quickActionPalette.iconColor} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-foreground font-semibold text-base" style={{ fontFamily }}>
+                  Reviews
+                </Text>
+                <Text className="text-muted text-sm mt-0.5" style={{ fontFamily }}>
+                  {savedReviewCount} saved review{savedReviewCount !== 1 ? "s" : ""}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
             </Pressable>
           )}
 
@@ -233,7 +283,7 @@ export default function Home() {
               <View className="flex-1">
                 <Text className="text-foreground font-semibold text-base" style={{ fontFamily }}>Generate Flashcards</Text>
                 <Text className="text-muted text-sm mt-0.5" style={{ fontFamily }}>
-                  Type any topic — AI builds cards for you
+                  Type a topic — AI builds cards for you
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
