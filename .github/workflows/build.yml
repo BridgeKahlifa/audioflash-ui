@@ -188,7 +188,7 @@ jobs:
         id: find_webhook
         working-directory: ./mobile
         run: |
-          npx eas-cli webhook:list --non-interactive --json > webhook-list.json
+          npx eas-cli webhook:list --event BUILD --json > webhook-list.json
           node <<'EOF'
           const fs = require('fs');
           const data = JSON.parse(fs.readFileSync('webhook-list.json', 'utf8'));
