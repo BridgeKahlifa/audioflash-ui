@@ -195,6 +195,26 @@ export default function LessonReady() {
     });
   }
 
+  function handleViewCards() {
+    if (!apiCategoryId) {
+      return;
+    }
+
+    router.push({
+      pathname: "/categories/[id]",
+      params: {
+        id: apiCategoryId,
+        topic: topic ?? apiCategoryId,
+        title: topicTitle ?? topic ?? "",
+        language: language ?? "",
+        languageLabel: languageLabel ?? "",
+        apiLanguageId: apiLanguageId ?? "",
+        supportedDifficulties: supportedDifficulties ?? "",
+        availableCardCount: availableCardCountParam ?? "",
+      },
+    });
+  }
+
   const handleStart = async () => {
     if (!apiCategoryId || selectedDifficulty === null || starting || startLockRef.current) {
       return;
@@ -348,17 +368,14 @@ export default function LessonReady() {
                 )}
               </View>
 
-              <Text className="text-2xl font-semibold text-foreground mb-3 text-center">
-                {topicTitle ?? topic}
-              </Text>
+              <View className="flex-row items-center justify-center gap-2 mb-3">
+                <Text className="text-2xl font-semibold text-foreground text-center">
+                  {topicTitle ?? topic}
+                </Text>
+                <LanguageFlag name={languageLabel ?? language ?? "Language"} size="sm" />
+              </View>
 
               <View className="flex-row items-center justify-center gap-2">
-                <View className="h-8 px-3 rounded-full bg-background border border-border flex-row items-center">
-                  <LanguageFlag name={languageLabel ?? language ?? "Language"} size="sm" />
-                  <Text className="ml-2 text-sm font-semibold text-foreground">
-                    {languageLabel ?? "Language"}
-                  </Text>
-                </View>
                 <Pressable
                   onPress={() => setShuffleEnabled((current) => !current)}
                   disabled={starting}
@@ -372,6 +389,19 @@ export default function LessonReady() {
                     name="shuffle"
                     size={15}
                     color={shuffleEnabled ? "#FFFFFF" : "#2F1E19"}
+                  />
+                </Pressable>
+                <Pressable
+                  onPress={handleViewCards}
+                  disabled={starting}
+                  className="w-8 h-8 rounded-full border items-center justify-center bg-background border-border"
+                  accessibilityRole="button"
+                  accessibilityLabel="View cards in this category"
+                >
+                  <Ionicons
+                    name="eye-outline"
+                    size={15}
+                    color="#2F1E19"
                   />
                 </Pressable>
               </View>
@@ -591,7 +621,8 @@ export default function LessonReady() {
                 </Text>
               )}
             </Pressable>
-          </View>
+
+                      </View>
         </View>
       </ScrollView>
     </SafeAreaView>
