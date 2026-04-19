@@ -46,7 +46,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     queries: [
       { queryKey: queryKeys.srsQueue(userId), queryFn: () => fetchSRSQueue(token), enabled, staleTime: 60_000 },
       { queryKey: queryKeys.inProgressLesson(userId), queryFn: () => fetchInProgressLesson(token), enabled, staleTime: 60_000 },
-      { queryKey: queryKeys.categories(), queryFn: () => fetchCategories(), staleTime: 10 * 60_000 },
+      { queryKey: queryKeys.categories(), queryFn: () => fetchCategories(token), enabled, staleTime: 10 * 60_000 },
       { queryKey: queryKeys.languages(), queryFn: fetchLanguages, staleTime: 10 * 60_000 },
       { queryKey: queryKeys.sessions(userId), queryFn: () => fetchSessions(token), enabled, staleTime: 60_000 },
       { queryKey: queryKeys.sessionStats(userId), queryFn: () => fetchSessionStats(token), enabled, staleTime: 60_000 },

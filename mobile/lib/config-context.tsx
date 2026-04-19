@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { AppState } from "react-native";
 import { fetchConfig, type ApiConfig } from "./api";
+import { useAuth } from "./auth-context";
 
 interface ConfigContextValue {
   config: ApiConfig | null;
@@ -20,12 +21,18 @@ function readDbEnv(config: ApiConfig | null): string | null {
 }
 
 export function ConfigProvider({ children }: { children: React.ReactNode }) {
+  const { session, isDevAuth } = useAuth();
   const [config, setConfig] = useState<ApiConfig | null>(null);
   const dbEnv = readDbEnv(config);
+  const token = session?.access_token ?? null;
+  const enabled = !!(token || isDevAuth);
 
   async function refreshConfig() {
+    if (!enabled) {
+      return;
+    }
     try {
-      const fresh = await fetchConfig();
+      const fresh = await fetchConfig(token);
       setConfig(fresh);
     } catch {
       // Keep the last in-memory value if refresh fails.
@@ -33,8 +40,8 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    refreshConfig();
-  }, []);
+    void refreshConfig();
+  }, [enabled, token]);
 
   useEffect(() => {
     if (!dbEnv || dbEnv.toLowerCase() === "prod") {
@@ -50,7 +57,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.remove();
     };
-  }, [dbEnv]);
+  }, [dbEnv, enabled, token]);
 
   return (
     <ConfigContext.Provider
