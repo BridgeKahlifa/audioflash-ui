@@ -134,19 +134,6 @@ jobs:
         env:
           NEXT_VERSION: ${{ steps.resolve_version.outputs.next_version }}
 
-      - name: Commit version bump
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add mobile/app.json mobile/package.json mobile/package-lock.json
-          if git diff --cached --quiet; then
-            echo "No version changes to commit."
-            exit 0
-          fi
-          git commit -m "chore(mobile): bump version to ${{ steps.resolve_version.outputs.next_version }}"
-          git push origin HEAD:${{ github.ref_name }}
-
       - name: Set build message
         run: echo "EAS_BUILD_MESSAGE=github-build:${{ github.run_id }}:${{ github.run_attempt }}:${{ steps.resolve_version.outputs.next_version }}" >> "$GITHUB_ENV"
 
@@ -271,3 +258,16 @@ jobs:
         working-directory: ./mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Commit version bump
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/app.json mobile/package.json mobile/package-lock.json
+          if git diff --cached --quiet; then
+            echo "No version changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(mobile): bump version to ${{ steps.resolve_version.outputs.next_version }}"
+          git push origin HEAD:${{ github.ref_name }}

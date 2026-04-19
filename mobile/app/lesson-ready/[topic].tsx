@@ -388,7 +388,7 @@ export default function LessonReady() {
                   <Ionicons
                     name="shuffle"
                     size={15}
-                    color={shuffleEnabled ? "#FFFFFF" : "#2F1E19"}
+                    color={shuffleEnabled ? "#FFFFFF" : "#E86A4A"}
                   />
                 </Pressable>
                 <Pressable
@@ -401,7 +401,7 @@ export default function LessonReady() {
                   <Ionicons
                     name="eye-outline"
                     size={15}
-                    color="#2F1E19"
+                    color="#E86A4A"
                   />
                 </Pressable>
               </View>
@@ -560,7 +560,7 @@ export default function LessonReady() {
                     className="w-8 h-7 items-center justify-center"
                     style={{ opacity: cardCount >= maxCardCount ? 0.4 : 1 }}
                   >
-                    <Ionicons name="chevron-up" size={16} color="#2F1E19" />
+                    <Ionicons name="chevron-up" size={16} color="#E86A4A" />
                   </Pressable>
                   <View className="h-px bg-border" />
                   <Pressable
@@ -569,7 +569,7 @@ export default function LessonReady() {
                     className="w-8 h-7 items-center justify-center"
                     style={{ opacity: cardCount <= minCardCount ? 0.4 : 1 }}
                   >
-                    <Ionicons name="chevron-down" size={16} color="#2F1E19" />
+                    <Ionicons name="chevron-down" size={16} color="#E86A4A" />
                   </Pressable>
                 </View>
               </View>

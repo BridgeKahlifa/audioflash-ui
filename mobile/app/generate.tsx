@@ -63,7 +63,7 @@ export default function Generate() {
   const posthog = useAnalytics();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
-  const { fontFamily } = useAppTheme();
+  const { fontFamily, matrixMode } = useAppTheme();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
   const { data: decks } = useDecks();
   const { data: languagesData, error: languagesError } = useLanguages();
@@ -124,6 +124,15 @@ export default function Generate() {
       ),
     [deckSearch, matchingDecks],
   );
+  const backButtonPalette = matrixMode
+    ? {
+        background: "#202020",
+        icon: "#ff8c42",
+      }
+    : {
+        background: "#FBE7DE",
+        icon: "#1A1A1A",
+      };
 
   async function handleGenerate() {
     if (!canGenerate || !session?.access_token) return;
@@ -179,6 +188,15 @@ export default function Generate() {
         error_type,
       });
     }
+  }
+
+  function handleBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/(tabs)");
   }
 
   useEffect(() => {
@@ -427,9 +445,10 @@ export default function Generate() {
           <View className="px-6 pt-6 pb-2 flex-row items-center gap-3">
             <Pressable
               onPress={handleBackToForm}
-              className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+              className="w-10 h-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: backButtonPalette.background }}
             >
-              <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+              <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
             </Pressable>
             <View className="flex-1">
               <Text className="text-2xl font-semibold text-foreground tracking-tight">
@@ -592,10 +611,11 @@ export default function Generate() {
           {/* Header */}
           <View className="px-6 pt-6 pb-2 flex-row items-center gap-3">
             <Pressable
-              onPress={() => router.back()}
-              className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+              onPress={handleBack}
+              className="w-10 h-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: backButtonPalette.background }}
             >
-              <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+              <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
             </Pressable>
             <View>
               <Text className="text-2xl font-semibold text-foreground tracking-tight">
