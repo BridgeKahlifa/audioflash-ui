@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator, ScrollView } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import Svg, { Circle, Line, Polyline } from "react-native-svg";
 import { SessionHistoryItem } from "../lib/types";
 import { getLastSession, setCurrentCards } from "../lib/storage";
@@ -255,6 +256,7 @@ export default function SessionSummary() {
   const [gradeHistory, setGradeHistory] = useState<GradeHistoryPoint[]>([]);
   const [loadingGradeHistory, setLoadingGradeHistory] = useState(false);
   const [gradeHistoryError, setGradeHistoryError] = useState("");
+  const [missedCardsExpanded, setMissedCardsExpanded] = useState(false);
   const [error, setError] = useState("");
   const effectiveCategoryId = session?.categoryId ?? categoryIdParam;
   const parsedDifficulty =
@@ -445,32 +447,6 @@ export default function SessionSummary() {
           </View>
 
           <View className="bg-card border border-border rounded-2xl p-5 mb-4">
-            <Text className="text-base font-medium text-foreground mb-3">Missed Cards</Text>
-            {missed.length === 0 ? (
-              <Text className="text-muted">
-                {missedCount === 0
-                  ? "Perfect run. Nothing to retry."
-                  : "Missed cards from earlier in this resumed lesson are not available to list here."}
-              </Text>
-            ) : (
-              <View className="gap-3">
-                {missedCount > missed.length ? (
-                  <Text className="text-muted text-sm">
-                    Showing missed cards from this segment of the lesson.
-                  </Text>
-                ) : null}
-                {missed.map((card) => (
-                  <View key={`${card.cardId}-${card.sourceText}`} className="bg-secondary rounded-xl p-3">
-                    <Text className="text-foreground text-lg">{card.sourceText}</Text>
-                    <Text className="text-muted text-sm">{card.romanization}</Text>
-                    <Text className="text-foreground text-sm mt-1">{card.translation}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-
-          <View className="bg-card border border-border rounded-2xl p-5 mb-4">
             <Text className="text-base font-medium text-foreground mb-1">Score History</Text>
             <Text className="text-sm text-muted mb-4">
               This shows how your lesson scores changed over time.
@@ -488,6 +464,52 @@ export default function SessionSummary() {
             ) : (
               <SimpleGradeHistoryChart points={gradeHistory} />
             )}
+          </View>
+
+          <View className="bg-card border border-border rounded-2xl p-5 mb-4">
+            <Pressable
+              onPress={() => setMissedCardsExpanded((current) => !current)}
+              className="flex-row items-center justify-between"
+            >
+              <View className="flex-1 pr-3">
+                <Text className="text-base font-medium text-foreground">Missed Cards</Text>
+                <Text className="text-sm text-muted mt-1">
+                  {missedCount} missed {missedCount === 1 ? "card" : "cards"}
+                </Text>
+              </View>
+              <Ionicons
+                name={missedCardsExpanded ? "chevron-up" : "chevron-down"}
+                size={18}
+                color="#FF6B4A"
+              />
+            </Pressable>
+
+            {missedCardsExpanded ? (
+              <View className="mt-4">
+                {missed.length === 0 ? (
+                  <Text className="text-muted">
+                    {missedCount === 0
+                      ? "Perfect run. Nothing to retry."
+                      : "Missed cards from earlier in this resumed lesson are not available to list here."}
+                  </Text>
+                ) : (
+                  <View className="gap-3">
+                    {missedCount > missed.length ? (
+                      <Text className="text-muted text-sm">
+                        Showing missed cards from this segment of the lesson.
+                      </Text>
+                    ) : null}
+                    {missed.map((card) => (
+                      <View key={`${card.cardId}-${card.sourceText}`} className="bg-secondary rounded-xl p-3">
+                        <Text className="text-foreground text-lg">{card.sourceText}</Text>
+                        <Text className="text-muted text-sm">{card.romanization}</Text>
+                        <Text className="text-foreground text-sm mt-1">{card.translation}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ) : null}
           </View>
 
           <View className="gap-3">

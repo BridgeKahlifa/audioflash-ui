@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { View, Text, Pressable, ScrollView, RefreshControl } from "react-native";
-import { router } from "expo-router";
+import { View, Text, ScrollView, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
@@ -183,22 +182,8 @@ export default function ProgressDashboard() {
             <Text className="text-center text-xs text-muted mt-3" style={{ fontFamily }}>Cards practiced per day</Text>
           </View>
 
-          {/* CTA */}
-          <View className="bg-accent border border-primary rounded-2xl p-5 items-center" style={{ borderColor: "rgba(255,107,74,0.2)" }}>
-            <Text className="text-sm text-muted text-center mb-3" style={{ fontFamily }}>
-              {streak > 0 ? "You're doing great! Keep practicing daily." : "Ready to start your first lesson?"}
-            </Text>
-            <Pressable
-              onPress={() => router.replace("/")}
-              className="w-full py-3 bg-primary rounded-xl items-center"
-              style={{ shadowColor: "#FF6B4A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 }}
-            >
-              <Text className="text-base font-semibold text-primary-foreground" style={{ fontFamily }}>Start New Lesson</Text>
-            </Pressable>
-          </View>
-
           {/* Recent sessions */}
-          <View className="bg-card rounded-2xl p-5 border border-border mt-4" style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
+          <View className="bg-card rounded-2xl p-5 border border-border" style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
             <Text className="text-base font-medium text-foreground mb-4" style={{ fontFamily }}>Recent Sessions</Text>
             {recentSessions.length === 0 ? (
               <Text className="text-muted" style={{ fontFamily }}>No sessions yet.</Text>

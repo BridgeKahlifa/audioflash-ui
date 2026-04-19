@@ -241,7 +241,7 @@ export default function DeckPracticeReady() {
                   <Ionicons
                     name="shuffle"
                     size={15}
-                    color={shuffleEnabled ? "#FFFFFF" : "#2F1E19"}
+                    color={shuffleEnabled ? "#FFFFFF" : "#E86A4A"}
                   />
                 </Pressable>
               </View>
@@ -368,7 +368,7 @@ export default function DeckPracticeReady() {
                     className="w-8 h-7 items-center justify-center"
                     style={{ opacity: cardCount >= maxCardCount ? 0.4 : 1 }}
                   >
-                    <Ionicons name="chevron-up" size={16} color="#2F1E19" />
+                    <Ionicons name="chevron-up" size={16} color="#E86A4A" />
                   </Pressable>
                   <View className="h-px bg-border" />
                   <Pressable
@@ -377,7 +377,7 @@ export default function DeckPracticeReady() {
                     className="w-8 h-7 items-center justify-center"
                     style={{ opacity: cardCount <= MIN_CARD_COUNT ? 0.4 : 1 }}
                   >
-                    <Ionicons name="chevron-down" size={16} color="#2F1E19" />
+                    <Ionicons name="chevron-down" size={16} color="#E86A4A" />
                   </Pressable>
                 </View>
               </View>

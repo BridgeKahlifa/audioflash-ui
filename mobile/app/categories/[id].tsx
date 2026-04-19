@@ -194,23 +194,6 @@ export default function CategoryDetail() {
     return matchesLevel && matchesQuery;
   });
 
-  function handleStartLesson() {
-    router.push({
-      pathname: "/lesson-ready/[topic]",
-      params: {
-        topic: topic ?? apiCategoryId ?? "",
-        topicTitle: title ?? "",
-        language: language ?? "",
-        languageLabel: languageLabel ?? "",
-        apiLanguageId: apiLanguageId ?? "",
-        apiLoaded: "true",
-        apiCategoryId: apiCategoryId ?? "",
-        supportedDifficulties: supportedDifficulties ?? "",
-        availableCardCount: availableCardCount ?? "",
-      },
-    });
-  }
-
   function handleBack() {
     if (router.canGoBack()) {
       router.back();
@@ -392,27 +375,8 @@ export default function CategoryDetail() {
           </>
         )}
 
-        {/* Start Lesson CTA */}
         {!isLoading && !error && (cards?.length ?? 0) > 0 && (
           <View className="px-6 pb-6 pt-3 border-t border-border bg-background gap-3">
-            <Pressable
-              onPress={handleStartLesson}
-              className="py-4 rounded-2xl items-center bg-primary"
-              style={{
-                shadowColor: "#FF6B4A",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
-            >
-              <Text
-                className="text-base font-semibold text-primary-foreground"
-                style={{ fontFamily }}
-              >
-                View Lesson
-              </Text>
-            </Pressable>
             {(session || isDevAuth) && (
               <Pressable
                 onPress={() => setShowDeckModal(true)}
