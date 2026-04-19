@@ -80,8 +80,11 @@ What it does:
 - installs `eas-cli`
 - installs dependencies in `mobile/`
 - runs `npx expo install` to sync Expo-compatible packages
-- starts an EAS build for both iOS and Android with:
-  `npx eas-cli build --platform all --profile preview --non-interactive --no-wait`
+- starts an EAS build with workflow inputs for platform and profile
+- maps the `platform` choice to the EAS `--platform` flag:
+  `ios` -> `ios`, `android` -> `android`, `all platforms` -> `all`
+- runs:
+  `npx eas-cli build --platform <resolved-platform> --profile <profile> --non-interactive --no-wait`
 
 Before using it:
 
@@ -96,7 +99,9 @@ How to run it in GitHub:
 3. Select the `Build Mobile App` workflow.
 4. Click `Run workflow`.
 5. Choose the branch you want to build.
-6. Click the green `Run workflow` button to start the job.
+6. Select `platform`: `ios`, `android`, or `all platforms`.
+7. Enter the EAS `profile` to use, such as `preview`.
+8. Click the green `Run workflow` button to start the job.
 
 What to expect after triggering it:
 

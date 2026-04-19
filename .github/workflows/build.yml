@@ -2,6 +2,21 @@ name: Build Mobile App
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Select which platform to build with EAS
+        required: true
+        default: all platforms
+        type: choice
+        options:
+          - ios
+          - android
+          - all platforms
+      profile:
+        description: EAS build profile to use
+        required: true
+        default: preview
+        type: string
 
 jobs:
   build:
@@ -19,26 +34,42 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      # 🔍 Debug: confirm structure
       - name: Debug root
         run: ls -la
 
       - name: Debug mobile folder
         run: ls -la mobile
 
-      # ✅ Install dependencies in correct folder
       - name: Install dependencies
         run: npm install
         working-directory: ./mobile
 
-      # ✅ Ensure Expo-compatible deps (fixes plugin issues like expo-router)
       - name: Expo install (sync deps)
         run: npx expo install
         working-directory: ./mobile
 
-      # 🚀 Trigger build
+      - name: Resolve platform input
+        id: resolve_platform
+        shell: bash
+        run: |
+          case "${{ inputs.platform }}" in
+            "ios")
+              echo "eas_platform=ios" >> "$GITHUB_OUTPUT"
+              ;;
+            "android")
+              echo "eas_platform=android" >> "$GITHUB_OUTPUT"
+              ;;
+            "all platforms")
+              echo "eas_platform=all" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported platform input: ${{ inputs.platform }}" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Build with EAS
-        run: npx eas-cli build --platform all --profile preview --non-interactive --no-wait
+        run: npx eas-cli build --platform ${{ steps.resolve_platform.outputs.eas_platform }} --profile ${{ inputs.profile }} --non-interactive --no-wait
         working-directory: ./mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
