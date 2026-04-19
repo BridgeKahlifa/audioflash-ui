@@ -86,7 +86,7 @@ export default function CategoryDetail() {
     availableCardCount: string;
   }>();
 
-  const { fontFamily } = useAppTheme();
+  const { fontFamily, matrixMode } = useAppTheme();
   const { session, isDevAuth } = useAuth();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
@@ -96,6 +96,15 @@ export default function CategoryDetail() {
   const [showDeckModal, setShowDeckModal] = useState(false);
   const [addingToDeckId, setAddingToDeckId] = useState<string | null>(null);
   const [deckSearch, setDeckSearch] = useState("");
+  const backButtonPalette = matrixMode
+    ? {
+        background: "#202020",
+        icon: "#ff8c42",
+      }
+    : {
+        background: "#FBE7DE",
+        icon: "#1A1A1A",
+      };
 
   // Bottom-sheet animation for deck picker
   const deckModalOpacity = useRef(new Animated.Value(0)).current;
@@ -201,6 +210,23 @@ export default function CategoryDetail() {
     });
   }
 
+  function handleBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace({
+      pathname: "/(tabs)/categories",
+      params: {
+        language: language ?? "",
+        languageLabel: languageLabel ?? "",
+        apiLanguageId: apiLanguageId ?? "",
+        apiLoaded: "true",
+      },
+    });
+  }
+
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="flex-1 max-w-md w-full mx-auto">
@@ -208,10 +234,11 @@ export default function CategoryDetail() {
         {/* Header */}
         <View className="px-6 pt-6 pb-2 flex-row items-center gap-3">
           <Pressable
-            onPress={() => router.back()}
-            className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+            onPress={handleBack}
+            className="w-10 h-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: backButtonPalette.background }}
           >
-            <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+            <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
           </Pressable>
           <View className="flex-1">
             <Text

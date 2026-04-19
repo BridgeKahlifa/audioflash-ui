@@ -26,7 +26,7 @@
     min-height: 100vh;
     background: var(--background);
     color: var(--foreground);
-    font-family: "Share Tech Mono", monospace;
+    font-family: ui-sans-serif, system-ui, sans-serif;
   }
 
   h1 {

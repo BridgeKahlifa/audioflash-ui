@@ -99,8 +99,13 @@ export function FlashcardMockup() {
         {/* Scale container: phone + badge shrink together */}
         <div className="relative" style={{ width: 300, transformOrigin: "top left", transform: `scale(${scale})` }}>
         <div
-          className="matrix-panel matrix-scanlines relative overflow-hidden rounded-[40px] bg-background"
-          style={{ width: 300, height: 600, boxShadow: "0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.08)" }}
+          className="matrix-panel matrix-scanlines relative overflow-hidden rounded-[40px] border border-border bg-background"
+          style={{
+            width: 300,
+            height: 600,
+            boxShadow:
+              "0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgb(var(--border-rgb) / 0.85), 0 0 24px rgb(var(--primary-rgb) / 0.14)",
+          }}
         >
           <div className="flex flex-col h-full">
             <StatusBar />

@@ -27,7 +27,7 @@ const config: Config = {
         ring: cssVar("--ring-rgb"),
       },
       fontFamily: {
-        sans: ["Share Tech Mono", "monospace"],
+        sans: ["ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["Share Tech Mono", "monospace"],
       },
     },

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { AuthModeBadge } from "../components/AuthModeBadge";
-import { DarkModeToggle } from "../components/DarkModeToggle";
 import { MatrixRain } from "../components/MatrixRain";
 import { ThemeProvider } from "../components/ThemeProvider";
 import { PostHogProvider } from "./providers";
@@ -47,7 +46,6 @@ export default function RootLayout({
         <PostHogProvider>
           <ThemeProvider>
             <MatrixRain />
-            <DarkModeToggle />
             <div className="matrix-shell relative z-10 min-h-screen">
               <AuthModeBadge authMode={dbEnv} />
               {children}
