@@ -1,5 +1,11 @@
 import { Platform } from "react-native";
 import * as Speech from "expo-speech";
+import { Audio } from "expo-av";
+
+// Configure audio session once so TTS plays through the iOS silent switch
+if (Platform.OS === "ios") {
+  Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+}
 
 const LANGUAGE_TO_BCP47: Record<string, string> = {
   chinese: "zh-CN",
