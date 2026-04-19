@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
 import { AuthModeBadge } from "../components/AuthModeBadge";
-import { DarkModeToggle } from "../components/DarkModeToggle";
 import { MatrixRain } from "../components/MatrixRain";
 import { ThemeProvider } from "../components/ThemeProvider";
 import { PostHogProvider } from "./providers";
 import "./globals.css";
+
+const themeInitScript = `
+  (() => {
+    const root = document.documentElement;
+    root.classList.remove("dark");
+    root.style.colorScheme = "light";
+    window.localStorage.setItem("theme", "light");
+  })();
+`;
 
 export const metadata: Metadata = {
   title: "Audio Flashcards for Language Learning | AudioFlash",
@@ -42,12 +50,12 @@ export default function RootLayout({
   const dbEnv = process.env.DB_ENV;
 
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="bg-background text-foreground font-sans antialiased">
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <PostHogProvider>
           <ThemeProvider>
             <MatrixRain />
-            <DarkModeToggle />
             <div className="matrix-shell relative z-10 min-h-screen">
               <AuthModeBadge authMode={dbEnv} />
               {children}

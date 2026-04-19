@@ -7,7 +7,8 @@
   text-shadow: 0 0 2px rgba(255, 107, 74, 0.3);
 }
 
-.dark body {
+.dark body,
+.dark .matrix-font {
   font-family: "Share Tech Mono", monospace;
 }
 

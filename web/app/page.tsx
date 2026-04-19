@@ -133,21 +133,30 @@ export default function HomePage() {
               </a>
             ))}
           </div>
-          <a
-            href="#waitlist"
-            className="matrix-glow whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            <span className="sm:hidden">Join Free</span>
-            <span className="hidden sm:inline">Get Free Early Access</span>
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href="#waitlist"
+              className="matrix-glow whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              <span className="sm:hidden">Join Free</span>
+              <span className="hidden sm:inline">Get Free Early Access</span>
+            </a>
+            {/* <DarkModeToggle className="shrink-0" /> */}
+          </div>
         </div>
       </nav>
 
       <section className="mx-auto max-w-6xl px-6 pb-16 pt-12">
         <div className="flex flex-col items-center gap-16 lg:flex-row">
           <div className="flex-1 text-center lg:text-left">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5">
-              <span className="text-xs font-medium text-primary">
+            <div
+              className="mb-6 inline-flex items-center gap-2 rounded-full px-4 py-2"
+              style={{ backgroundColor: "rgba(242, 100, 69, 0.08)" }}
+            >
+              <span
+                className="text-xs font-medium dark:text-white"
+                style={{ color: "#f26445" }}
+              >
                 Listen first, then speak with audio-first language practice
               </span>
             </div>
@@ -241,8 +250,8 @@ export default function HomePage() {
               className="matrix-panel rounded-3xl border border-border bg-card p-8 transition-transform duration-300 hover:-translate-y-1"
               style={{ boxShadow: "0 12px 30px rgba(15,23,42,0.06)" }}
             >
-              <CardContent className="px-0 [&:last-child]:pb-0">
-                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-base font-semibold text-primary">
+                <CardContent className="px-0 [&:last-child]:pb-0">
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-primary text-base font-semibold text-primary-foreground shadow-[0_8px_20px_rgba(255,107,74,0.22)]">
                   {feature.icon}
                 </div>
                 <CardTitle className="mb-3 max-w-sm text-2xl font-semibold tracking-tight text-foreground">
