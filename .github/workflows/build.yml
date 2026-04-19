@@ -2,6 +2,21 @@ name: Build Mobile App
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Select which platform to build with EAS
+        required: true
+        default: all platforms
+        type: choice
+        options:
+          - ios
+          - android
+          - all platforms
+      profile:
+        description: EAS build profile to use
+        required: true
+        default: preview
+        type: string
 
 jobs:
   build:
@@ -38,6 +53,26 @@ jobs:
       - name: Expo install (sync deps)
         run: npx expo install
         working-directory: ./mobile
+
+      - name: Resolve platform input
+        id: resolve_platform
+        shell: bash
+        run: |
+          case "${{ inputs.platform }}" in
+            "ios")
+              echo "eas_platform=ios" >> "$GITHUB_OUTPUT"
+              ;;
+            "android")
+              echo "eas_platform=android" >> "$GITHUB_OUTPUT"
+              ;;
+            "all platforms")
+              echo "eas_platform=all" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported platform input: ${{ inputs.platform }}" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Find existing EAS BUILD webhook
         id: find_webhook
@@ -115,8 +150,8 @@ jobs:
       - name: Build with EAS
         run: >
           npx eas-cli build
-          --platform all
-          --profile preview
+          --platform ${{ steps.resolve_platform.outputs.eas_platform }}
+          --profile ${{ inputs.profile }}
           --message "${EAS_BUILD_MESSAGE}"
           --non-interactive
           --no-wait
