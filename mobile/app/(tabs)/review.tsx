@@ -122,7 +122,7 @@ export default function ReviewQueue() {
         return;
       }
 
-      const flashcards = await fetchFlashcards();
+      const flashcards = await fetchFlashcards(session.access_token);
       const flashcardsById = new Map(flashcards.map((card) => [String(card.id), card]));
       const reviewCards: Flashcard[] = startedReview.flashcard_ids
         .map((flashcardId, index) => {

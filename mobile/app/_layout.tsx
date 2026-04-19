@@ -253,13 +253,13 @@ function ThemedAppShell() {
             fallback={RootErrorFallback}
             additionalProperties={{ error_boundary: "root_layout" }}
           >
-            <ConfigProvider>
-              <AuthProvider>
+            <AuthProvider>
+              <ConfigProvider>
                 <AppDataProvider>
                   <RootNavigator />
                 </AppDataProvider>
-              </AuthProvider>
-            </ConfigProvider>
+              </ConfigProvider>
+            </AuthProvider>
           </PostHogErrorBoundary>
         </PostHogProvider>
       </PersistQueryClientProvider>

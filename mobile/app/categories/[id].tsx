@@ -170,11 +170,12 @@ export default function CategoryDetail() {
     queryKey: ["category-cards", apiCategoryId, apiLanguageId],
     queryFn: () =>
       fetchLessonsByCategory({
+        token: session?.access_token ?? null,
         categoryId: apiCategoryId ?? "",
         languageId: apiLanguageId ?? undefined,
         shuffle: false,
       }),
-    enabled: !!apiCategoryId,
+    enabled: !!apiCategoryId && !!(session?.access_token || isDevAuth),
   });
 
   const presentLevels = cards

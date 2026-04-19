@@ -57,9 +57,12 @@ export function useInProgressLesson() {
 }
 
 export function useCategories(languageId?: string) {
+  const { session, isDevAuth } = useAuth();
+  const token = session?.access_token;
   return useQuery({
     queryKey: queryKeys.categories(languageId),
-    queryFn:  () => fetchCategories(languageId),
+    queryFn:  () => fetchCategories(token ?? null, languageId),
+    enabled:  !!(token || isDevAuth),
     staleTime: STALE.stable,
   });
 }

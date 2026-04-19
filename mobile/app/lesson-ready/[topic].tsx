@@ -221,6 +221,7 @@ export default function LessonReady() {
       );
 
       const lessonCards = await fetchLessonsByCategory({
+        token: session?.access_token ?? null,
         categoryId: apiCategoryId,
         languageId: apiLanguageId ?? undefined,
         limit: requestedCardLimit,

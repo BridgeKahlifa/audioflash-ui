@@ -88,7 +88,12 @@ export default function NewDeck() {
               await clearGeneratedDeckImport();
             }
           } else if (categoryId) {
-            const categoryCards = await fetchLessonsByCategory({ categoryId, languageId: selectedLanguageId ?? undefined, shuffle: false });
+            const categoryCards = await fetchLessonsByCategory({
+              token: session?.access_token ?? null,
+              categoryId,
+              languageId: selectedLanguageId ?? undefined,
+              shuffle: false,
+            });
             if (categoryCards.length > 0) {
               await bulkCreateDeckCards(session?.access_token ?? null, deck.id, {
                 cards: categoryCards.map((c) => ({

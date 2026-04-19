@@ -292,11 +292,12 @@ export async function createLessonSession(
 }
 
 export async function bulkCreateFlashcards(
+  token: string | null | undefined,
   cards: ApiCreateFlashcard[],
 ): Promise<ApiLessonCard[]> {
   const res = await fetch(`${API_BASE_URL}/lessons/flashcards/bulk`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(token),
     body: JSON.stringify(cards),
   });
   return parseJson<ApiLessonCard[]>(res);
@@ -307,18 +308,28 @@ export async function fetchLanguages(): Promise<ApiLanguage[]> {
   return parseJson<ApiLanguage[]>(res);
 }
 
-export async function fetchCategories(languageId?: string): Promise<ApiCategory[]> {
+export async function fetchCategories(
+  token: string | null | undefined,
+  languageId?: string,
+): Promise<ApiCategory[]> {
   const query = languageId ? `?language_id=${encodeURIComponent(languageId)}` : "";
-  const res = await apiFetch(`${API_BASE_URL}/lessons/categories${query}`);
+  const res = await apiFetch(`${API_BASE_URL}/lessons/categories${query}`, {
+    headers: authHeaders(token),
+  });
   return parseJson<ApiCategory[]>(res);
 }
 
-export async function fetchConfig(): Promise<ApiConfig> {
-  const res = await apiFetch(`${API_BASE_URL}/config`);
+export async function fetchConfig(
+  token: string | null | undefined,
+): Promise<ApiConfig> {
+  const res = await apiFetch(`${API_BASE_URL}/config`, {
+    headers: authHeaders(token),
+  });
   return parseJson<ApiConfig>(res);
 }
 
 export async function fetchLessonsByCategory(params: {
+  token: string | null | undefined;
   categoryId: string;
   languageId?: string;
   limit?: number;
@@ -347,12 +358,19 @@ export async function fetchLessonsByCategory(params: {
   const queryString = query.toString();
   const res = await fetch(
     queryString ? `${endpoint}?${queryString}` : endpoint,
+    {
+      headers: authHeaders(params.token),
+    },
   );
   return parseJson<ApiLessonCard[]>(res);
 }
 
-export async function fetchFlashcards(): Promise<ApiLessonCard[]> {
-  const res = await fetch(`${API_BASE_URL}/lessons/flashcards`);
+export async function fetchFlashcards(
+  token: string | null | undefined,
+): Promise<ApiLessonCard[]> {
+  const res = await fetch(`${API_BASE_URL}/lessons/flashcards`, {
+    headers: authHeaders(token),
+  });
   return parseJson<ApiLessonCard[]>(res);
 }
 

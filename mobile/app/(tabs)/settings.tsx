@@ -14,7 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { useAuth } from "../../lib/auth-context";
-import { ApiUpdateProfile } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
 import { useLanguages } from "../../lib/queries";
 import { useAppTheme } from "../../lib/theme-context";
@@ -23,10 +22,6 @@ import { LanguagePickerModal } from "../../components/LanguagePickerModal";
 import { getSettings, setSettings } from "../../lib/storage";
 import { DEFAULT_FLASHCARD_DISPLAY_MODE, normalizeFlashcardDisplayMode } from "../../lib/flashcard-display-mode";
 import type { FlashcardDisplayMode } from "../../lib/types";
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
 
 function SectionLabel({ children }: { children: string }) {
   const { fontFamily } = useAppTheme();
@@ -41,11 +36,6 @@ export default function SettingsScreen() {
   const { matrixMode, setMatrixMode, fontFamily } = useAppTheme();
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [localSettings, setLocalSettings] = useState<ApiUpdateProfile>({
-    cards_per_session: profile?.cards_per_session ?? 20,
-    audio_speed: profile?.audio_speed ?? 1.0,
-    notifications_enabled: profile?.notifications_enabled ?? false,
-  });
   const [name, setName] = useState(profile?.name ?? "");
   const [nameStatus, setNameStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -54,7 +44,6 @@ export default function SettingsScreen() {
     profile?.target_language_ids?.slice(0, 1).map(String) ?? []
   );
   const [showTargetPicker, setShowTargetPicker] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [defaultDisplayMode, setDefaultDisplayMode] = useState<FlashcardDisplayMode>(
     DEFAULT_FLASHCARD_DISPLAY_MODE,
   );
@@ -64,23 +53,12 @@ export default function SettingsScreen() {
 
   const normalizedProfileName = profile?.name ?? "";
   const normalizedProfileEmail = user?.email ?? "";
-  const normalizedProfileCards = profile?.cards_per_session ?? 20;
-  const normalizedProfileAudioSpeed = profile?.audio_speed ?? 1.0;
-  const normalizedProfileNotifications = profile?.notifications_enabled ?? false;
 
   const hasUnsavedChanges =
     name !== normalizedProfileName ||
-    email !== normalizedProfileEmail ||
-    (localSettings.cards_per_session ?? 20) !== normalizedProfileCards ||
-    (localSettings.audio_speed ?? 1.0) !== normalizedProfileAudioSpeed ||
-    (localSettings.notifications_enabled ?? false) !== normalizedProfileNotifications;
+    email !== normalizedProfileEmail;
 
   useEffect(() => {
-    setLocalSettings({
-      cards_per_session: profile?.cards_per_session ?? 20,
-      audio_speed: profile?.audio_speed ?? 1.0,
-      notifications_enabled: profile?.notifications_enabled ?? false,
-    });
     setName(profile?.name ?? "");
     setTargetLanguageIds(profile?.target_language_ids?.slice(0, 1).map(String) ?? []);
   }, [profile]);
@@ -110,23 +88,6 @@ export default function SettingsScreen() {
     await setSettings({ ...current, defaultDisplayMode: mode });
     await updateProfileData({ default_display_mode: mode });
     posthog?.capture("settings_default_display_mode_changed", { mode });
-  }
-
-  async function saveSettings() {
-    setErrorMessage("");
-    const { error } = await updateProfileData(localSettings);
-    if (!error) {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1600);
-      posthog?.capture("settings_practice_saved", {
-        cards_per_session: localSettings.cards_per_session,
-        audio_speed: localSettings.audio_speed,
-        notifications_enabled: localSettings.notifications_enabled,
-        matrix_mode: matrixMode,
-      });
-    } else {
-      setErrorMessage("We couldn't save your settings right now. Please try again.");
-    }
   }
 
   async function saveName() {
@@ -177,27 +138,6 @@ export default function SettingsScreen() {
         return false;
       }
       setEmailStatus("sent");
-    }
-
-    if (
-      (localSettings.cards_per_session ?? 20) !== normalizedProfileCards ||
-      (localSettings.audio_speed ?? 1.0) !== normalizedProfileAudioSpeed ||
-      (localSettings.notifications_enabled ?? false) !== normalizedProfileNotifications
-    ) {
-      setErrorMessage("");
-      const { error } = await updateProfileData(localSettings);
-      if (error) {
-        setErrorMessage("We couldn't save your settings right now. Please try again.");
-        return false;
-      }
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1600);
-      posthog?.capture("settings_practice_saved", {
-        cards_per_session: localSettings.cards_per_session,
-        audio_speed: localSettings.audio_speed,
-        notifications_enabled: localSettings.notifications_enabled,
-        matrix_mode: matrixMode,
-      });
     }
 
     return true;
@@ -313,7 +253,7 @@ export default function SettingsScreen() {
     });
 
     return unsubscribe;
-  }, [hasUnsavedChanges, navigation, name, email, localSettings, profile, user]);
+  }, [hasUnsavedChanges, navigation, name, email, profile, user]);
 
   if (profileLoading) {
     return (
@@ -411,27 +351,8 @@ export default function SettingsScreen() {
 
           {/* ── Practice ── */}
           <SectionLabel>Practice</SectionLabel>
-          <View className="bg-card border border-border rounded-2xl p-5 gap-5">
+          <View className="bg-card border border-border rounded-2xl p-5">
             <View>
-              <Text className="text-foreground font-medium mb-3" style={{ fontFamily }}>Cards Per Session</Text>
-              <View className="flex-row items-center justify-between">
-                <Pressable
-                  onPress={() => setLocalSettings((p) => ({ ...p, cards_per_session: clamp((p.cards_per_session ?? 20) - 5, 5, 50) }))}
-                  className="w-10 h-10 rounded-full bg-secondary items-center justify-center"
-                >
-                  <Ionicons name="remove" size={20} color="#1A1A1A" />
-                </Pressable>
-                <Text className="text-2xl font-semibold text-foreground" style={{ fontFamily }}>{localSettings.cards_per_session}</Text>
-                <Pressable
-                  onPress={() => setLocalSettings((p) => ({ ...p, cards_per_session: clamp((p.cards_per_session ?? 20) + 5, 5, 50) }))}
-                  className="w-10 h-10 rounded-full bg-secondary items-center justify-center"
-                >
-                  <Ionicons name="add" size={20} color="#1A1A1A" />
-                </Pressable>
-              </View>
-            </View>
-
-            <View className="border-t border-border pt-5">
               <Text className="text-foreground font-medium mb-3" style={{ fontFamily }}>Default Lesson Mode</Text>
               <View className="gap-2">
                 <Pressable
@@ -508,26 +429,6 @@ export default function SettingsScreen() {
               </View>
             </Pressable>
           </View>
-
-          {/*
-          <SectionLabel>Reminders</SectionLabel>
-          <View className="bg-card border border-border rounded-2xl p-5">
-            <Text className="text-foreground font-medium mb-3">Practice Reminders</Text>
-            <Pressable
-              onPress={() => setLocalSettings((p) => ({ ...p, notifications_enabled: !p.notifications_enabled }))}
-              className={`py-3 rounded-xl items-center ${localSettings.notifications_enabled ? "bg-primary" : "bg-secondary"}`}
-            >
-              <Text className={localSettings.notifications_enabled ? "text-primary-foreground font-semibold" : "text-foreground font-medium"}>
-                {localSettings.notifications_enabled ? "Enabled" : "Disabled"}
-              </Text>
-            </Pressable>
-          </View>
-          */}
-
-          <Pressable onPress={saveSettings} className="py-4 rounded-2xl items-center bg-primary mt-3">
-            <Text className="text-primary-foreground font-semibold" style={{ fontFamily }}>Save Settings</Text>
-          </Pressable>
-          {saved && <Text className="text-center text-muted mt-2 text-sm" style={{ fontFamily }}>Saved</Text>}
 
           <SectionLabel>Environment</SectionLabel>
           <AuthModeSettingsCard />
