@@ -2,9 +2,20 @@ import { Platform } from "react-native";
 import * as Speech from "expo-speech";
 import { Audio } from "expo-av";
 
-// Configure audio session once so TTS plays through the iOS silent switch
-if (Platform.OS === "ios") {
-  Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+let audioModeConfigurationPromise: Promise<void> | null = null;
+
+async function ensureAudioModeConfigured(): Promise<void> {
+  if (Platform.OS !== "ios") return;
+
+  if (!audioModeConfigurationPromise) {
+    audioModeConfigurationPromise = Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+    }).catch((error) => {
+      console.warn("Failed to configure iOS audio mode", error);
+    });
+  }
+
+  await audioModeConfigurationPromise;
 }
 
 const LANGUAGE_TO_BCP47: Record<string, string> = {
@@ -39,6 +50,7 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
       Speech.speak(text, { language: bcp47, rate, pitch: 1.0 });
     }, 100);
   } else {
+    await ensureAudioModeConfigured();
     const speaking = await Speech.isSpeakingAsync();
     if (speaking) Speech.stop();
     Speech.speak(text, { language: bcp47, rate });
