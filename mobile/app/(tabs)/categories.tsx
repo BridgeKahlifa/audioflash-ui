@@ -115,14 +115,15 @@ export default function Categories() {
     if (!resolvedLanguage) return;
 
     router.push({
-      pathname: "/categories/[id]",
+      pathname: "/lesson-ready/[topic]",
       params: {
-        id: topic.apiCategoryId ?? "",
         topic: topic.id,
-        title: topic.title,
+        topicTitle: topic.title,
         language: resolvedLanguage.language.toLowerCase().replace(/\s+/g, "-"),
         languageLabel: resolvedLanguage.language,
         apiLanguageId: String(resolvedLanguage.id),
+        apiLoaded: "true",
+        apiCategoryId: topic.apiCategoryId ?? "",
         supportedDifficulties: (topic.supportedDifficulties ?? []).join(","),
         availableCardCount:
           typeof topic.availableCardCount === "number"
