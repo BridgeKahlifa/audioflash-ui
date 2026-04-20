@@ -50,7 +50,8 @@ export interface ApiStartLesson {
 
 export interface ApiCreateLessonSession {
   profile_id: string;
-  category_id: string;
+  category_id?: string | null;
+  deck_id?: string | null;
   difficulty?: number;
   display_mode?: FlashcardDisplayMode;
   started_at?: string | null;
@@ -73,7 +74,8 @@ export interface ApiLessonSession {
   session_id: string;
   activity_id?: string;
   profile_id: string;
-  category_id: string;
+  category_id: string | null;
+  deck_id?: string | null;
   difficulty?: number | null;
   session_mode?: FlashcardDisplayMode | null;
   started_at: string;

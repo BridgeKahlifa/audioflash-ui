@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { getSettings, setCurrentCards, setLessonDisplayMode } from "../../../lib/storage";
 import { setLessonTraditionalFlashcardFront } from "../../../lib/lesson-card-preferences";
 import type { Flashcard, FlashcardDisplayMode } from "../../../lib/types";
-import { startDeckPractice } from "../../../lib/api";
+import { createLessonSession } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
 import { useAnalytics } from "../../../lib/analytics";
 import { useDeck, useDeckCards, useLanguages } from "../../../lib/queries";
@@ -22,7 +22,7 @@ const CARD_COUNT_STEP = 5;
 
 export default function DeckPracticeReady() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
-  const { session, isDevAuth, profile } = useAuth();
+  const { session, profile } = useAuth();
   const posthog = useAnalytics();
 
   const { data: deck, isLoading: deckLoading } = useDeck(deckId ?? "");
@@ -106,16 +106,23 @@ export default function DeckPracticeReady() {
       }));
 
       const profileId = profile?.id ?? session?.user?.id;
-      let deckSessionId: string | undefined;
+      let lessonSessionId: string | undefined;
       let activityId: string | undefined;
 
       if (profileId) {
         try {
-          const started = await startDeckPractice(session?.access_token, deckId!, {
+          const lessonSession = await createLessonSession(session?.access_token, {
             profile_id: profileId,
+            deck_id: deckId!,
+            display_mode: displayMode,
+            started_at: new Date().toISOString(),
+            card_ids: mappedCards.map((c) => c.dbId!),
+            current_index: 0,
+            status: "in_progress",
+            completed: false,
           });
-          deckSessionId = started.session_id;
-          activityId = started.activity_id;
+          lessonSessionId = lessonSession.session_id;
+          activityId = lessonSession.activity_id ?? lessonSession.session_id;
         } catch {
           // Fall back to local-only practice if the endpoint is unavailable.
         }
@@ -123,9 +130,9 @@ export default function DeckPracticeReady() {
 
       await Promise.all([
         setCurrentCards(topicKey, mappedCards),
-        deckSessionId ? setLessonDisplayMode(deckSessionId, displayMode) : Promise.resolve(),
-        deckSessionId
-          ? setLessonTraditionalFlashcardFront(deckSessionId, traditionalFront)
+        lessonSessionId ? setLessonDisplayMode(lessonSessionId, displayMode) : Promise.resolve(),
+        lessonSessionId
+          ? setLessonTraditionalFlashcardFront(lessonSessionId, traditionalFront)
           : Promise.resolve(),
       ]);
 
@@ -148,7 +155,7 @@ export default function DeckPracticeReady() {
           languageLabel: languageName,
           apiLanguageId: deck.language_id,
           deckId: deck.id,
-          deckSessionId,
+          lessonSessionId,
           activityId,
           apiLoaded: activityId ? "true" : "",
           displayMode,

@@ -89,7 +89,8 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
     setAttemptError("");
 
     const responseTimeMs = Math.max(0, Date.now() - shownAtRef.current);
-    const shouldPersistAttempts = Boolean(resolvedActivityId && currentCard.dbId);
+    // Deck sessions use DeckCard IDs (not canonical flashcard IDs) so attempts can't be persisted.
+    const shouldPersistAttempts = Boolean(resolvedActivityId && currentCard.dbId && !deckId);
     const existingResult = results[currentIndex];
     let attemptId = existingResult?.attemptId;
     let nextIndexFromServer: number | null = null;
@@ -194,10 +195,13 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
             profile_id: profileId,
             session_id: lessonSessionId,
           });
-          endedLessonSummary = {
-            cardsCorrect: endedLesson.cards_correct,
-            cardsSeen: endedLesson.cards_seen,
-          };
+          // Deck sessions don't persist attempts so the server's counters remain 0; use local results instead.
+          if (!deckId) {
+            endedLessonSummary = {
+              cardsCorrect: endedLesson.cards_correct,
+              cardsSeen: endedLesson.cards_seen,
+            };
+          }
         } else if (deckId && deckSessionId) {
           const endedDeckPractice = await completeDeckPractice(session?.access_token, deckId, {
             profile_id: profileId,
@@ -215,7 +219,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
           return null;
         }
 
-        if (!reviewId && lessonSessionId) {
+        if (!reviewId && lessonSessionId && !deckId) {
           const missedFlashcardIds = completedResults
             .filter((r) => !r.knew)
             .map((r) => cards.find((c) => c.dbId === r.cardId || c.id === r.cardId)?.dbId)
@@ -276,11 +280,11 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
     });
 
     // Fire-and-forget — don't block navigation
-    if (shouldPersistAttempts && session?.access_token) {
+    if (resolvedActivityId && session?.access_token) {
       let sessionType: "lesson" | "deck" | "review" | null = null;
       if (reviewId) {
         sessionType = "review";
-      } else if (deckId && deckSessionId) {
+      } else if (deckId) {
         sessionType = "deck";
       } else if (lessonSessionId) {
         sessionType = "lesson";
