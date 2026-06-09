@@ -830,6 +830,27 @@ export async function generateDeckPreview(
   };
 }
 
+export async function translateDeckPhrases(
+  token: string | null | undefined,
+  deckId: string,
+  body: { phrases: string[] },
+): Promise<ApiGenerateDeckPreviewResponse> {
+  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/translate`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  const data = await parseJson<{
+    flashcards: Omit<ApiEphemeralDeckCard, "_clientId">[];
+  }>(res);
+  return {
+    flashcards: data.flashcards.map((c) => ({
+      ...c,
+      _clientId: Math.random().toString(36).slice(2),
+    })),
+  };
+}
+
 export async function bulkCreateDeckCards(
   token: string | null | undefined,
   deckId: string,
