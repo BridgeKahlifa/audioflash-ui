@@ -40,7 +40,7 @@ export default function QuickAdd() {
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
-  const canTranslate = phrases.length > 0 && status === "idle";
+const canTranslate = phrases.length > 0 && status !== "translating" && status !== "saving";
   const acceptedCards = previewCards.filter((c) => acceptedIds.has(c._clientId));
   const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
 
