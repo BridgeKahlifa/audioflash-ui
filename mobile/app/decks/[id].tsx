@@ -209,7 +209,7 @@ export default function DeckDetail() {
                 params: { id: deckId! },
               })
             }
-            className="flex-1 py-3 rounded-2xl items-center bg-card border border-border flex-row justify-center gap-1.5"
+            className="flex-1 py-3 rounded-2xl items-center bg-card border border-border flex-row justify-center gap-1"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 1 },
@@ -218,8 +218,27 @@ export default function DeckDetail() {
               elevation: 1,
             }}
           >
-            <Ionicons name="add-circle-outline" size={18} color="#FF6B4A" />
-            <Text className="text-primary font-semibold text-sm">Add Card</Text>
+            <Ionicons name="add-circle-outline" size={16} color="#FF6B4A" />
+            <Text className="text-primary font-semibold text-xs">Manual</Text>
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/decks/[id]/quick-add",
+                params: { id: deckId! },
+              })
+            }
+            className="flex-1 py-3 rounded-2xl items-center bg-card border border-border flex-row justify-center gap-1"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 4,
+              elevation: 1,
+            }}
+          >
+            <Ionicons name="list-outline" size={16} color="#FF6B4A" />
+            <Text className="text-primary font-semibold text-xs">Quick Add</Text>
           </Pressable>
           <Pressable
             onPress={() =>
@@ -228,7 +247,7 @@ export default function DeckDetail() {
                 params: { id: deckId! },
               })
             }
-            className="flex-1 py-3 rounded-2xl items-center bg-card border border-border flex-row justify-center gap-1.5"
+            className="flex-1 py-3 rounded-2xl items-center bg-card border border-border flex-row justify-center gap-1"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 1 },
@@ -237,8 +256,8 @@ export default function DeckDetail() {
               elevation: 1,
             }}
           >
-            <Ionicons name="sparkles" size={18} color="#FF6B4A" />
-            <Text className="text-primary font-semibold text-sm">Generate</Text>
+            <Ionicons name="sparkles" size={16} color="#FF6B4A" />
+            <Text className="text-primary font-semibold text-xs">Generate</Text>
           </Pressable>
         </View>
 
@@ -282,7 +301,7 @@ export default function DeckDetail() {
               </View>
               <Text className="text-foreground font-medium text-center">No cards yet</Text>
               <Text className="text-muted text-sm text-center">
-                Add cards manually or generate them with AI.
+                Add cards manually, quick-add with auto-translation, or generate with AI.
               </Text>
             </View>
           ) : (
