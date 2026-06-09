@@ -285,7 +285,7 @@ const canTranslate = phrases.length > 0 && status !== "translating" && status !=
               multiline
               className="bg-card border border-border rounded-2xl px-4 py-4 text-foreground text-base mb-2"
               style={{ minHeight: 180, textAlignVertical: "top" }}
-              editable={status === "idle"}
+              editable={status !== "translating" && status !== "saving"}
               autoFocus
             />
             <Text className="text-xs text-muted mb-6 pl-1">
