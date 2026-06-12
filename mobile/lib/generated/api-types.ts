@@ -176,6 +176,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Description */
+            description?: string | null;
         };
         /** CreateCategoryRequest */
         CreateCategoryRequest: {
@@ -224,6 +226,10 @@ export interface components {
             cards_correct: number;
             /** Completed At */
             completed_at?: string | null;
+            /** Type */
+            type?: "lesson" | "deck" | "review" | null;
+            /** Is Resumable */
+            is_resumable?: boolean | null;
         };
         /** FlashcardResponse */
         FlashcardResponse: {
@@ -328,6 +334,8 @@ export interface components {
             cards_correct: number;
             /** Completed At */
             completed_at: string | null;
+            /** Type */
+            type?: string | null;
         };
         /** SessionStatsResponse */
         SessionStatsResponse: {
