@@ -152,7 +152,7 @@ const MOCK_DECKS = [
 
 export function MockDecksScreen() {
   return (
-    <View style={{ backgroundColor: BG }}>
+    <View style={{ flex: 1, backgroundColor: BG }}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 10 }}>
         <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: SECONDARY, alignItems: "center", justifyContent: "center" }}>
