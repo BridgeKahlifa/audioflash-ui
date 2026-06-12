@@ -151,7 +151,8 @@ function RootNavigator() {
 
     const inAuthGroup = segments[0] === "(auth)" || segments[0] === "auth";
     const inOnboardingGroup = segments[0] === "(onboarding)";
-    const needsOnboarding = profile != null && !profile.onboarding_completed;
+    const FORCE_ONBOARDING = false; // set true to test the onboarding flow
+    const needsOnboarding = FORCE_ONBOARDING || (profile != null && !profile.onboarding_completed);
 
     console.log("[startup][redirect-check]", {
       isAuthenticated,
