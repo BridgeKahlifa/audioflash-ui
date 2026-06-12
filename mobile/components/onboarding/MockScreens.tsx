@@ -100,7 +100,7 @@ const MOCK_CATEGORIES = [
 
 export function MockCategoriesScreen() {
   return (
-    <View style={{ backgroundColor: BG }}>
+    <View style={{ flex: 1, backgroundColor: BG }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
         <Text style={{ fontSize: 22, fontWeight: "600", color: FG }}>Browse</Text>
