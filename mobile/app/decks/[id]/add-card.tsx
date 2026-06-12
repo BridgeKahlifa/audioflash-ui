@@ -21,6 +21,8 @@ import {
   fetchDeckCards,
 } from "../../../lib/api";
 
+const FLASHCARD_TEXT_MAX_LENGTH = 92;
+
 export default function AddCard() {
   const { id: deckId, editCardId } = useLocalSearchParams<{
     id: string;
@@ -146,13 +148,15 @@ export default function AddCard() {
               onChangeText={setSourceText}
               placeholder="The word or phrase in the target language"
               placeholderTextColor="#A0A0A0"
-              maxLength={300}
+              maxLength={FLASHCARD_TEXT_MAX_LENGTH}
               className="bg-card border border-border rounded-2xl px-4 py-4 text-foreground text-base mb-1"
               returnKeyType="next"
               editable={!submitting}
               autoFocus
             />
-            <Text className="text-xs text-muted mb-5 pl-1">{sourceText.length}/300</Text>
+            <Text className="text-xs text-muted mb-5 pl-1">
+              {sourceText.length}/{FLASHCARD_TEXT_MAX_LENGTH}
+            </Text>
 
             {/* Translation */}
             <Text className="text-sm font-semibold text-foreground mb-2">Translation</Text>
@@ -161,12 +165,14 @@ export default function AddCard() {
               onChangeText={setTranslation}
               placeholder="English meaning"
               placeholderTextColor="#A0A0A0"
-              maxLength={300}
+              maxLength={FLASHCARD_TEXT_MAX_LENGTH}
               className="bg-card border border-border rounded-2xl px-4 py-4 text-foreground text-base mb-1"
               returnKeyType="next"
               editable={!submitting}
             />
-            <Text className="text-xs text-muted mb-5 pl-1">{translation.length}/300</Text>
+            <Text className="text-xs text-muted mb-5 pl-1">
+              {translation.length}/{FLASHCARD_TEXT_MAX_LENGTH}
+            </Text>
 
             {/* Romanization */}
             <Text className="text-sm font-semibold text-foreground mb-2">
@@ -178,7 +184,7 @@ export default function AddCard() {
               onChangeText={setRomanization}
               placeholder="e.g. pinyin, romaji"
               placeholderTextColor="#A0A0A0"
-              maxLength={300}
+              maxLength={FLASHCARD_TEXT_MAX_LENGTH}
               className="bg-card border border-border rounded-2xl px-4 py-4 text-foreground text-base mb-6"
               returnKeyType="done"
               onSubmitEditing={handleSubmit}
