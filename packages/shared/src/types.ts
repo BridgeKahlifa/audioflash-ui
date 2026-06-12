@@ -40,6 +40,7 @@ export interface SessionHistoryItem {
   language: string;
   languageLabel: string;
   categoryId?: string;
+  deckId?: string;
   difficulty?: number;
   displayMode?: FlashcardDisplayMode;
   correct: number;
