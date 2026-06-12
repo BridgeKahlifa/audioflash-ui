@@ -217,7 +217,7 @@ const MOCK_WEEK = [
 export function MockProgressScreen() {
   const max = Math.max(...MOCK_WEEK.map((d) => d.cards), 1);
   return (
-    <View style={{ backgroundColor: BG }}>
+    <View style={{ flex: 1, backgroundColor: BG }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10 }}>
         <Text style={{ fontSize: 20, fontWeight: "600", color: FG }}>Your Progress</Text>
