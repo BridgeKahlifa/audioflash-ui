@@ -266,6 +266,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       language: language ?? "",
       languageLabel: languageLabel ?? "",
       categoryId,
+      deckId,
       difficulty: typeof difficulty === "number" ? difficulty : undefined,
       displayMode,
       cards: completedResults,
@@ -315,6 +316,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       pathname: "/session-summary",
       params: {
         categoryId,
+        deckId,
         difficulty: typeof difficulty === "number" ? String(difficulty) : undefined,
       },
     });

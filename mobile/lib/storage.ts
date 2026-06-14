@@ -414,6 +414,7 @@ export async function saveCompletedSession(input: {
   language: string;
   languageLabel: string;
   categoryId?: string;
+  deckId?: string;
   difficulty?: number;
   displayMode?: FlashcardDisplayMode;
   cards: SessionCardResult[];
@@ -435,6 +436,7 @@ export async function saveCompletedSession(input: {
     language: input.language,
     languageLabel: input.languageLabel,
     categoryId: input.categoryId,
+    deckId: input.deckId,
     difficulty: input.difficulty,
     displayMode: input.displayMode,
     correct,

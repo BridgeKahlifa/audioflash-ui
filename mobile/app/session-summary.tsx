@@ -7,7 +7,7 @@ import Svg, { Circle, Line, Polyline } from "react-native-svg";
 import { SessionHistoryItem } from "../lib/types";
 import { getLastSession, setCurrentCards } from "../lib/storage";
 import { useAuth } from "../lib/auth-context";
-import { fetchCategoryGradeChart, startReviewLifecycle } from "../lib/api";
+import { fetchGradeChart, startReviewLifecycle } from "../lib/api";
 import { useAnalytics } from "../lib/analytics";
 
 interface GradeHistoryPoint {
@@ -247,8 +247,9 @@ export default function SessionSummary() {
   const insets = useSafeAreaInsets();
   const { session: authSession } = useAuth();
   const posthog = useAnalytics();
-  const { categoryId: categoryIdParam, difficulty: difficultyParam } = useLocalSearchParams<{
+  const { categoryId: categoryIdParam, deckId: deckIdParam, difficulty: difficultyParam } = useLocalSearchParams<{
     categoryId?: string;
+    deckId?: string;
     difficulty?: string;
   }>();
   const [session, setSession] = useState<SessionHistoryItem | null>(null);
@@ -259,6 +260,7 @@ export default function SessionSummary() {
   const [missedCardsExpanded, setMissedCardsExpanded] = useState(false);
   const [error, setError] = useState("");
   const effectiveCategoryId = session?.categoryId ?? categoryIdParam;
+  const effectiveDeckId = session?.deckId ?? deckIdParam;
   const parsedDifficulty =
     typeof difficultyParam === "string" && difficultyParam.length > 0
       ? Number(difficultyParam)
@@ -278,7 +280,7 @@ export default function SessionSummary() {
   useEffect(() => {
     if (
       !authSession?.access_token ||
-      !effectiveCategoryId ||
+      (!effectiveCategoryId && !effectiveDeckId) ||
       typeof effectiveDifficulty !== "number"
     ) {
       setGradeHistory([]);
@@ -291,12 +293,13 @@ export default function SessionSummary() {
     setLoadingGradeHistory(true);
     setGradeHistoryError("");
 
-    fetchCategoryGradeChart(
-      authSession.access_token,
-      effectiveCategoryId,
-      effectiveDifficulty,
-      effectiveDisplayMode,
-    )
+    fetchGradeChart({
+      token: authSession.access_token,
+      categoryId: effectiveCategoryId,
+      deckId: effectiveDeckId,
+      difficulty: effectiveDifficulty,
+      sessionMode: effectiveDisplayMode,
+    })
       .then((response) => {
         if (cancelled) return;
         setGradeHistory(
@@ -318,7 +321,13 @@ export default function SessionSummary() {
     return () => {
       cancelled = true;
     };
-  }, [authSession?.access_token, effectiveCategoryId, effectiveDifficulty, effectiveDisplayMode]);
+  }, [
+    authSession?.access_token,
+    effectiveCategoryId,
+    effectiveDeckId,
+    effectiveDifficulty,
+    effectiveDisplayMode,
+  ]);
 
   const missed = useMemo(
     () => session?.cards.filter((card) => !card.knew) ?? [],

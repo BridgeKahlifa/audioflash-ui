@@ -566,9 +566,18 @@ export interface ApiGradeChartPoint {
 }
 
 export interface ApiGradeChartResponse {
-  category_id: string;
+  category_id?: string;
+  deck_id?: string;
   difficulty: number;
   points: ApiGradeChartPoint[];
+}
+
+export interface FetchGradeChartParams {
+  token: string | null | undefined;
+  difficulty: number;
+  sessionMode?: FlashcardDisplayMode;
+  categoryId?: string;
+  deckId?: string;
 }
 
 export async function fetchSRSQueue(
@@ -580,18 +589,29 @@ export async function fetchSRSQueue(
   return parseJson<ApiSRSQueue>(res);
 }
 
-export async function fetchCategoryGradeChart(
-  token: string | null | undefined,
-  categoryId: string,
-  difficulty: number,
-  sessionMode?: FlashcardDisplayMode,
-): Promise<ApiGradeChartResponse> {
+export async function fetchGradeChart({
+  token,
+  difficulty,
+  sessionMode,
+  categoryId,
+  deckId,
+}: FetchGradeChartParams): Promise<ApiGradeChartResponse> {
+  if (!categoryId && !deckId) {
+    throw new Error("Either categoryId or deckId is required");
+  }
+
   const query = new URLSearchParams({ difficulty: String(difficulty) });
+  if (deckId) {
+    query.set("deck_id", deckId);
+  }
+  if (categoryId) {
+    query.set("category_id", categoryId);
+  }
   if (sessionMode) {
     query.set("session_mode", sessionMode);
   }
   const res = await fetch(
-    `${API_BASE_URL}/analytics/categories/${categoryId}/grade-chart?${query.toString()}`,
+    `${API_BASE_URL}/analytics/grade-chart?${query.toString()}`,
     {
       headers: authHeaders(token),
     },
