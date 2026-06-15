@@ -74,12 +74,13 @@ jobs:
         run: |
           eas update \
             --channel preview \
-            --message "${{ github.event.head_commit.message }}" \
+            --message "$EAS_MESSAGE" \
             --non-interactive
         working-directory: ./mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           CI: 1
+          EAS_MESSAGE: ${{ github.event.head_commit.message }}
 
   native-build:
     name: Native build → preview (version bumped)
