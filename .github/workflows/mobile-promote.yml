@@ -34,7 +34,7 @@ jobs:
 
       - name: Push OTA update to production channel
         run: |
-          MESSAGE="${{ inputs.message }}"
+          MESSAGE="$INPUT_MESSAGE"
           if [ -z "$MESSAGE" ]; then
             MESSAGE="Promoted to production from ${{ github.sha }}"
           fi
@@ -46,6 +46,7 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           CI: 1
+          INPUT_MESSAGE: ${{ inputs.message }}
 
       - name: Summarise
         run: |
