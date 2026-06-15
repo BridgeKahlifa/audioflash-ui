@@ -80,7 +80,7 @@ AudioFlash uses [EAS Build](https://docs.expo.dev/build/introduction/) to produc
 
 ### Build commands
 
-Run from the repo root (`ui/`) or from `mobile/`:
+Run from the repo root or from `mobile/`:
 
 ```bash
 # Both platforms at once (recommended for the initial OTA-enabled build)
