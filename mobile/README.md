@@ -123,64 +123,70 @@ If you haven't used EAS Update before on this project:
 
 ### How versioning works
 
-`runtimeVersion` in `app.json` is set to `"policy": "appVersion"`, meaning the app version (e.g. `1.0.3`) is the compatibility key. An OTA update only lands on devices built at the same app version. When you ship a new native build, bump `version` in `app.json` to start a fresh update slot.
+`runtimeVersion` in `app.json` is set to `"policy": "appVersion"`, meaning the app version (e.g. `1.0.3`) is the compatibility key. An OTA update only lands on devices built at the same app version. When you ship a new native build, you must manually bump `version` in `app.json` — this does not happen automatically. Bumping the version starts a fresh update slot so old and new binaries never receive each other's OTA updates.
 
-## Manual GitHub Build Workflow
+Follow standard semantic versioning (`major.minor.patch`):
 
-The repo includes a manual GitHub Actions workflow at
-[`/.github/workflows/build.yml`](../.github/workflows/build.yml) named `Build Mobile App`.
-It does not run on push. You trigger it manually with `workflow_dispatch`.
+| Change | What to bump | Example |
+|---|---|---|
+| New native module, permission, or Expo SDK upgrade | **minor** | `1.0.3` → `1.1.0` |
+| Major new feature or breaking change | **major** | `1.0.3` → `2.0.0` |
 
-What it does:
+Bump **patch** only for the manual `build.yml` workflow, which auto-increments it for you as part of the job. Never bump patch manually — let the workflow handle it.
 
-- checks out the repo on `ubuntu-latest`
-- installs Node 20
-- installs `eas-cli`
-- resolves the mobile app version before each deploy
-- if `version` is blank, automatically increments the patch version using semantic versioning
-- if `version` is provided, uses that exact semantic version instead
-- writes the resolved version to `mobile/app.json`, `mobile/package.json`, and `mobile/package-lock.json`
-- commits and pushes the version bump back to the selected branch before building
-- installs dependencies in `mobile/`
-- runs `npx expo install` to sync Expo-compatible packages
-- starts an EAS build with workflow inputs for platform and profile
-- maps the `platform` choice to the EAS `--platform` flag:
-  `ios` -> `ios`, `android` -> `android`, `all platforms` -> `all`
-- runs:
-  `npx eas-cli build --platform <resolved-platform> --profile <profile> --non-interactive --no-wait`
+Also remember to bump `versionCode` (Android) in `app.json` whenever you cut a new build for the Play Store, as the store requires it to be strictly increasing. `autoIncrement: true` in `eas.json` handles this automatically during EAS builds so you don't need to touch it by hand.
 
-Before using it:
+## CI / CD
 
-- add the repository secret `EXPO_TOKEN` in GitHub
-- make sure the Expo account tied to that token has access to this project
-- confirm the `preview` EAS build profile is valid in [`mobile/eas.json`](./eas.json)
+Three GitHub Actions workflows handle all deployment automation.
 
-How to run it in GitHub:
+### Required secret
 
-1. Open the repository on GitHub.
-2. Go to `Actions`.
-3. Select the `Build Mobile App` workflow.
-4. Click `Run workflow`.
-5. Choose the branch you want to build.
-6. Select `platform`: `ios`, `android`, or `all platforms`.
-7. Enter the EAS `profile` to use, such as `preview`.
-8. Optionally enter `version` as a full semantic version like `1.4.0`.
-9. Leave `version` blank if you want the workflow to auto-bump the patch version, such as `1.4.0` -> `1.4.1`.
-10. Click the green `Run workflow` button to start the job.
+All three workflows need `EXPO_TOKEN` set as a GitHub repository secret (Settings → Secrets and variables → Actions → New repository secret).
 
-What to expect after triggering it:
+Get the token from **expo.dev** → **User settings** → **Access tokens** → **Create token**. Make sure the Expo account has access to this project.
 
-- The workflow resolves a semantic version before the build starts.
-- Every deploy bumps the patch version automatically unless you manually provide a full version.
-- The version bump is committed back to the branch so the next deploy increments from the latest released version.
-- GitHub Actions will only kick off the EAS build job.
-- Because the workflow uses `--no-wait`, the GitHub job finishes before the native builds finish.
-- Check the EAS dashboard or Expo build logs to monitor completion and download the artifacts.
+---
 
-If you prefer the GitHub CLI:
+### 1. Auto-deploy on merge (`mobile-deploy.yml`)
+
+Triggers automatically on every push to `main` that touches `mobile/` or `packages/`. Detects what kind of change it is and routes accordingly:
+
+| What changed | What happens |
+|---|---|
+| JS/UI only (version unchanged) | OTA update pushed to `preview` channel — testers get it on next app open |
+| Version bumped in `app.json` | EAS native build triggered for all platforms on the `preview` profile |
+
+**The version bump is always manual — it never happens automatically in this workflow.** If your PR adds a native module, changes permissions, or upgrades the Expo SDK, you must bump `version` in `mobile/app.json` yourself before merging. The CI reads the version to decide what to do; if the version hasn't changed it assumes the change is JS-only and pushes an OTA update. Forgetting to bump when you've changed native code means the OTA update will land on devices that don't have the new native code, which will cause a crash. Everything else (screens, styles, logic) can merge without a version bump and will ship automatically via OTA.
+
+---
+
+### 2. Promote to production (`mobile-promote.yml`)
+
+OTA updates from the auto-deploy land on the `preview` channel (testers only). When you're happy with what's been tested, promote it to production manually:
+
+1. Go to GitHub → **Actions** → **Promote Mobile to Production**
+2. Click **Run workflow**
+3. Optionally add a release note
+4. Click the green **Run workflow** button
+
+This bundles the current `main` and pushes it to the `production` channel. All production users get the update on their next app open.
+
+---
+
+### 3. Manual build (`build.yml`)
+
+For one-off native builds outside the normal flow — useful for cutting a specific version or targeting a single platform. Does not run automatically.
+
+1. Go to GitHub → **Actions** → **Build Mobile App** → **Run workflow**
+2. Choose branch, platform (`ios`, `android`, `all platforms`), and EAS profile
+3. Optionally enter a full semantic version (e.g. `1.4.0`); leave blank to auto-bump the patch version
+
+The workflow writes the resolved version back to `app.json`, `package.json`, and `package-lock.json` and commits it to the branch before building. The GitHub job finishes quickly because EAS builds run in the cloud (`--no-wait`); check the EAS dashboard for build status and artifact download links.
 
 ```bash
-gh workflow run build.yml --ref <branch-name>
+# Trigger via GitHub CLI
+gh workflow run build.yml --ref main
 ```
 
 ## Configuration
