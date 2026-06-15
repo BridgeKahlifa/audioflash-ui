@@ -67,6 +67,64 @@ docker build \
 docker run --rm -p 8080:80 audioflash-web
 ```
 
+## EAS Builds & OTA Updates
+
+AudioFlash uses [EAS Build](https://docs.expo.dev/build/introduction/) to produce native binaries and [EAS Update](https://docs.expo.dev/eas-update/introduction/) to push JS/UI changes to installed apps without a new APK or IPA.
+
+### Build profiles
+
+| Profile | Output | Use for |
+|---|---|---|
+| `preview` | APK (Android) / IPA (iOS), internal | Sharing with testers |
+| `production` | AAB (Android) / IPA (iOS), store-ready | Play Store / App Store |
+
+### Build commands
+
+Run from the repo root (`ui/`) or from `mobile/`:
+
+```bash
+# Both platforms at once (recommended for the initial OTA-enabled build)
+npm run build:preview
+
+# Individual platforms
+npm run build:android:preview
+npm run build:ios:preview
+
+# Production builds
+npm run build:android
+npm run build:ios
+```
+
+EAS builds in the cloud and provides a download link when done.
+
+### OTA updates (push JS changes without a new build)
+
+Once a device has an app built with the OTA config baked in, you can push UI and logic changes instantly:
+
+```bash
+npm run update:preview   # → preview channel (testers)
+npm run update:prod      # → production channel (all users)
+```
+
+The app checks for an update on launch, downloads it in the background, and runs the new code on the next open.
+
+**What OTA can update:** all React Native / JS code, screens, styles, assets.
+
+**What still requires a new build:** native module changes, new permissions, Expo SDK upgrades, or any change to native fields in `app.json`.
+
+### First-time setup
+
+If you haven't used EAS Update before on this project:
+
+1. Log in: `npx eas-cli login`
+2. Run a build: `npm run build:preview` — this bakes the update URL and channel into the binary
+3. Install the resulting APK/IPA on your devices
+4. From now on, `npm run update:preview` is all you need for UI changes
+
+### How versioning works
+
+`runtimeVersion` in `app.json` is set to `"policy": "appVersion"`, meaning the app version (e.g. `1.0.3`) is the compatibility key. An OTA update only lands on devices built at the same app version. When you ship a new native build, bump `version` in `app.json` to start a fresh update slot.
+
 ## Manual GitHub Build Workflow
 
 The repo includes a manual GitHub Actions workflow at

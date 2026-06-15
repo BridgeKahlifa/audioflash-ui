@@ -4,6 +4,12 @@
     "slug": "audio-flash",
     "version": "1.0.3",
     "scheme": "audioflash",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/eb4ac187-0d19-4b08-8276-3c8333ed1c4b"
+    },
     "orientation": "portrait",
     "icon": "./assets/app_icon.png",
     "userInterfaceStyle": "light",
@@ -30,7 +36,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.ico"
+      "favicon": "./assets/app_icon.png"
     },
     "plugins": [
       "expo-router",
