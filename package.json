@@ -8,7 +8,14 @@
     "dev:mobile:android": "cd mobile && npm run android",
     "build:web": "cd web && npm run build",
     "install:web": "cd web && npm install",
-    "install:mobile": "cd mobile && npm install"
+    "install:mobile": "cd mobile && npm install",
+    "build:preview": "cd mobile && npm run build:preview",
+    "build:android:preview": "cd mobile && npm run build:android:preview",
+    "build:ios:preview": "cd mobile && npm run build:ios:preview",
+    "build:android": "cd mobile && npm run build:android",
+    "build:ios": "cd mobile && npm run build:ios",
+    "update:preview": "cd mobile && npm run update:preview",
+    "update:prod": "cd mobile && npm run update:prod"
   },
   "dependencies": {
     "@react-native-community/netinfo": "11.5.2",

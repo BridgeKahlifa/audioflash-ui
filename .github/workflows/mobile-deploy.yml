@@ -1,0 +1,116 @@
+name: Deploy Mobile
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "mobile/**"
+      - "packages/**"
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect change type
+    runs-on: ubuntu-latest
+    outputs:
+      needs_native_build: ${{ steps.check.outputs.needs_native_build }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if app version changed
+        id: check
+        run: |
+          PREV=$(git show HEAD~1:mobile/app.json | jq -r '.expo.version')
+          CURR=$(jq -r '.expo.version' mobile/app.json)
+          echo "Previous version: $PREV"
+          echo "Current version:  $CURR"
+          echo "version=$CURR" >> "$GITHUB_OUTPUT"
+          if [ "$PREV" != "$CURR" ]; then
+            echo "needs_native_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_native_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Summarise
+        run: |
+          {
+            echo "## Deploy decision"
+            echo ""
+            if [ "${{ steps.check.outputs.needs_native_build }}" = "true" ]; then
+              echo "**Version bumped** → triggering native EAS build (preview, all platforms)"
+            else
+              echo "**JS-only change** → pushing OTA update to preview channel"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  ota-preview:
+    name: OTA update → preview
+    needs: detect
+    if: needs.detect.outputs.needs_native_build == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./mobile
+
+      - name: Push OTA update to preview channel
+        run: |
+          eas update \
+            --channel preview \
+            --message "$EAS_MESSAGE" \
+            --non-interactive
+        working-directory: ./mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CI: 1
+          EAS_MESSAGE: ${{ github.event.head_commit.message }}
+
+  native-build:
+    name: Native build → preview (version bumped)
+    needs: detect
+    if: needs.detect.outputs.needs_native_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./mobile
+
+      - name: Trigger EAS build (all platforms, preview profile)
+        run: |
+          eas build \
+            --platform all \
+            --profile preview \
+            --message "Native build: v${{ needs.detect.outputs.version }}" \
+            --non-interactive \
+            --no-wait
+        working-directory: ./mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
