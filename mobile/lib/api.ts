@@ -73,7 +73,8 @@ export interface ApiLessonSession {
   session_id: string;
   activity_id?: string;
   profile_id: string;
-  category_id: string;
+  category_id?: string | null;
+  deck_id?: string | null;
   difficulty?: number | null;
   session_mode?: FlashcardDisplayMode | null;
   started_at: string;
@@ -284,6 +285,44 @@ export async function createLessonSession(
   body: ApiCreateLessonSession,
 ): Promise<ApiLessonSession> {
   const res = await fetch(`${API_BASE_URL}/lessons/sessions`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiLessonSession>(res);
+}
+
+export interface ApiStartSessionRequest {
+  profile_id: string;
+  category_id?: string;
+  deck_id?: string;
+  session_mode?: FlashcardDisplayMode;
+  difficulty?: number;
+  card_count?: number;
+}
+
+export interface ApiCompleteSessionRequest {
+  profile_id: string;
+  session_id: string;
+}
+
+export async function startSession(
+  token: string | null | undefined,
+  body: ApiStartSessionRequest,
+): Promise<ApiLessonSession> {
+  const res = await fetch(`${API_BASE_URL}/sessions/start`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return parseJson<ApiLessonSession>(res);
+}
+
+export async function completeSession(
+  token: string | null | undefined,
+  body: ApiCompleteSessionRequest,
+): Promise<ApiLessonSession> {
+  const res = await fetch(`${API_BASE_URL}/sessions/complete`, {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(body),
@@ -574,7 +613,7 @@ export interface ApiGradeChartResponse {
 
 export interface FetchGradeChartParams {
   token: string | null | undefined;
-  difficulty: number;
+  difficulty?: number;
   sessionMode?: FlashcardDisplayMode;
   categoryId?: string;
   deckId?: string;
@@ -600,7 +639,10 @@ export async function fetchGradeChart({
     throw new Error("Either categoryId or deckId is required");
   }
 
-  const query = new URLSearchParams({ difficulty: String(difficulty) });
+  const query = new URLSearchParams();
+  if (typeof difficulty === "number") {
+    query.set("difficulty", String(difficulty));
+  }
   if (deckId) {
     query.set("deck_id", deckId);
   }
@@ -703,26 +745,6 @@ export interface ApiGenerateDeckPreviewResponse {
 
 export interface ApiBulkCreateDeckCardsRequest {
   cards: Omit<ApiEphemeralDeckCard, "_clientId">[];
-}
-
-export interface ApiStartDeckPracticeRequest {
-  profile_id: string;
-}
-
-export interface ApiDeckPracticeSession {
-  session_id: string;
-  activity_id: string;
-  deck_id: string;
-  profile_id: string;
-  started_at: string;
-  ended_at: string | null;
-  cards_seen: number;
-  cards_correct: number;
-}
-
-export interface ApiCompleteDeckPracticeRequest {
-  profile_id: string;
-  session_id: string;
 }
 
 export async function fetchDecks(
@@ -882,32 +904,6 @@ export async function bulkCreateDeckCards(
     body: JSON.stringify(body),
   });
   return parseJson<ApiDeckCard[]>(res);
-}
-
-export async function startDeckPractice(
-  token: string | null | undefined,
-  deckId: string,
-  body: ApiStartDeckPracticeRequest,
-): Promise<ApiDeckPracticeSession> {
-  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/start`, {
-    method: "POST",
-    headers: authHeaders(token),
-    body: JSON.stringify(body),
-  });
-  return parseJson<ApiDeckPracticeSession>(res);
-}
-
-export async function completeDeckPractice(
-  token: string | null | undefined,
-  deckId: string,
-  body: ApiCompleteDeckPracticeRequest,
-): Promise<ApiDeckPracticeSession> {
-  const res = await fetch(`${API_BASE_URL}/decks/${deckId}/complete`, {
-    method: "POST",
-    headers: authHeaders(token),
-    body: JSON.stringify(body),
-  });
-  return parseJson<ApiDeckPracticeSession>(res);
 }
 
 // ── Deck flashcards (junction) ─────────────────────────────────────────────────

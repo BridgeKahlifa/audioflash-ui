@@ -4,7 +4,7 @@ import { useAuth } from "./auth-context";
 import { useAnalytics } from "./analytics";
 import { useInvalidateAppData } from "./queries";
 import {
-  completeDeckPractice,
+  completeSession,
   completeReviewLifecycle,
   createFlashcardAttempt,
   createReview,
@@ -199,7 +199,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
             cardsSeen: endedLesson.cards_seen,
           };
         } else if (deckId && deckSessionId) {
-          const endedDeckPractice = await completeDeckPractice(session?.access_token, deckId, {
+          const endedDeckPractice = await completeSession(session?.access_token, {
             profile_id: profileId,
             session_id: deckSessionId,
           });

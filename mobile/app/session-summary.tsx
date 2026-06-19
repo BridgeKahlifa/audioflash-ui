@@ -280,8 +280,7 @@ export default function SessionSummary() {
   useEffect(() => {
     if (
       !authSession?.access_token ||
-      (!effectiveCategoryId && !effectiveDeckId) ||
-      typeof effectiveDifficulty !== "number"
+      (!effectiveCategoryId && !effectiveDeckId)
     ) {
       setGradeHistory([]);
       setLoadingGradeHistory(false);
