@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { getSettings, setCurrentCards, setLessonDisplayMode } from "../../../lib/storage";
 import { setLessonTraditionalFlashcardFront } from "../../../lib/lesson-card-preferences";
 import type { Flashcard, FlashcardDisplayMode } from "../../../lib/types";
-import { startDeckPractice } from "../../../lib/api";
+import { startSession } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
 import { useAnalytics } from "../../../lib/analytics";
 import { useDeck, useDeckCards, useLanguages } from "../../../lib/queries";
@@ -111,8 +111,10 @@ export default function DeckPracticeReady() {
 
       if (profileId) {
         try {
-          const started = await startDeckPractice(session?.access_token, deckId!, {
+          const started = await startSession(session?.access_token, {
             profile_id: profileId,
+            deck_id: deckId!,
+            session_mode: displayMode,
           });
           deckSessionId = started.session_id;
           activityId = started.activity_id;

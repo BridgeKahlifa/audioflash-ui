@@ -28,6 +28,57 @@ function SectionLabel({ children }: { children: string }) {
   return <Text className="text-xs text-muted font-medium uppercase tracking-wide mb-2 mt-5 px-1" style={{ fontFamily }}>{children}</Text>;
 }
 
+function IdentityMismatchBanner({
+  uiUserId,
+  uiUserEmail,
+  apiUserId,
+  apiUserName,
+}: {
+  uiUserId: string;
+  uiUserEmail: string;
+  apiUserId: string;
+  apiUserName: string;
+}) {
+  const { fontFamily } = useAppTheme();
+
+  return (
+    <View
+      className="rounded-2xl border px-4 py-4 mt-3"
+      style={{ backgroundColor: "#3b0d0c", borderColor: "#f97316" }}
+    >
+      <Text className="text-base font-semibold mb-1" style={{ color: "#ffedd5", fontFamily }}>
+        UI User Differs From API User
+      </Text>
+      <Text className="text-sm mb-3" style={{ color: "#fdba74", fontFamily, lineHeight: 20 }}>
+        The app is signed in as one user, but the API is resolving requests as another. Deck
+        access, sessions, and charts may fail or write to the wrong account.
+      </Text>
+      <View className="rounded-xl px-3 py-3 mb-2" style={{ backgroundColor: "#4a1715" }}>
+        <Text className="text-xs font-semibold mb-1" style={{ color: "#fdba74", fontFamily }}>
+          UI User
+        </Text>
+        <Text className="text-sm" style={{ color: "#fff7ed", fontFamily }}>
+          {uiUserEmail}
+        </Text>
+        <Text className="text-xs mt-1" style={{ color: "#fed7aa", fontFamily }}>
+          {uiUserId}
+        </Text>
+      </View>
+      <View className="rounded-xl px-3 py-3" style={{ backgroundColor: "#4a1715" }}>
+        <Text className="text-xs font-semibold mb-1" style={{ color: "#fdba74", fontFamily }}>
+          API User
+        </Text>
+        <Text className="text-sm" style={{ color: "#fff7ed", fontFamily }}>
+          {apiUserName}
+        </Text>
+        <Text className="text-xs mt-1" style={{ color: "#fed7aa", fontFamily }}>
+          {apiUserId}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const { user, profile, profileLoading, updateProfileData, updateEmail, deleteAccount, signOut, isDevAuth } = useAuth();
   const { data: languages = [] } = useLanguages();
@@ -50,6 +101,11 @@ export default function SettingsScreen() {
   const appVersion = Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? "unknown";
   const buildVersion = Constants.nativeBuildVersion;
   const versionLabel = buildVersion ? `Version ${appVersion} (${buildVersion})` : `Version ${appVersion}`;
+  const uiUserId = user?.id ?? "";
+  const uiUserEmail = user?.email ?? "Unknown UI user";
+  const apiUserId = profile?.id ?? "";
+  const apiUserName = profile?.name?.trim() || "Unknown API user";
+  const hasIdentityMismatch = __DEV__ && !isDevAuth && !!uiUserId && !!apiUserId && uiUserId !== apiUserId;
 
   const normalizedProfileName = profile?.name ?? "";
   const normalizedProfileEmail = user?.email ?? "";
@@ -432,6 +488,14 @@ export default function SettingsScreen() {
 
           <SectionLabel>Environment</SectionLabel>
           <AuthModeSettingsCard />
+          {hasIdentityMismatch ? (
+            <IdentityMismatchBanner
+              uiUserId={uiUserId}
+              uiUserEmail={uiUserEmail}
+              apiUserId={apiUserId}
+              apiUserName={apiUserName}
+            />
+          ) : null}
 
           {/* ── Account ── */}
           <SectionLabel>Account</SectionLabel>

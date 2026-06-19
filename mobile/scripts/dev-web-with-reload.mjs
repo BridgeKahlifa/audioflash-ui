@@ -35,6 +35,8 @@ const watchedFiles = new Set();
 let child = null;
 let restartTimer = null;
 let childStopping = false;
+let restartPending = false;
+let startingExpo = false;
 
 const APP_ROOT = "/app/mobile";
 const PACKAGE_LOCK_PATH = path.join(APP_ROOT, "package-lock.json");
@@ -114,8 +116,14 @@ function syncWatchers() {
 }
 
 function startExpo() {
+  if (child || startingExpo) {
+    return;
+  }
+
   console.log("[dev-web] starting Expo web server");
   childStopping = false;
+  restartPending = false;
+  startingExpo = true;
   child = spawn("node", ["./node_modules/expo/bin/cli", "start", "--web", "--port", "8081"], {
     cwd: "/app/mobile",
     stdio: "inherit",
@@ -128,6 +136,13 @@ function startExpo() {
 
   child.on("exit", () => {
     child = null;
+    startingExpo = false;
+    if (restartPending) {
+      restartPending = false;
+      startExpo();
+      return;
+    }
+
     if (!childStopping) {
       console.log("[dev-web] Expo exited unexpectedly, restarting");
       startExpo();
@@ -153,10 +168,16 @@ function restartExpo() {
     return;
   }
 
+  if (childStopping) {
+    restartPending = true;
+    return;
+  }
+
   console.log("[dev-web] restarting Expo for latest changes");
   childStopping = true;
+  restartPending = true;
   child.once("exit", () => {
-    startExpo();
+    restartPending = true;
   });
   child.kill("SIGTERM");
 }
