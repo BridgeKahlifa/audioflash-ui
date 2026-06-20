@@ -191,6 +191,7 @@ function RootNavigator() {
         <Stack.Screen name="session-summary" options={{ animation: "none" }} />
         <Stack.Screen name="history" options={{ animation: "none" }} />
         <Stack.Screen name="browse-languages" options={{ animation: "none" }} />
+        <Stack.Screen name="tutorial" options={{ animation: "none" }} />
         <Stack.Screen name="decks/index" options={{ animation: "none" }} />
         <Stack.Screen name="decks/new" options={{ animation: "none" }} />
         <Stack.Screen name="decks/[id]" options={{ animation: "none" }} />

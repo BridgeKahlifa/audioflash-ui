@@ -12,6 +12,7 @@ import {
 import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { useAuth } from "../../lib/auth-context";
 import { useAnalytics } from "../../lib/analytics";
@@ -512,6 +513,16 @@ export default function SettingsScreen() {
               </View>
             ) : (
               <>
+                <Pressable
+                  onPress={() => {
+                    posthog?.capture("tutorial_restarted");
+                    router.push("/tutorial");
+                  }}
+                  className="flex-row items-center gap-2 p-4 border-b border-border"
+                >
+                  <Ionicons name="school-outline" size={18} color="#6B7280" />
+                  <Text className="text-foreground font-medium" style={{ fontFamily }}>Restart Tutorial</Text>
+                </Pressable>
                 <Pressable
                   onPress={() => { posthog?.capture("auth_signed_out"); signOut(); }}
                   className="flex-row items-center gap-2 p-4 border-b border-border"
