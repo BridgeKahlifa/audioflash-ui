@@ -16,6 +16,7 @@ interface Topic {
   apiCategoryId?: string;
   supportedDifficulties: number[];
   availableCardCount?: number;
+  cardsByDifficulty?: Record<number, number>;
 }
 
 const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
@@ -92,6 +93,7 @@ export default function Categories() {
       supportedDifficulties: category.supported_difficulties ?? [],
       availableCardCount:
         typeof category.total_cards === "number" ? category.total_cards : undefined,
+      cardsByDifficulty: category.cards_by_difficulty,
     }));
 
   async function handleSelectLanguage(lang: ApiLanguage) {
@@ -129,6 +131,9 @@ export default function Categories() {
           typeof topic.availableCardCount === "number"
             ? String(topic.availableCardCount)
             : "",
+        cardsByDifficulty: topic.cardsByDifficulty
+          ? JSON.stringify(topic.cardsByDifficulty)
+          : "",
       },
     });
   }
