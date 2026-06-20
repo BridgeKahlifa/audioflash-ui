@@ -61,6 +61,7 @@ export default function LessonReady() {
     apiLoaded,
     supportedDifficulties,
     availableCardCount: availableCardCountParam,
+    cardsByDifficulty: cardsByDifficultyParam,
   } =
     useLocalSearchParams<{
       topic: string;
@@ -72,6 +73,7 @@ export default function LessonReady() {
       apiLoaded?: string;
       supportedDifficulties?: string;
       availableCardCount?: string;
+      cardsByDifficulty?: string;
     }>();
 
   const [status, setStatus] = useState<"ready" | "empty" | "error">("ready");
@@ -91,10 +93,13 @@ export default function LessonReady() {
   const categoryAvailableCardCount = categories.find(
     (category) => String(category.id) === String(apiCategoryId),
   )?.total_cards;
-  const availableCardCount =
-    routeAvailableCardCount ??
-    (typeof categoryAvailableCardCount === "number" ? categoryAvailableCardCount : null);
-  const { min: minCardCount, max: maxCardCount } = resolveCardCountBounds(availableCardCount);
+  const cardsByDifficulty: Record<number, number> = (() => {
+    try {
+      return cardsByDifficultyParam ? JSON.parse(cardsByDifficultyParam) : {};
+    } catch {
+      return {};
+    }
+  })();
   const availableDifficulties = (supportedDifficulties ?? "")
     .split(",")
     .map((value) => Number(value))
@@ -103,6 +108,13 @@ export default function LessonReady() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<number | null>(
     availableDifficulties[0] ?? null
   );
+  const availableCardCount = (() => {
+    if (selectedDifficulty !== null && cardsByDifficulty[selectedDifficulty] !== undefined) {
+      return cardsByDifficulty[selectedDifficulty];
+    }
+    return routeAvailableCardCount ?? (typeof categoryAvailableCardCount === "number" ? categoryAvailableCardCount : null);
+  })();
+  const { min: minCardCount, max: maxCardCount } = resolveCardCountBounds(availableCardCount);
   const canStart =
     Boolean(apiCategoryId) &&
     selectedDifficulty !== null &&

@@ -6,6 +6,7 @@ export type ApiCategory = components["schemas"]["CategoryResponse"] & {
   is_public?: boolean;
   supported_difficulties?: number[];
   total_cards?: number;
+  cards_by_difficulty?: Record<number, number>;
 };
 export type ApiLessonCard = components["schemas"]["FlashcardResponse"];
 export type ApiProfile = components["schemas"]["ProfileResponse"];
