@@ -474,66 +474,68 @@ export default function SessionSummary() {
             )}
           </View>
 
-          <View className="bg-card border border-border rounded-2xl p-5 mb-4">
-            <Pressable
-              onPress={() => setMissedCardsExpanded((current) => !current)}
-              className="flex-row items-center justify-between"
-            >
-              <View className="flex-1 pr-3">
-                <Text className="text-base font-medium text-foreground">Missed Cards</Text>
-                <Text className="text-sm text-muted mt-1">
-                  {missedCount} missed {missedCount === 1 ? "card" : "cards"}
-                </Text>
-              </View>
-              <Ionicons
-                name={missedCardsExpanded ? "chevron-up" : "chevron-down"}
-                size={18}
-                color="#FF6B4A"
-              />
-            </Pressable>
-
-            {missedCardsExpanded ? (
-              <View className="mt-4">
-                {missed.length === 0 ? (
-                  <Text className="text-muted">
-                    {missedCount === 0
-                      ? "Perfect run. Nothing to retry."
-                      : "Missed cards from earlier in this resumed lesson are not available to list here."}
+          {missedCount > 0 ? (
+            <View className="bg-card border border-border rounded-2xl p-5 mb-4">
+              <Pressable
+                onPress={() => setMissedCardsExpanded((current) => !current)}
+                className="flex-row items-center justify-between"
+              >
+                <View className="flex-1 pr-3">
+                  <Text className="text-base font-medium text-foreground">Missed Cards</Text>
+                  <Text className="text-sm text-muted mt-1">
+                    {missedCount} missed {missedCount === 1 ? "card" : "cards"}
                   </Text>
-                ) : (
-                  <View className="gap-3">
-                    {missedCount > missed.length ? (
-                      <Text className="text-muted text-sm">
-                        Showing missed cards from this segment of the lesson.
-                      </Text>
-                    ) : null}
-                    {missed.map((card) => (
-                      <View key={`${card.cardId}-${card.sourceText}`} className="bg-secondary rounded-xl p-3">
-                        <Text className="text-foreground text-lg">{card.sourceText}</Text>
-                        <Text className="text-muted text-sm">{card.romanization}</Text>
-                        <Text className="text-foreground text-sm mt-1">{card.translation}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-            ) : null}
-          </View>
+                </View>
+                <Ionicons
+                  name={missedCardsExpanded ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color="#FF6B4A"
+                />
+              </Pressable>
+
+              {missedCardsExpanded ? (
+                <View className="mt-4">
+                  {missed.length === 0 ? (
+                    <Text className="text-muted">
+                      Missed cards from earlier in this resumed lesson are not available to list here.
+                    </Text>
+                  ) : (
+                    <View className="gap-3">
+                      {missedCount > missed.length ? (
+                        <Text className="text-muted text-sm">
+                          Showing missed cards from this segment of the lesson.
+                        </Text>
+                      ) : null}
+                      {missed.map((card) => (
+                        <View key={`${card.cardId}-${card.sourceText}`} className="bg-secondary rounded-xl p-3">
+                          <Text className="text-foreground text-lg">{card.sourceText}</Text>
+                          <Text className="text-muted text-sm">{card.romanization}</Text>
+                          <Text className="text-foreground text-sm mt-1">{card.translation}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
           <View className="gap-3">
-            <Pressable
-              onPress={retryMissed}
-              disabled={missed.length === 0 || startingReview}
-              className={`py-4 rounded-2xl items-center ${missed.length > 0 && !startingReview ? "bg-primary" : "bg-secondary"}`}
-            >
-              {startingReview ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text className={`font-semibold ${missed.length > 0 ? "text-primary-foreground" : "text-muted"}`}>
-                  {session.reviewId ? "Review Missed Cards" : "Retry Missed Cards"}
-                </Text>
-              )}
-            </Pressable>
+            {missedCount > 0 ? (
+              <Pressable
+                onPress={retryMissed}
+                disabled={missed.length === 0 || startingReview}
+                className={`py-4 rounded-2xl items-center ${missed.length > 0 && !startingReview ? "bg-primary" : "bg-secondary"}`}
+              >
+                {startingReview ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className={`font-semibold ${missed.length > 0 ? "text-primary-foreground" : "text-muted"}`}>
+                    {session.reviewId ? "Review Missed Cards" : "Retry Missed Cards"}
+                  </Text>
+                )}
+              </Pressable>
+            ) : null}
 
             <Pressable
               onPress={() => router.replace("/progress")}
