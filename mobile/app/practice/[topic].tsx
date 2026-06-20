@@ -5,6 +5,7 @@ import {
   Pressable,
   PanResponder,
   Animated,
+  ScrollView,
   LayoutChangeEvent,
   Platform,
 } from "react-native";
@@ -555,9 +556,10 @@ export default function FlashcardPractice() {
               transform: [{ translateX }],
               flex: 1,
               flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 32,
+              alignItems: showAnswer ? "stretch" : "center",
+              justifyContent: showAnswer ? "flex-start" : "center",
+              padding: showAnswer ? 0 : 32,
+              overflow: "hidden",
               backgroundColor: palette.cardBackground,
               borderWidth: matrixMode ? 1 : 0,
               borderColor: palette.cardBorder,
@@ -645,7 +647,17 @@ export default function FlashcardPractice() {
             ) : null}
 
             {showAnswer && (
-              <View className="mt-8 items-center" style={{ alignSelf: "stretch" }}>
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{
+                  flexGrow: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  padding: 32,
+                }}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
                 <Pressable
                   onPress={playCurrentCardAudio}
                   hitSlop={10}
@@ -687,7 +699,7 @@ export default function FlashcardPractice() {
                 <Text className="text-xl text-foreground text-center" style={{ alignSelf: "stretch", color: palette.foreground, fontFamily: palette.fontFamily }}>
                   {currentCard.translation}
                 </Text>
-              </View>
+              </ScrollView>
             )}
           </Animated.View>
         </View>
