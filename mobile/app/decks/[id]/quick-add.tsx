@@ -21,6 +21,8 @@ import {
   type ApiEphemeralDeckCard,
 } from "../../../lib/api";
 
+const MAX_FIELD_LENGTH = 92;
+
 export default function QuickAdd() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
   const { session, isDevAuth } = useAuth();
@@ -135,6 +137,10 @@ const canTranslate = phrases.length > 0 && status !== "translating" && status !=
           >
             {previewCards.map((card) => {
               const isAccepted = acceptedIds.has(card._clientId);
+              const fieldTooLong =
+                card.source_text.length > MAX_FIELD_LENGTH ||
+                card.translation.length > MAX_FIELD_LENGTH ||
+                (card.romanization != null && card.romanization.length > MAX_FIELD_LENGTH);
               return (
                 <Pressable
                   key={card._clientId}
@@ -163,6 +169,11 @@ const canTranslate = phrases.length > 0 && status !== "translating" && status !=
                         </Text>
                       ) : null}
                       <Text className="text-sm text-muted">{card.translation}</Text>
+                      {fieldTooLong && (
+                        <Text className="text-xs text-amber-600 mt-2">
+                          This phrase is too long and may display incorrectly — remove it or shorten the original.
+                        </Text>
+                      )}
                     </View>
                     <View className="items-end gap-2">
                       {isAccepted ? (
