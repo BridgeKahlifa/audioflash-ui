@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../../lib/auth-context";
+import { captureHandledException, useAnalytics } from "../../../lib/analytics";
 import { queryKeys } from "../../../lib/query-keys";
 import {
   translateDeckPhrases,
@@ -26,6 +27,7 @@ const MAX_FIELD_LENGTH = 92;
 export default function QuickAdd() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
   const { session, isDevAuth } = useAuth();
+  const posthog = useAnalytics();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
@@ -56,6 +58,11 @@ const canTranslate = phrases.length > 0 && status !== "translating" && status !=
       setAcceptedIds(new Set(result.flashcards.map((c) => c._clientId)));
       setStatus("idle");
     } catch (error: any) {
+      captureHandledException(posthog, error, {
+        error_context: "deck_quick_add_translate",
+        deck_id: deckId,
+        phrase_count: phrases.length,
+      });
       setStatus("error");
       const msg = error?.message ?? "";
       if (msg.includes("422") || msg.includes("inappropriate")) {
@@ -96,7 +103,12 @@ const canTranslate = phrases.length > 0 && status !== "translating" && status !=
       qc.invalidateQueries({ queryKey: queryKeys.deck(userId, deckId) });
       qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
       router.back();
-    } catch {
+    } catch (error) {
+      captureHandledException(posthog, error, {
+        error_context: "deck_quick_add_save",
+        deck_id: deckId,
+        card_count: acceptedCards.length,
+      });
       setStatus("error");
       setErrorMessage("Couldn't save cards. Please try again.");
     }

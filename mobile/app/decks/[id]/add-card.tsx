@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../../lib/auth-context";
+import { captureHandledException, useAnalytics } from "../../../lib/analytics";
 import { queryKeys } from "../../../lib/query-keys";
 import {
   createDeckCard,
@@ -29,6 +30,7 @@ export default function AddCard() {
     editCardId?: string;
   }>();
   const { session, isDevAuth } = useAuth();
+  const posthog = useAnalytics();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
@@ -63,7 +65,14 @@ export default function AddCard() {
           setRomanization(card.romanization ?? "");
         }
       })
-      .catch(() => setErrorMessage("Couldn't load card details."))
+      .catch((error) => {
+        captureHandledException(posthog, error, {
+          error_context: "deck_card_load_for_edit",
+          deck_id: deckId,
+          edit_card_id: editCardId,
+        });
+        setErrorMessage("Couldn't load card details.");
+      })
       .finally(() => setLoading(false));
   }, [deckId, editCardId, isDevAuth, isEdit, session, session?.access_token]);
 
@@ -89,7 +98,12 @@ export default function AddCard() {
       qc.invalidateQueries({ queryKey: queryKeys.deck(userId, deckId) });
       qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
       router.back();
-    } catch {
+    } catch (error) {
+      captureHandledException(posthog, error, {
+        error_context: isEdit ? "deck_card_update" : "deck_card_create",
+        deck_id: deckId,
+        has_romanization: Boolean(romanization.trim()),
+      });
       setErrorMessage(
         isEdit
           ? "Couldn't update the card. Please try again."

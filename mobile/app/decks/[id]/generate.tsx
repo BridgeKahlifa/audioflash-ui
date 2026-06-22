@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../../lib/auth-context";
+import { captureHandledException, useAnalytics } from "../../../lib/analytics";
 import { queryKeys } from "../../../lib/query-keys";
 import {
   fetchDeck,
@@ -40,6 +41,7 @@ const TOPIC_SUGGESTIONS = [
 export default function DeckGenerate() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
   const { session, isDevAuth } = useAuth();
+  const posthog = useAnalytics();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
@@ -64,7 +66,14 @@ export default function DeckGenerate() {
 
   useEffect(() => {
     if ((!session && !isDevAuth) || !deckId) return;
-    fetchDeck(session?.access_token, deckId).then(setDeck).catch(() => null);
+    fetchDeck(session?.access_token, deckId)
+      .then(setDeck)
+      .catch((error) => {
+        captureHandledException(posthog, error, {
+          error_context: "deck_generate_load_deck",
+          deck_id: deckId,
+        });
+      });
   }, [deckId, isDevAuth, session, session?.access_token]);
 
   async function handleGenerate() {
@@ -82,8 +91,23 @@ export default function DeckGenerate() {
       setAcceptedIds(new Set(result.flashcards.map((c) => c._clientId)));
       setStatus("idle");
     } catch (error: any) {
-      setStatus("error");
       const msg = error?.message ?? "";
+      let errorType = "unknown";
+      if (msg.includes("429") || msg.includes("limit")) {
+        errorType = "rate_limit";
+      } else if (msg.includes("422") || msg.includes("inappropriate")) {
+        errorType = "inappropriate_topic";
+      }
+
+      captureHandledException(posthog, error, {
+        error_context: "deck_generate_preview",
+        deck_id: deckId,
+        topic_length: topic.trim().length,
+        difficulty: difficultyLevel,
+        card_count: cardCount,
+        error_type: errorType,
+      });
+      setStatus("error");
       if (msg.includes("429") || msg.includes("limit")) {
         setErrorMessage("You've hit the generation limit. Try again in an hour.");
       } else if (msg.includes("422") || msg.includes("inappropriate")) {
@@ -124,7 +148,12 @@ export default function DeckGenerate() {
       qc.invalidateQueries({ queryKey: queryKeys.deck(userId, deckId) });
       qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
       router.back();
-    } catch {
+    } catch (error) {
+      captureHandledException(posthog, error, {
+        error_context: "deck_generate_save",
+        deck_id: deckId,
+        card_count: acceptedCards.length,
+      });
       setStatus("error");
       setErrorMessage("Couldn't save cards. Please try again.");
     }

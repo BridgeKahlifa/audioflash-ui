@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAuth } from "../../lib/auth-context";
-import { useAnalytics } from "../../lib/analytics";
+import { captureHandledException, useAnalytics } from "../../lib/analytics";
 import { fetchLanguages, ApiLanguage } from "../../lib/api";
 import { StepDots } from "../../components/onboarding/StepDots";
 
@@ -22,7 +22,12 @@ export default function OnboardingTargetLanguages() {
   useEffect(() => {
     fetchLanguages()
       .then(setLanguages)
-      .catch(() => setError("Couldn't load languages. Please try again."))
+      .catch((error) => {
+        captureHandledException(posthog, error, {
+          error_context: "onboarding_load_languages",
+        });
+        setError("Couldn't load languages. Please try again.");
+      })
       .finally(() => setLoadingLanguages(false));
   }, []);
 

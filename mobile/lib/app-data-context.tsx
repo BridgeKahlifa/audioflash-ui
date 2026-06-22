@@ -1,6 +1,15 @@
-import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useQueries, useIsRestoring } from "@tanstack/react-query";
 import { queryKeys } from "./query-keys";
+import { captureHandledException, useAnalytics } from "./analytics";
 import { filterActiveReviews } from "./queries";
 import { useAuth } from "./auth-context";
 import {
@@ -29,6 +38,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const token = session?.access_token ?? null;
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
   const enabled = !!(token || isDevAuth);
+  const posthog = useAnalytics();
 
   const isRestoring = useIsRestoring();
   const cacheReset = useSyncExternalStore(subscribeToCacheReset, getCacheResetSnapshot);
@@ -42,22 +52,64 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t);
   }, [isRestoring, minTimeCycle]);
 
-  const results = useQueries({
-    queries: [
-      { queryKey: queryKeys.srsQueue(userId), queryFn: () => fetchSRSQueue(token), enabled, staleTime: 60_000 },
-      { queryKey: queryKeys.inProgressLesson(userId), queryFn: () => fetchInProgressLesson(token), enabled, staleTime: 60_000 },
-      { queryKey: queryKeys.categories(), queryFn: () => fetchCategories(token), enabled, staleTime: 10 * 60_000 },
-      { queryKey: queryKeys.languages(), queryFn: fetchLanguages, staleTime: 10 * 60_000 },
-      { queryKey: queryKeys.sessions(userId), queryFn: () => fetchSessions(token), enabled, staleTime: 60_000 },
-      { queryKey: queryKeys.sessionStats(userId), queryFn: () => fetchSessionStats(token), enabled, staleTime: 60_000 },
+  const appQueries = useMemo(
+    () => [
       {
+        queryName: "srs_queue",
+        queryKey: queryKeys.srsQueue(userId),
+        queryFn: () => fetchSRSQueue(token),
+        enabled,
+        staleTime: 60_000,
+      },
+      {
+        queryName: "in_progress_lesson",
+        queryKey: queryKeys.inProgressLesson(userId),
+        queryFn: () => fetchInProgressLesson(token),
+        enabled,
+        staleTime: 60_000,
+      },
+      {
+        queryName: "categories",
+        queryKey: queryKeys.categories(),
+        queryFn: () => fetchCategories(token),
+        enabled,
+        staleTime: 10 * 60_000,
+      },
+      {
+        queryName: "languages",
+        queryKey: queryKeys.languages(),
+        queryFn: fetchLanguages,
+        staleTime: 10 * 60_000,
+      },
+      {
+        queryName: "sessions",
+        queryKey: queryKeys.sessions(userId),
+        queryFn: () => fetchSessions(token),
+        enabled,
+        staleTime: 60_000,
+      },
+      {
+        queryName: "session_stats",
+        queryKey: queryKeys.sessionStats(userId),
+        queryFn: () => fetchSessionStats(token),
+        enabled,
+        staleTime: 60_000,
+      },
+      {
+        queryName: "saved_reviews",
         queryKey: queryKeys.savedReviews(userId),
         queryFn: async () => filterActiveReviews(await fetchReviews(token)),
         enabled,
         staleTime: 60_000,
       },
     ],
+    [enabled, token, userId],
+  );
+
+  const results = useQueries({
+    queries: appQueries,
   });
+  const reportedQueryErrorsRef = useRef<Record<string, string>>({});
 
   const queriesSettled = !enabled || results.every((r) => r.isFetched);
   const hasCachedData = results.some((r) => r.data !== undefined);
@@ -96,6 +148,30 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     if (!queriesSettled || !minTimeElapsed) return;
     finishQueryCacheReset();
   }, [cacheReset.inProgress, isRestoring, queriesSettled, minTimeElapsed]);
+
+  useEffect(() => {
+    appQueries.forEach((query, index) => {
+      const result = results[index];
+      if (!result?.error) return;
+
+      const errorMessage =
+        typeof (result.error as any)?.message === "string"
+          ? (result.error as any).message
+          : String(result.error);
+      const queryKey = JSON.stringify(query.queryKey);
+      const fingerprint = `${queryKey}:${errorMessage}`;
+
+      if (reportedQueryErrorsRef.current[query.queryName] === fingerprint) return;
+      reportedQueryErrorsRef.current[query.queryName] = fingerprint;
+
+      captureHandledException(posthog, result.error, {
+        error_context: "app_data_query",
+        query_name: query.queryName,
+        query_key: queryKey,
+        is_dev_auth: isDevAuth,
+      });
+    });
+  }, [appQueries, isDevAuth, posthog, results]);
 
   return (
     <AppDataContext.Provider value={{ ready }}>

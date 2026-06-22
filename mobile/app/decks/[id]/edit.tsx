@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../../lib/auth-context";
+import { captureHandledException, useAnalytics } from "../../../lib/analytics";
 import { queryKeys } from "../../../lib/query-keys";
 import { fetchDeck, updateDeck } from "../../../lib/api";
 import { DeckEmojiInput } from "../../../components/DeckEmojiInput";
@@ -21,6 +22,7 @@ import { DeckEmojiInput } from "../../../components/DeckEmojiInput";
 export default function EditDeck() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
   const { session, isDevAuth } = useAuth();
+  const posthog = useAnalytics();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
@@ -46,7 +48,13 @@ export default function EditDeck() {
         setIcon(deck.icon);
         setDescription(deck.description ?? "");
       })
-      .catch(() => setErrorMessage("Couldn't load deck details."))
+      .catch((error) => {
+        captureHandledException(posthog, error, {
+          error_context: "deck_edit_load",
+          deck_id: deckId,
+        });
+        setErrorMessage("Couldn't load deck details.");
+      })
       .finally(() => setLoading(false));
   }, [isDevAuth, session, session?.access_token, deckId]);
 
@@ -63,7 +71,13 @@ export default function EditDeck() {
       qc.invalidateQueries({ queryKey: queryKeys.deck(userId, deckId) });
       qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
       router.back();
-    } catch {
+    } catch (error) {
+      captureHandledException(posthog, error, {
+        error_context: "deck_edit_save",
+        deck_id: deckId,
+        has_icon: Boolean(icon),
+        has_description: Boolean(description.trim()),
+      });
       setErrorMessage("Couldn't save changes. Please try again.");
       setSubmitting(false);
     }

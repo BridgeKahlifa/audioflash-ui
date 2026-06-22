@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import * as Speech from "expo-speech";
+import { captureGlobalHandledException } from "./analytics";
 
 let audioModeConfigured = false;
 let iosSpeechRequestId = 0;
@@ -23,6 +24,10 @@ async function ensureAudioModeConfigured(): Promise<void> {
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
     audioModeConfigured = true;
   } catch (error) {
+    captureGlobalHandledException(error, {
+      error_context: "audio_configure_ios_mode",
+      platform: Platform.OS,
+    });
     console.warn("Failed to configure iOS audio mode:", error);
     // audioModeConfigured stays false so the next speak call retries
   }
@@ -78,6 +83,10 @@ async function cleanupIosSpeechSession(requestId: number): Promise<void> {
   try {
     await sound.unloadAsync();
   } catch (error) {
+    captureGlobalHandledException(error, {
+      error_context: "audio_cleanup_ios_speech_session",
+      platform: Platform.OS,
+    });
     console.warn("Failed to tear down iOS speech audio session:", error);
   }
 }
@@ -120,6 +129,10 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
       try {
         await ensureIosSpeechSessionActive();
       } catch (error) {
+        captureGlobalHandledException(error, {
+          error_context: "audio_activate_ios_speech_session",
+          platform: Platform.OS,
+        });
         console.warn("Failed to activate iOS speech audio session:", error);
       }
     } else {
