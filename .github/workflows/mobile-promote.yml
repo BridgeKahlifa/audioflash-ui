@@ -40,6 +40,7 @@ jobs:
           fi
           eas update \
             --channel production \
+            --environment production \
             --message "$MESSAGE" \
             --non-interactive
         working-directory: ./mobile

@@ -74,6 +74,7 @@ jobs:
         run: |
           eas update \
             --channel preview \
+            --environment preview \
             --message "$EAS_MESSAGE" \
             --non-interactive
         working-directory: ./mobile
