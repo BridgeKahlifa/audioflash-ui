@@ -153,9 +153,14 @@ export interface ApiUpdateFlashcardAttempt {
   confidence_rating?: number | null;
 }
 
-export const API_BASE_URL = (
-  process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8090"
-).replace(/\/$/, "");
+const rawApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim()
+  ?? (typeof __DEV__ !== "undefined" && __DEV__ ? "http://localhost:8090" : "");
+
+export const API_CONFIG_ERROR = rawApiBaseUrl
+  ? null
+  : "Missing required environment variable: EXPO_PUBLIC_API_BASE_URL";
+
+export const API_BASE_URL = rawApiBaseUrl.replace(/\/$/, "");
 
 const SHOULD_LOG_API = typeof __DEV__ !== "undefined" && __DEV__;
 
@@ -988,4 +993,3 @@ export async function removeDeckFlashcard(
   );
   if (!res.ok && res.status !== 404) throw await buildApiError(res);
 }
-

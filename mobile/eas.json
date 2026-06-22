@@ -5,10 +5,12 @@
   },
   "build": {
     "development": {
+      "environment": "development",
       "developmentClient": true,
       "distribution": "internal"
     },
     "preview": {
+      "environment": "preview",
       "channel": "preview",
       "distribution": "internal",
       "autoIncrement": true,
@@ -17,6 +19,7 @@
       }
     },
     "production": {
+      "environment": "production",
       "channel": "production",
       "android": {
         "buildType": "app-bundle"

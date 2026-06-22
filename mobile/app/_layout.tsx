@@ -20,6 +20,7 @@ import {
   POSTHOG_HOST,
   POSTHOG_KEY,
 } from "../lib/analytics";
+import { API_CONFIG_ERROR } from "../lib/api";
 import { queryClient, QUERY_CACHE_PERSIST_KEY } from "../lib/query-client";
 import { SUPABASE_CONFIG_ERROR } from "../lib/supabase";
 
@@ -209,12 +210,13 @@ function RootNavigator() {
 
 function ThemedAppShell() {
   const { statusBarStyle } = useAppTheme();
+  const configError = SUPABASE_CONFIG_ERROR ?? API_CONFIG_ERROR;
 
-  if (SUPABASE_CONFIG_ERROR) {
+  if (configError) {
     return (
       <>
         <StatusBar style={statusBarStyle} />
-        <ConfigurationErrorScreen message={SUPABASE_CONFIG_ERROR} />
+        <ConfigurationErrorScreen message={configError} />
       </>
     );
   }
