@@ -8,7 +8,7 @@ import { SessionHistoryItem } from "../lib/types";
 import { getLastSession, setCurrentCards } from "../lib/storage";
 import { useAuth } from "../lib/auth-context";
 import { fetchGradeChart, startReviewLifecycle } from "../lib/api";
-import { useAnalytics } from "../lib/analytics";
+import { captureHandledException, useAnalytics } from "../lib/analytics";
 
 interface GradeHistoryPoint {
   endedAt: string;
@@ -308,8 +308,15 @@ export default function SessionSummary() {
           })),
         );
       })
-      .catch(() => {
+      .catch((error) => {
         if (cancelled) return;
+        captureHandledException(posthog, error, {
+          error_context: "session_summary_grade_history",
+          category_id: effectiveCategoryId ?? null,
+          deck_id: effectiveDeckId ?? null,
+          difficulty: effectiveDifficulty ?? null,
+          display_mode: effectiveDisplayMode ?? null,
+        });
         setGradeHistoryError("Couldn't load grade history right now.");
       })
       .finally(() => {

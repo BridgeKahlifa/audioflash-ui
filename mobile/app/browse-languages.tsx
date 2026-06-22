@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ApiLanguage, fetchLanguages } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { captureHandledException, useAnalytics } from "../lib/analytics";
 import { LanguageFlag } from "../components/LanguageFlag";
 
 
@@ -14,6 +15,7 @@ function languageKey(label: string): string {
 
 export default function BrowseLanguages() {
   const { profile } = useAuth();
+  const posthog = useAnalytics();
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,7 +45,11 @@ export default function BrowseLanguages() {
           },
         });
       })
-      .catch(() => {})
+      .catch((error) => {
+        captureHandledException(posthog, error, {
+          error_context: "browse_languages_load",
+        });
+      })
       .finally(() => setIsLoading(false));
   }, [profile?.target_language_ids]);
 

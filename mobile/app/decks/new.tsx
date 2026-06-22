@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../lib/auth-context";
+import { captureHandledException, useAnalytics } from "../../lib/analytics";
 import { useLanguages } from "../../lib/queries";
 import { queryKeys } from "../../lib/query-keys";
 import { createDeck, fetchLessonsByCategory, bulkCreateDeckCards } from "../../lib/api";
@@ -26,6 +27,7 @@ import {
 
 export default function NewDeck() {
   const { session, isDevAuth, profile } = useAuth();
+  const posthog = useAnalytics();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
@@ -107,14 +109,27 @@ export default function NewDeck() {
           }
           qc.invalidateQueries({ queryKey: queryKeys.deckCards(userId, deck.id) });
           qc.invalidateQueries({ queryKey: queryKeys.deck(userId, deck.id) });
-        } catch {
+        } catch (error) {
+          captureHandledException(posthog, error, {
+            error_context: "deck_create_import_cards",
+            import_source: importSource ?? (categoryId ? "category" : "unknown"),
+            category_id: categoryId ?? null,
+            selected_language_id: selectedLanguageId,
+          });
           // Cards failed to import — still navigate to the deck, user can add manually
         }
       }
 
       qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
       router.replace({ pathname: "/decks/[id]", params: { id: deck.id } });
-    } catch {
+    } catch (error) {
+      captureHandledException(posthog, error, {
+        error_context: "deck_create",
+        selected_language_id: selectedLanguageId,
+        has_icon: Boolean(icon),
+        has_description: Boolean(description.trim()),
+        import_source: importSource ?? null,
+      });
       setErrorMessage("Couldn't create the deck. Please try again.");
       setSubmitting(false);
     }

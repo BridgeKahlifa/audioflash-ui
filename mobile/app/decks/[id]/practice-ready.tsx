@@ -8,7 +8,7 @@ import { setLessonTraditionalFlashcardFront } from "../../../lib/lesson-card-pre
 import type { Flashcard, FlashcardDisplayMode } from "../../../lib/types";
 import { startSession } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
-import { useAnalytics } from "../../../lib/analytics";
+import { captureHandledException, useAnalytics } from "../../../lib/analytics";
 import { useDeck, useDeckCards, useLanguages } from "../../../lib/queries";
 import { DEFAULT_FLASHCARD_DISPLAY_MODE } from "../../../lib/flashcard-display-mode";
 import {
@@ -118,7 +118,12 @@ export default function DeckPracticeReady() {
           });
           deckSessionId = started.session_id;
           activityId = started.activity_id;
-        } catch {
+        } catch (error) {
+          captureHandledException(posthog, error, {
+            error_context: "deck_practice_start_session",
+            deck_id: deckId,
+            display_mode: displayMode,
+          });
           // Fall back to local-only practice if the endpoint is unavailable.
         }
       }
@@ -159,6 +164,14 @@ export default function DeckPracticeReady() {
       });
     } catch (error) {
       console.error("Failed to start deck practice", error);
+      captureHandledException(posthog, error, {
+        error_context: "deck_practice_prepare",
+        deck_id: deckId,
+        display_mode: displayMode,
+        requested_card_count: cardCount,
+        shuffle: shuffleEnabled,
+        traditional_front: traditionalFront,
+      });
       setErrorMessage("Couldn't start practice right now. Please try again.");
     } finally {
       setStarting(false);
