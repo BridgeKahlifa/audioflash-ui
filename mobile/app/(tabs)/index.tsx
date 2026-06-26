@@ -5,7 +5,14 @@ import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
 import { useAnalytics } from "../../lib/analytics";
-import { useSRSQueue, useSavedReviews, useInProgressLesson, useInProgressLessonName } from "../../lib/queries";
+import {
+  useSRSQueue,
+  useSavedReviews,
+  useInProgressLesson,
+  useInProgressLessonName,
+  useCategories,
+  useLanguages,
+} from "../../lib/queries";
 import { useAppTheme } from "../../lib/theme-context";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
@@ -33,6 +40,8 @@ export default function Home() {
     isStale: isLessonStale,
     error: lessonError,
   } = useInProgressLesson();
+  const { data: categories = [] } = useCategories();
+  const { data: languages = [] } = useLanguages();
   const inProgressLessonName = useInProgressLessonName();
   const [continuingLesson, setContinuingLesson] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -83,6 +92,12 @@ export default function Home() {
     };
   const dueCount = srsQueue?.due_count ?? 0;
   const savedReviewCount = savedReviews.length;
+  const inProgressCategory = categories.find(
+    (category) => String(category.id) === String(inProgressLesson?.category_id),
+  );
+  const inProgressLanguage = languages.find(
+    (language) => String(language.id) === String(inProgressCategory?.language_id),
+  );
 
   function handleOpenReview() {
     posthog?.capture("home_action_tapped", {
@@ -109,11 +124,30 @@ export default function Home() {
         params: {
           topic: `session-${inProgressLesson.session_id}`,
           topicTitle: inProgressLessonName ?? "Current Lesson",
+          language: inProgressLanguage?.language.toLowerCase().replace(/\s+/g, "-") ?? "",
+          languageLabel: inProgressLanguage?.language ?? "",
+          apiLanguageId: inProgressCategory?.language_id ?? "",
           resumeSession: "true",
           initialCurrentIndex: String(inProgressLesson.current_index),
           lessonStatus: inProgressLesson.status,
           apiCategoryId: inProgressLesson.category_id,
           apiLoaded: "true",
+          difficulty:
+            typeof inProgressLesson.difficulty === "number"
+              ? String(inProgressLesson.difficulty)
+              : "",
+          selectedDifficulty:
+            typeof inProgressLesson.difficulty === "number"
+              ? String(inProgressLesson.difficulty)
+              : "",
+          supportedDifficulties: (inProgressCategory?.supported_difficulties ?? []).join(","),
+          availableCardCount:
+            typeof inProgressCategory?.total_cards === "number"
+              ? String(inProgressCategory.total_cards)
+              : "",
+          cardsByDifficulty: inProgressCategory?.cards_by_difficulty
+            ? JSON.stringify(inProgressCategory.cards_by_difficulty)
+            : "",
           lessonSessionId: inProgressLesson.session_id,
           activityId: inProgressLesson.activity_id ?? inProgressLesson.session_id,
         },

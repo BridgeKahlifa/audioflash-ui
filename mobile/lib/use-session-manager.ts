@@ -311,8 +311,8 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       cards: completedResults,
       total: aggregateTotal,
       correct: aggregateCorrect,
-      reviewId: createdReviewId,
-      reviewName: createdReviewName,
+      reviewId: reviewId ?? createdReviewId,
+      reviewName: reviewId ? (topicTitle ?? topic) : createdReviewName,
     }).catch((error) => {
       captureHandledException(posthog, error, {
         error_context: "session_summary_save_local",
