@@ -108,6 +108,10 @@ npm run update:prod      # → production channel (all users)
 
 The app checks for an update on launch, downloads it in the background, and runs the new code on the next open.
 
+These commands must publish with the matching EAS environment so the bundle gets the right
+`EXPO_PUBLIC_*` values baked in. Without that, an OTA update can ship a broken config even if the
+installed native build is fine.
+
 **What OTA can update:** all React Native / JS code, screens, styles, assets.
 
 **What still requires a new build:** native module changes, new permissions, Expo SDK upgrades, or any change to native fields in `app.json`.
@@ -120,6 +124,10 @@ If you haven't used EAS Update before on this project:
 2. Run a build: `npm run build:preview` — this bakes the update URL and channel into the binary
 3. Install the resulting APK/IPA on your devices
 4. From now on, `npm run update:preview` is all you need for UI changes
+
+Make sure the EAS `preview` environment contains the same client-visible values your preview build
+expects, especially `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and
+`EXPO_PUBLIC_API_BASE_URL`.
 
 ### How versioning works
 
@@ -200,6 +208,7 @@ gh workflow run build.yml --ref main
 | `EXPO_PUBLIC_DEV_USER_EMAIL` | Optional label shown in the UI during dev auth mode |
 | `EXPO_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
 | `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Your Supabase publishable/anon key |
+| `EXPO_PUBLIC_API_BASE_URL` | Base URL for the backend API used by the app |
 
 Swap models in `.env` any time — no code changes needed.
 

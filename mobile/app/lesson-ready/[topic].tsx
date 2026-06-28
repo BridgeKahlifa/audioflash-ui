@@ -62,6 +62,11 @@ export default function LessonReady() {
     supportedDifficulties,
     availableCardCount: availableCardCountParam,
     cardsByDifficulty: cardsByDifficultyParam,
+    selectedDifficulty: selectedDifficultyParam,
+    cardCount: cardCountParam,
+    shuffleEnabled: shuffleEnabledParam,
+    displayMode: displayModeParam,
+    traditionalFront: traditionalFrontParam,
   } =
     useLocalSearchParams<{
       topic: string;
@@ -74,20 +79,32 @@ export default function LessonReady() {
       supportedDifficulties?: string;
       availableCardCount?: string;
       cardsByDifficulty?: string;
+      selectedDifficulty?: string;
+      cardCount?: string;
+      shuffleEnabled?: string;
+      displayMode?: string;
+      traditionalFront?: string;
     }>();
 
   const [status, setStatus] = useState<"ready" | "empty" | "error">("ready");
   const [starting, setStarting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [shuffleEnabled, setShuffleEnabled] = useState(false);
+  const [shuffleEnabled, setShuffleEnabled] = useState(shuffleEnabledParam === "true");
   const [displayMode, setDisplayMode] = useState<FlashcardDisplayMode>(
     DEFAULT_FLASHCARD_DISPLAY_MODE,
   );
   const displayModeInitializedRef = useRef(false);
   const [traditionalFront, setTraditionalFront] = useState<TraditionalFlashcardFront>(
-    DEFAULT_TRADITIONAL_FLASHCARD_FRONT,
+    traditionalFrontParam === "target" || traditionalFrontParam === "native"
+      ? traditionalFrontParam
+      : DEFAULT_TRADITIONAL_FLASHCARD_FRONT,
   );
-  const [cardCount, setCardCount] = useState(profile?.cards_per_session ?? DEFAULT_CARD_COUNT);
+  const [cardCount, setCardCount] = useState(() => {
+    const parsedCardCount = Number(cardCountParam);
+    return Number.isFinite(parsedCardCount)
+      ? parsedCardCount
+      : (profile?.cards_per_session ?? DEFAULT_CARD_COUNT);
+  });
   const startLockRef = useRef(false);
   const routeAvailableCardCount = resolveAvailableCardCount(availableCardCountParam);
   const categoryAvailableCardCount = categories.find(
@@ -105,9 +122,12 @@ export default function LessonReady() {
     .map((value) => Number(value))
     .filter((value, index, values) => Number.isFinite(value) && !values.slice(0, index).includes(value))
     .sort((a, b) => a - b);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<number | null>(
-    availableDifficulties[0] ?? null
-  );
+  const [selectedDifficulty, setSelectedDifficulty] = useState<number | null>(() => {
+    const parsedDifficulty = Number(selectedDifficultyParam);
+    return Number.isFinite(parsedDifficulty)
+      ? parsedDifficulty
+      : (availableDifficulties[0] ?? null);
+  });
   const availableCardCount = (() => {
     if (selectedDifficulty !== null && cardsByDifficulty[selectedDifficulty] !== undefined) {
       return cardsByDifficulty[selectedDifficulty];
@@ -131,21 +151,39 @@ export default function LessonReady() {
       };
 
   useEffect(() => {
+    const parsedDifficulty = Number(selectedDifficultyParam);
+    if (
+      Number.isFinite(parsedDifficulty) &&
+      availableDifficulties.includes(parsedDifficulty)
+    ) {
+      setSelectedDifficulty(parsedDifficulty);
+      return;
+    }
     setSelectedDifficulty(availableDifficulties[0] ?? null);
-  }, [supportedDifficulties]);
+  }, [selectedDifficultyParam, supportedDifficulties]);
 
   useEffect(() => {
     if (displayModeInitializedRef.current) return;
     displayModeInitializedRef.current = true;
+    if (displayModeParam === "traditional" || displayModeParam === "audio") {
+      setDisplayMode(displayModeParam);
+      return;
+    }
     getSettings().then((s) => {
       if (s.defaultDisplayMode) setDisplayMode(s.defaultDisplayMode);
     });
-  }, []);
+  }, [displayModeParam]);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadCardCount() {
+      const parsedCardCount = Number(cardCountParam);
+      if (Number.isFinite(parsedCardCount)) {
+        setCardCount(clampCardCount(parsedCardCount, availableCardCount));
+        return;
+      }
+
       if (typeof profile?.cards_per_session === "number") {
         setCardCount(clampCardCount(profile.cards_per_session, availableCardCount));
         return;
@@ -315,6 +353,12 @@ export default function LessonReady() {
           apiLoaded: apiLoaded ?? "",
           apiCategoryId: apiCategoryId ?? "",
           difficulty: String(selectedDifficulty),
+          selectedDifficulty: String(selectedDifficulty),
+          cardCount: String(cardCount),
+          shuffleEnabled: shuffleEnabled ? "true" : "false",
+          supportedDifficulties: supportedDifficulties ?? "",
+          availableCardCount: availableCardCountParam ?? "",
+          cardsByDifficulty: cardsByDifficultyParam ?? "",
           lessonSessionId: lessonSession.session_id,
           activityId: lessonSession.activity_id ?? lessonSession.session_id,
           displayMode,

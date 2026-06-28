@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { router } from "expo-router";
 import { useAuth } from "./auth-context";
-import { useAnalytics } from "./analytics";
+import { captureHandledException, useAnalytics } from "./analytics";
 import { useInvalidateAppData } from "./queries";
 import {
   completeSession,
@@ -118,6 +118,15 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
         }
       } catch (e) {
         console.error("createFlashcardAttempt/updateFlashcardAttempt failed", e);
+        captureHandledException(posthog, e, {
+          error_context: "session_attempt_save",
+          card_index: currentIndex,
+          display_mode: displayMode,
+          is_resume_session: isResumeSession,
+          is_review: Boolean(reviewId),
+          has_deck_id: Boolean(deckId),
+          has_lesson_session_id: Boolean(lessonSessionId),
+        });
         setAttemptError("We couldn't save that answer. Please check your connection and try again.");
         setSubmitting(false);
         setSubmittingResult(null);
@@ -181,6 +190,14 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
     if (shouldPersistAttempts) {
       const profileId = profile?.id ?? session?.user?.id;
       if (!profileId) {
+        captureHandledException(posthog, new Error("Missing profile id while finishing session"), {
+          error_context: "session_finish_missing_profile",
+          display_mode: displayMode,
+          is_resume_session: isResumeSession,
+          is_review: Boolean(reviewId),
+          has_deck_id: Boolean(deckId),
+          has_lesson_session_id: Boolean(lessonSessionId),
+        });
         setAttemptError("We couldn't finish this session because your learner profile is missing.");
         setSubmitting(false);
         setSubmittingResult(null);
@@ -208,6 +225,13 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
             cardsSeen: endedDeckPractice.cards_seen,
           };
         } else if (!reviewId) {
+          captureHandledException(posthog, new Error("Missing session identifier while finishing lesson"), {
+            error_context: "session_finish_missing_identifier",
+            display_mode: displayMode,
+            is_resume_session: isResumeSession,
+            has_deck_id: Boolean(deckId),
+            has_lesson_session_id: Boolean(lessonSessionId),
+          });
           setAttemptError("We couldn't finish this lesson because the session is missing.");
           setSubmitting(false);
           setSubmittingResult(null);
@@ -234,6 +258,15 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
         }
       } catch (e) {
         console.error("endLesson/createReview failed", e);
+        captureHandledException(posthog, e, {
+          error_context: "session_finish_remote",
+          display_mode: displayMode,
+          is_resume_session: isResumeSession,
+          is_review: Boolean(reviewId),
+          has_deck_id: Boolean(deckId),
+          has_lesson_session_id: Boolean(lessonSessionId),
+          missed_card_count: completedResults.filter((r) => !r.knew).length,
+        });
         setAttemptError("We couldn't finish the lesson right now. Please try again.");
         setSubmitting(false);
         setSubmittingResult(null);
@@ -252,6 +285,12 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
         await completeReviewLifecycle(session?.access_token, reviewId);
       } catch (e) {
         console.error("completeReviewLifecycle failed", e);
+        captureHandledException(posthog, e, {
+          error_context: "review_complete_lifecycle",
+          display_mode: displayMode,
+          review_id: reviewId,
+          card_count: completedResults.length,
+        });
         setAttemptError("We couldn't finish the review right now. Please try again.");
         setSubmitting(false);
         setSubmittingResult(null);
@@ -272,8 +311,18 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       cards: completedResults,
       total: aggregateTotal,
       correct: aggregateCorrect,
-      reviewId: createdReviewId,
-      reviewName: createdReviewName,
+      reviewId: reviewId ?? createdReviewId,
+      reviewName: reviewId ? (topicTitle ?? topic) : createdReviewName,
+    }).catch((error) => {
+      captureHandledException(posthog, error, {
+        error_context: "session_summary_save_local",
+        display_mode: displayMode,
+        is_review: Boolean(reviewId),
+        has_deck_id: Boolean(deckId),
+        total_cards: aggregateTotal,
+        correct_cards: aggregateCorrect,
+      });
+      throw error;
     });
 
     // Fire-and-forget — don't block navigation
@@ -294,7 +343,15 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
         cards_correct: aggregateCorrect,
         completed_at: new Date().toISOString(),
         ...(sessionType ? { type: sessionType } : {}),
-      }).catch(() => {});
+      }).catch((error) => {
+        captureHandledException(posthog, error, {
+          error_context: "session_record_create",
+          display_mode: displayMode,
+          session_type: sessionType ?? "unknown",
+          total_cards: aggregateTotal,
+          correct_cards: aggregateCorrect,
+        });
+      });
     }
 
     posthog?.capture("session_completed", {

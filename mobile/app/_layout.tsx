@@ -14,12 +14,13 @@ import { AppDataProvider, useAppData } from "../lib/app-data-context";
 import { SplashScreen } from "../components/SplashScreen";
 import { AppThemeProvider, useAppTheme } from "../lib/theme-context";
 import {
-  buildExceptionProperties,
   POSTHOG_ENABLE_ERROR_TRACKING,
   POSTHOG_ENABLE_SESSION_REPLAY,
   POSTHOG_HOST,
   POSTHOG_KEY,
+  setAnalyticsClient,
 } from "../lib/analytics";
+import { API_CONFIG_ERROR } from "../lib/api";
 import { queryClient, QUERY_CACHE_PERSIST_KEY } from "../lib/query-client";
 import { SUPABASE_CONFIG_ERROR } from "../lib/supabase";
 
@@ -73,6 +74,13 @@ function RootNavigator() {
   const hasTrackedOpen = useRef(false);
   const prevSessionId = useRef<string | null>(null);
   const [splashMounted, setSplashMounted] = useState(true);
+
+  useEffect(() => {
+    setAnalyticsClient(posthog);
+    return () => {
+      setAnalyticsClient(null);
+    };
+  }, [posthog]);
 
   // Identify user in PostHog when they sign in; reset when signed out
   useEffect(() => {
@@ -209,12 +217,13 @@ function RootNavigator() {
 
 function ThemedAppShell() {
   const { statusBarStyle } = useAppTheme();
+  const configError = SUPABASE_CONFIG_ERROR ?? API_CONFIG_ERROR;
 
-  if (SUPABASE_CONFIG_ERROR) {
+  if (configError) {
     return (
       <>
         <StatusBar style={statusBarStyle} />
-        <ConfigurationErrorScreen message={SUPABASE_CONFIG_ERROR} />
+        <ConfigurationErrorScreen message={configError} />
       </>
     );
   }

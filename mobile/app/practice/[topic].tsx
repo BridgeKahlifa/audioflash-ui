@@ -51,6 +51,12 @@ export default function FlashcardPractice() {
     resumeSession,
     initialCurrentIndex,
     lessonStatus,
+    selectedDifficulty,
+    cardCount,
+    shuffleEnabled,
+    supportedDifficulties,
+    availableCardCount,
+    cardsByDifficulty,
     displayMode: displayModeParam,
     traditionalFront: traditionalFrontParam,
   } = useLocalSearchParams<{
@@ -70,6 +76,12 @@ export default function FlashcardPractice() {
     resumeSession?: string;
     initialCurrentIndex?: string;
     lessonStatus?: string;
+    selectedDifficulty?: string;
+    cardCount?: string;
+    shuffleEnabled?: string;
+    supportedDifficulties?: string;
+    availableCardCount?: string;
+    cardsByDifficulty?: string;
     displayMode?: string;
     traditionalFront?: string;
   }>();
@@ -479,6 +491,57 @@ export default function FlashcardPractice() {
     speakText(currentCard.sourceText, language ?? "chinese", playbackSpeed);
   }
 
+  function handleBackNavigation() {
+    if (reviewId) {
+      router.replace("/(tabs)/review");
+      return;
+    }
+
+    if (deckId) {
+      router.replace({
+        pathname: "/decks/[id]/practice-ready",
+        params: { id: deckId },
+      });
+      return;
+    }
+
+    if (apiCategoryId) {
+      router.replace({
+        pathname: "/lesson-ready/[topic]",
+        params: {
+          topic,
+          topicTitle: topicTitle ?? topic,
+          language,
+          languageLabel,
+          apiLanguageId: apiLanguageId ?? "",
+          apiCategoryId,
+          apiLoaded: apiLoaded ?? "",
+          difficulty,
+          selectedDifficulty: selectedDifficulty ?? difficulty ?? "",
+          cardCount: cardCount ?? "",
+          shuffleEnabled: shuffleEnabled ?? "false",
+          supportedDifficulties: supportedDifficulties ?? "",
+          availableCardCount: availableCardCount ?? "",
+          cardsByDifficulty: cardsByDifficulty ?? "",
+          displayMode,
+          traditionalFront,
+        },
+      });
+      return;
+    }
+
+    router.replace({
+      pathname: "/categories",
+      params: {
+        language,
+        languageLabel,
+        apiLanguageId: apiLanguageId ?? "",
+        apiCategoryId: apiCategoryId ?? "",
+        apiLoaded: apiLoaded ?? "",
+      },
+    });
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   if (!displayModeResolved || cards.length === 0 || !currentCard) {
     return (
@@ -509,18 +572,7 @@ export default function FlashcardPractice() {
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
           <Pressable
-            onPress={() =>
-              router.replace({
-                pathname: "/categories",
-                params: {
-                  language,
-                  languageLabel,
-                  apiLanguageId: apiLanguageId ?? "",
-                  apiCategoryId: apiCategoryId ?? "",
-                  apiLoaded: apiLoaded ?? "",
-                },
-              })
-            }
+            onPress={handleBackNavigation}
             className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
             style={{
               backgroundColor: palette.secondarySurface,

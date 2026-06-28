@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import * as ExpoLinking from "expo-linking";
@@ -12,6 +12,7 @@ import {
   updateProfile,
   deleteAccount as apiDeleteAccount,
 } from "./api";
+import { captureHandledException, useAnalytics } from "./analytics";
 import { syncSettingsFromProfile } from "./storage";
 import { clearQueryCache, queryClient } from "./query-client";
 import { queryKeys } from "./query-keys";
@@ -179,6 +180,17 @@ function getOAuthErrorMessage(error: unknown): string {
   return "We couldn't sign you in with Google right now. Please try again.";
 }
 
+function isOAuthCancellation(error: unknown): boolean {
+  const raw = typeof (error as any)?.message === "string"
+    ? (error as any).message
+    : typeof error === "string"
+      ? error
+      : "";
+  const message = raw.toLowerCase();
+
+  return message.includes("access_denied") || message.includes("cancel");
+}
+
 function getOAuthCallbackPath(url: string): string {
   try {
     const parsedUrl = new URL(url);
@@ -216,6 +228,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [passkeySupported, setPasskeySupported] = useState(false);
+  const posthog = useAnalytics();
+  const lastProfileErrorRef = useRef<string | null>(null);
 
   const authToken = session?.access_token || null;
   const userId = session?.user?.id ?? (DEV_AUTH_MODE ? DEV_USER_ID : "");
@@ -244,6 +258,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (profile) syncSettingsFromProfile(profile);
   }, [profile]);
 
+  useEffect(() => {
+    if (!profileQuery.error) {
+      lastProfileErrorRef.current = null;
+      return;
+    }
+
+    const errorMessage =
+      typeof (profileQuery.error as any)?.message === "string"
+        ? (profileQuery.error as any).message
+        : "unknown_profile_error";
+    const fingerprint = `${userId}:${errorMessage}`;
+    if (lastProfileErrorRef.current === fingerprint) return;
+
+    lastProfileErrorRef.current = fingerprint;
+    captureHandledException(posthog, profileQuery.error, {
+      error_context: "profile_query",
+      query_name: "profile",
+      is_dev_auth: DEV_AUTH_MODE,
+      has_session: Boolean(authToken),
+    });
+  }, [authToken, posthog, profileQuery.error, userId]);
+
   async function ensureProfileRecord(user: User | null) {
     if (!user) return;
     await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
@@ -262,6 +298,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (authError) {
+      if (!isOAuthCancellation(authError)) {
+        captureHandledException(posthog, authError, {
+          error_context: "auth_complete_oauth_redirect",
+          auth_method: "google",
+          oauth_stage: "callback",
+        });
+      }
       return { handled: true, error: getOAuthErrorMessage(authError) };
     }
 
@@ -274,7 +317,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         access_token: accessToken,
         refresh_token: refreshToken,
       });
-      if (error) return { handled: true, error: getOAuthErrorMessage(error) };
+      if (error) {
+        captureHandledException(posthog, error, {
+          error_context: "auth_complete_oauth_redirect",
+          auth_method: "google",
+          oauth_stage: "set_session",
+        });
+        return { handled: true, error: getOAuthErrorMessage(error) };
+      }
 
       const { data: { user } } = await supabase.auth.getUser();
       await ensureProfileRecord(user);
@@ -282,7 +332,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) return { handled: true, error: getOAuthErrorMessage(error) };
+    if (error) {
+      captureHandledException(posthog, error, {
+        error_context: "auth_complete_oauth_redirect",
+        auth_method: "google",
+        oauth_stage: "exchange_code",
+      });
+      return { handled: true, error: getOAuthErrorMessage(error) };
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
     await ensureProfileRecord(user);
@@ -330,6 +387,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: { shouldCreateUser: true },
     });
     if (error) {
+      captureHandledException(posthog, error, {
+        error_context: "auth_send_otp",
+        auth_method: "email_otp",
+        email_domain: normalizedEmail.split("@")[1] ?? "",
+      });
       console.warn("[auth] signInWithOtp failed", {
         message: typeof error.message === "string" ? error.message : String(error),
         status: (error as any)?.status,
@@ -344,7 +406,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function verifyOtp(email: string, token: string) {
     if (DEV_AUTH_MODE) return { error: "OTP verification is disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
     const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
-    if (error) return { error: error.message };
+    if (error) {
+      captureHandledException(posthog, error, {
+        error_context: "auth_verify_otp",
+        auth_method: "email_otp",
+      });
+      return { error: error.message };
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
     await ensureProfileRecord(user);
@@ -367,7 +435,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
-    if (error) return { error: getOAuthErrorMessage(error) };
+    if (error) {
+      if (!isOAuthCancellation(error)) {
+        captureHandledException(posthog, error, {
+          error_context: "auth_sign_in_with_google",
+          auth_method: "google",
+          oauth_stage: "start",
+        });
+      }
+      return { error: getOAuthErrorMessage(error) };
+    }
     if (!data?.url) return { error: "We couldn't start Google sign-in right now. Please try again." };
 
     try {
@@ -393,7 +470,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!passkey?.isSupported?.()) return { error: "Passkeys are not available on this device." };
     try {
       const { data, error } = await supabase.auth.mfa.enroll({ factorType: "webauthn" });
-      if (error) return { error: error.message };
+      if (error) {
+        captureHandledException(posthog, error, {
+          error_context: "auth_register_passkey",
+          auth_method: "passkey",
+          passkey_stage: "enroll",
+        });
+        return { error: error.message };
+      }
 
       const webauthnData = (data as any).webauthn;
       const result: PasskeyCreateResult = await passkey.create(webauthnData);
@@ -402,10 +486,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         factorId: data.id,
         code: JSON.stringify(result),
       });
-      if (verifyError) return { error: verifyError.message };
+      if (verifyError) {
+        captureHandledException(posthog, verifyError, {
+          error_context: "auth_register_passkey",
+          auth_method: "passkey",
+          passkey_stage: "challenge_verify",
+        });
+        return { error: verifyError.message };
+      }
       return { error: null };
     } catch (e: any) {
       if (e?.error === "UserCancelled") return { error: null };
+      captureHandledException(posthog, e, {
+        error_context: "auth_register_passkey",
+        auth_method: "passkey",
+        passkey_stage: "native_create",
+      });
       return { error: e?.message ?? "Passkey registration failed" };
     }
   }
@@ -416,10 +512,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!passkey?.isSupported?.()) return { error: "Passkeys are not available on this device." };
     try {
       const { error } = await supabase.auth.signInAnonymously();
-      if (error) return { error: error.message };
+      if (error) {
+        captureHandledException(posthog, error, {
+          error_context: "auth_sign_in_with_passkey",
+          auth_method: "passkey",
+          passkey_stage: "sign_in_anonymously",
+        });
+        return { error: error.message };
+      }
 
       const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
-      if (factorsError) return { error: factorsError.message };
+      if (factorsError) {
+        captureHandledException(posthog, factorsError, {
+          error_context: "auth_sign_in_with_passkey",
+          auth_method: "passkey",
+          passkey_stage: "list_factors",
+        });
+        return { error: factorsError.message };
+      }
 
       const webauthnFactor = (factorsData as any)?.all?.find((f: any) => f.factor_type === "webauthn");
       if (!webauthnFactor) return { error: "No passkey registered" };
@@ -427,7 +537,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
         factorId: webauthnFactor.id,
       });
-      if (challengeError) return { error: challengeError.message };
+      if (challengeError) {
+        captureHandledException(posthog, challengeError, {
+          error_context: "auth_sign_in_with_passkey",
+          auth_method: "passkey",
+          passkey_stage: "challenge",
+        });
+        return { error: challengeError.message };
+      }
 
       const result: PasskeyGetResult = await passkey.get((challengeData as any).webauthn);
 
@@ -436,10 +553,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         challengeId: challengeData.id,
         code: JSON.stringify(result),
       });
-      if (verifyError) return { error: verifyError.message };
+      if (verifyError) {
+        captureHandledException(posthog, verifyError, {
+          error_context: "auth_sign_in_with_passkey",
+          auth_method: "passkey",
+          passkey_stage: "verify",
+        });
+        return { error: verifyError.message };
+      }
       return { error: null };
     } catch (e: any) {
       if (e?.error === "UserCancelled") return { error: null };
+      captureHandledException(posthog, e, {
+        error_context: "auth_sign_in_with_passkey",
+        auth_method: "passkey",
+        passkey_stage: "native_get",
+      });
       return { error: e?.message ?? "Passkey sign in failed" };
     }
   }
@@ -459,6 +588,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       syncSettingsFromProfile(updated);
       return { error: null };
     } catch (e: any) {
+      captureHandledException(posthog, e, {
+        error_context: "update_profile",
+        updated_fields: Object.keys(updates).sort().join(","),
+      });
       if (previous) queryClient.setQueryData(queryKeys.profile(userId), previous);
       return { error: e?.message ?? "Failed to update profile" };
     }
@@ -471,12 +604,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (validationError) return { error: validationError };
 
     const { error } = await supabase.auth.updateUser({ email: normalizedEmail });
-    if (error) return { error: getEmailAuthErrorMessage(error, normalizedEmail) };
+    if (error) {
+      captureHandledException(posthog, error, {
+        error_context: "update_email",
+        auth_method: "email",
+        email_domain: normalizedEmail.split("@")[1] ?? "",
+      });
+      return { error: getEmailAuthErrorMessage(error, normalizedEmail) };
+    }
     return { error: null };
   }
 
   function getDeleteAccountErrorMessage(e: any): string {
-    console.error("deleteAccount error", e);
     const raw = typeof e?.message === "string" ? e.message : typeof e === "string" ? e : "";
     const message = raw.toLowerCase();
     if (message.includes("401") || message.includes("unauthorized"))
@@ -497,6 +636,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await clearQueryCache();
       return { error: null };
     } catch (e: any) {
+      captureHandledException(posthog, e, {
+        error_context: "delete_account",
+        auth_method: "authenticated",
+      });
       return { error: getDeleteAccountErrorMessage(e) };
     }
   }

@@ -13,8 +13,8 @@
     "build:ios:preview": "npx eas-cli build --profile preview --platform ios --clear-cache",
     "build:android": "npx eas-cli build --profile production --platform android",
     "build:ios": "npx eas-cli build --profile production --platform ios",
-    "update:preview": "npx eas-cli update --channel preview",
-    "update:prod": "npx eas-cli update --channel production"
+    "update:preview": "npx eas-cli update --channel preview --environment preview",
+    "update:prod": "npx eas-cli update --channel production --environment production"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

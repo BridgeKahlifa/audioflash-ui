@@ -8,7 +8,7 @@ import { SessionHistoryItem } from "../lib/types";
 import { getLastSession, setCurrentCards } from "../lib/storage";
 import { useAuth } from "../lib/auth-context";
 import { fetchGradeChart, startReviewLifecycle } from "../lib/api";
-import { useAnalytics } from "../lib/analytics";
+import { captureHandledException, useAnalytics } from "../lib/analytics";
 
 interface GradeHistoryPoint {
   endedAt: string;
@@ -308,8 +308,15 @@ export default function SessionSummary() {
           })),
         );
       })
-      .catch(() => {
+      .catch((error) => {
         if (cancelled) return;
+        captureHandledException(posthog, error, {
+          error_context: "session_summary_grade_history",
+          category_id: effectiveCategoryId ?? null,
+          deck_id: effectiveDeckId ?? null,
+          difficulty: effectiveDifficulty ?? null,
+          display_mode: effectiveDisplayMode ?? null,
+        });
         setGradeHistoryError("Couldn't load grade history right now.");
       })
       .finally(() => {
@@ -454,25 +461,27 @@ export default function SessionSummary() {
             <Text className="text-muted mt-1">Missed: {missedCount}</Text>
           </View>
 
-          <View className="bg-card border border-border rounded-2xl p-5 mb-4">
-            <Text className="text-base font-medium text-foreground mb-1">Score History</Text>
-            <Text className="text-sm text-muted mb-4">
-              This shows how your lesson scores changed over time.
-            </Text>
-            {loadingGradeHistory ? (
-              <View className="py-8 items-center">
-                <ActivityIndicator size="small" color="#FF6B4A" />
-              </View>
-            ) : gradeHistoryError ? (
-              <Text className="text-sm text-muted">{gradeHistoryError}</Text>
-            ) : gradeHistory.length === 0 ? (
-              <Text className="text-sm text-muted">
-                No grade history is available for this session yet.
+          {!session.reviewId ? (
+            <View className="bg-card border border-border rounded-2xl p-5 mb-4">
+              <Text className="text-base font-medium text-foreground mb-1">Score History</Text>
+              <Text className="text-sm text-muted mb-4">
+                This shows how your lesson scores changed over time.
               </Text>
-            ) : (
-              <SimpleGradeHistoryChart points={gradeHistory} />
-            )}
-          </View>
+              {loadingGradeHistory ? (
+                <View className="py-8 items-center">
+                  <ActivityIndicator size="small" color="#FF6B4A" />
+                </View>
+              ) : gradeHistoryError ? (
+                <Text className="text-sm text-muted">{gradeHistoryError}</Text>
+              ) : gradeHistory.length === 0 ? (
+                <Text className="text-sm text-muted">
+                  No grade history is available for this session yet.
+                </Text>
+              ) : (
+                <SimpleGradeHistoryChart points={gradeHistory} />
+              )}
+            </View>
+          ) : null}
 
           {missedCount > 0 ? (
             <View className="bg-card border border-border rounded-2xl p-5 mb-4">
