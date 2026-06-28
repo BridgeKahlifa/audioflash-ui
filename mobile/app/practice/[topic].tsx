@@ -537,6 +537,11 @@ export default function FlashcardPractice() {
     }
 
     if (apiCategoryId) {
+      if (router.canGoBack()) {
+        router.back();
+        return;
+      }
+
       router.replace({
         pathname: "/lesson-ready/[topic]",
         params: {

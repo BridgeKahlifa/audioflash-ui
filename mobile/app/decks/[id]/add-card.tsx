@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../../lib/auth-context";
 import { captureHandledException, useAnalytics } from "../../../lib/analytics";
 import { queryKeys } from "../../../lib/query-keys";
+import { useAppTheme } from "../../../lib/theme-context";
 import {
   createDeckCard,
   updateDeckCard,
@@ -33,6 +34,7 @@ export default function AddCard() {
   const posthog = useAnalytics();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const { matrixMode } = useAppTheme();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
   const isEdit = !!editCardId;
 
@@ -46,6 +48,15 @@ export default function AddCard() {
   const canSubmit =
     sourceText.trim().length >= 1 && translation.trim().length >= 1 && !submitting;
   const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
+  const backButtonPalette = matrixMode
+    ? {
+        background: "#202020",
+        icon: "#ff8c42",
+      }
+    : {
+        background: "#FBE7DE",
+        icon: "#1A1A1A",
+      };
 
   // Pre-fill form when editing an existing card
   useEffect(() => {
@@ -134,9 +145,10 @@ export default function AddCard() {
           <View className="px-6 pt-6 pb-2 flex-row items-center gap-3">
             <Pressable
               onPress={() => router.back()}
-              className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+              className="w-10 h-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: backButtonPalette.background }}
             >
-              <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+              <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
             </Pressable>
             <View>
               <Text className="text-2xl font-semibold text-foreground tracking-tight">
