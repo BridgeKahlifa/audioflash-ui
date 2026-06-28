@@ -52,13 +52,13 @@ export default function SignIn() {
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} className="flex-1 bg-background">
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
         <View className="flex-1 max-w-md w-full mx-auto px-6">
 
           {/* Branding */}
-          <View className="flex-1 justify-center">
+          <View className="flex-1 justify-start pt-24">
             <View className="mb-6">
               <Image
                 source={LOGO_IMAGE}

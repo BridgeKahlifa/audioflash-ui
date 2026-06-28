@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
@@ -26,6 +26,7 @@ export default function DeckDetail() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
   const { session, isDevAuth } = useAuth();
   const { matrixMode } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
@@ -132,6 +133,8 @@ export default function DeckDetail() {
   }
 
   const activeCards = cards?.filter((c) => !c.archived_at) ?? [];
+  const practiceFooterPaddingBottom = Math.max(insets.bottom, 12);
+  const practiceFooterHeight = 76 + practiceFooterPaddingBottom;
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
@@ -283,7 +286,7 @@ export default function DeckDetail() {
         {/* Card list */}
         <ScrollView
           className="flex-1 px-6"
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: activeCards.length > 0 ? practiceFooterHeight : 24 }}
           showsVerticalScrollIndicator={false}
         >
           {cardsLoading ? (
@@ -387,7 +390,10 @@ export default function DeckDetail() {
 
         {/* Practice CTA */}
         {activeCards.length > 0 && (
-          <View className="px-6 pb-6 pt-3 border-t border-border bg-background">
+          <View
+            className="px-6 pt-3 border-t border-border bg-background"
+            style={{ paddingBottom: practiceFooterPaddingBottom }}
+          >
             <Pressable
               onPress={handleStartPractice}
               className="py-4 rounded-2xl items-center bg-primary"
