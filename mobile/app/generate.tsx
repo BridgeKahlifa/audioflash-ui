@@ -30,6 +30,7 @@ import {
 } from "../lib/storage";
 import { LanguagePickerModal } from "../components/LanguagePickerModal";
 import { useDecks, useEntitlements, useLanguages, queryKeys } from "../lib/queries";
+import { MAX_FREE_DIFFICULTY } from "../lib/entitlements";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppTheme } from "../lib/theme-context";
 const TOPIC_SUGGESTIONS = [
@@ -75,6 +76,13 @@ export default function Generate() {
   );
   const [difficultyLevel, setDifficultyLevel] = useState(1);
   const [cardCount, setCardCount] = useState(10);
+  // Lock difficulty 3+ behind Pro for non-paid plans.
+  const lockHighDifficulty = entitlements?.tier === "free";
+  useEffect(() => {
+    if (lockHighDifficulty && difficultyLevel > MAX_FREE_DIFFICULTY) {
+      setDifficultyLevel(MAX_FREE_DIFFICULTY);
+    }
+  }, [lockHighDifficulty, difficultyLevel]);
   const [status, setStatus] = useState<"idle" | "generating" | "saving" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -112,8 +120,12 @@ export default function Generate() {
     setSelectedLanguageId(preferredLanguage?.id ?? languages[0]?.id ?? null);
   }, [languages, profile?.target_language_ids, selectedLanguageId]);
 
+  const outOfGenerations =
+    !!entitlements &&
+    entitlements.ai_generations.limit !== null &&
+    entitlements.ai_generations.limit - entitlements.ai_generations.used <= 0;
   const canGenerate =
-    topic.trim().length >= 2 && selectedLanguageId !== null && status === "idle";
+    topic.trim().length >= 2 && selectedLanguageId !== null && status === "idle" && !outOfGenerations;
   const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
   const matchingDecks = useMemo(
     () => (decks ?? []).filter((deck) => deck.language_id === generatedResult?.languageId),
@@ -635,6 +647,20 @@ export default function Generate() {
             </View>
           </View>
 
+          {entitlements && entitlements.ai_generations.limit !== null ? (
+            <View className="px-6 pb-2">
+              <View className="bg-secondary border border-border rounded-2xl px-4 py-3">
+                <Text className="text-sm text-foreground font-medium">
+                  {Math.max(0, entitlements.ai_generations.limit - entitlements.ai_generations.used)} of{" "}
+                  {entitlements.ai_generations.limit} free AI generations left
+                </Text>
+                <Text className="text-xs text-muted mt-0.5">
+                  Upgrade to Pro for unlimited generations.
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           <ScrollView
             className="flex-1 px-6 pt-4"
             keyboardShouldPersistTaps="handled"
@@ -677,20 +703,32 @@ export default function Generate() {
             <View className="flex-row gap-2 mb-5">
               {DIFFICULTY_OPTIONS.map(({ level, label }) => {
                 const selected = difficultyLevel === level;
+                const locked = lockHighDifficulty && level > MAX_FREE_DIFFICULTY;
                 return (
                   <Pressable
                     key={level}
+                    disabled={locked}
                     onPress={() => setDifficultyLevel(level)}
-                    className={`flex-1 py-2.5 rounded-xl border items-center ${selected ? "bg-primary border-primary" : "bg-card border-border"
+                    accessibilityState={{ disabled: locked, selected }}
+                    className={`flex-1 py-2.5 rounded-xl border items-center ${locked
+                      ? "bg-card border-border opacity-40"
+                      : selected
+                        ? "bg-primary border-primary"
+                        : "bg-card border-border"
                       }`}
                   >
-                    <Text className={`text-xs font-bold ${selected ? "text-primary-foreground" : "text-muted"}`}>
+                    <Text className={`text-xs font-bold ${selected && !locked ? "text-primary-foreground" : "text-muted"}`}>
                       {label}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
+            {lockHighDifficulty ? (
+              <Text className="text-xs text-muted pl-1 -mt-3 mb-5">
+                Difficulty 3+ is available on Pro.
+              </Text>
+            ) : null}
 
             {/* Card count */}
             <Text className="text-sm font-semibold text-foreground mb-2">Number of Cards</Text>
@@ -725,18 +763,6 @@ export default function Generate() {
                 </Pressable>
               ))}
             </View>
-
-            {entitlements && entitlements.ai_generations.limit !== null ? (
-              <View className="bg-secondary border border-border rounded-2xl px-4 py-3 mb-4">
-                <Text className="text-sm text-foreground font-medium">
-                  {Math.max(0, entitlements.ai_generations.limit - entitlements.ai_generations.used)} of{" "}
-                  {entitlements.ai_generations.limit} free AI generations left
-                </Text>
-                <Text className="text-xs text-muted mt-0.5">
-                  Upgrade to Pro for unlimited generations.
-                </Text>
-              </View>
-            ) : null}
 
             {loadError ? (
               <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">

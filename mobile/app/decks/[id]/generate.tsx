@@ -25,6 +25,7 @@ import {
   type ApiEphemeralDeckCard,
 } from "../../../lib/api";
 import { useEntitlements } from "../../../lib/queries";
+import { MAX_FREE_DIFFICULTY } from "../../../lib/entitlements";
 
 const CARD_COUNT_OPTIONS = [5, 10, 15, 20];
 const DIFFICULTY_OPTIONS = [1, 2, 3, 4, 5];
@@ -53,6 +54,14 @@ export default function DeckGenerate() {
   const [topic, setTopic] = useState("");
   const [difficultyLevel, setDifficultyLevel] = useState(3);
   const [cardCount, setCardCount] = useState(10);
+  // Lock difficulty 3+ behind Pro for non-paid plans. The default is 3, so free
+  // users get clamped down to the max allowed once entitlements load.
+  const lockHighDifficulty = entitlements?.tier === "free";
+  useEffect(() => {
+    if (lockHighDifficulty && difficultyLevel > MAX_FREE_DIFFICULTY) {
+      setDifficultyLevel(MAX_FREE_DIFFICULTY);
+    }
+  }, [lockHighDifficulty, difficultyLevel]);
   const [status, setStatus] = useState<"idle" | "generating" | "saving" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -62,8 +71,12 @@ export default function DeckGenerate() {
   const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set());
 
   const inPreview = previewCards.length > 0;
+  const outOfGenerations =
+    !!entitlements &&
+    entitlements.ai_generations.limit !== null &&
+    entitlements.ai_generations.limit - entitlements.ai_generations.used <= 0;
   const canGenerate =
-    topic.trim().length >= 2 && status !== "generating" && status !== "saving";
+    topic.trim().length >= 2 && status !== "generating" && status !== "saving" && !outOfGenerations;
   const acceptedCards = previewCards.filter((c) => acceptedIds.has(c._clientId));
   const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
 
@@ -348,6 +361,20 @@ export default function DeckGenerate() {
             </View>
           </View>
 
+          {entitlements && entitlements.ai_generations.limit !== null ? (
+            <View className="px-6 pb-2">
+              <View className="bg-secondary border border-border rounded-2xl px-4 py-3">
+                <Text className="text-sm text-foreground font-medium">
+                  {Math.max(0, entitlements.ai_generations.limit - entitlements.ai_generations.used)} of{" "}
+                  {entitlements.ai_generations.limit} free AI generations left
+                </Text>
+                <Text className="text-xs text-muted mt-0.5">
+                  Upgrade to Pro for unlimited generations.
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           <ScrollView
             className="flex-1 px-6 pt-4"
             keyboardShouldPersistTaps="handled"
@@ -373,17 +400,24 @@ export default function DeckGenerate() {
             <View className="flex-row gap-2 mb-5">
               {DIFFICULTY_OPTIONS.map((level) => {
                 const selected = difficultyLevel === level;
+                const locked = lockHighDifficulty && level > MAX_FREE_DIFFICULTY;
                 return (
                   <Pressable
                     key={level}
+                    disabled={locked}
                     onPress={() => setDifficultyLevel(level)}
+                    accessibilityState={{ disabled: locked, selected }}
                     className={`flex-1 py-2.5 rounded-xl border items-center ${
-                      selected ? "bg-primary border-primary" : "bg-card border-border"
+                      locked
+                        ? "bg-card border-border opacity-40"
+                        : selected
+                          ? "bg-primary border-primary"
+                          : "bg-card border-border"
                     }`}
                   >
                     <Text
                       className={`text-xs font-bold ${
-                        selected ? "text-primary-foreground" : "text-muted"
+                        selected && !locked ? "text-primary-foreground" : "text-muted"
                       }`}
                     >
                       {level}
@@ -392,6 +426,11 @@ export default function DeckGenerate() {
                 );
               })}
             </View>
+            {lockHighDifficulty ? (
+              <Text className="text-xs text-muted pl-1 -mt-3 mb-5">
+                Difficulty 3+ is available on Pro.
+              </Text>
+            ) : null}
 
             {/* Card count */}
             <Text className="text-sm font-semibold text-foreground mb-2">
@@ -433,18 +472,6 @@ export default function DeckGenerate() {
                 </Pressable>
               ))}
             </View>
-
-            {entitlements && entitlements.ai_generations.limit !== null ? (
-              <View className="bg-secondary border border-border rounded-2xl px-4 py-3 mb-4">
-                <Text className="text-sm text-foreground font-medium">
-                  {Math.max(0, entitlements.ai_generations.limit - entitlements.ai_generations.used)} of{" "}
-                  {entitlements.ai_generations.limit} free AI generations left
-                </Text>
-                <Text className="text-xs text-muted mt-0.5">
-                  Upgrade to Pro for unlimited generations.
-                </Text>
-              </View>
-            ) : null}
 
             {errorMessage ? (
               <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">

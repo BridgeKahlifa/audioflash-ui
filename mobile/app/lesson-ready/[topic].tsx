@@ -9,7 +9,8 @@ import { createLessonSession, fetchLessonsByCategory } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { buildErrorProperties, useAnalytics } from "../../lib/analytics";
 import { LanguageFlag } from "../../components/LanguageFlag";
-import { useCategories } from "../../lib/queries";
+import { useCategories, useEntitlements } from "../../lib/queries";
+import { MAX_FREE_DIFFICULTY } from "../../lib/entitlements";
 import { DEFAULT_FLASHCARD_DISPLAY_MODE } from "../../lib/flashcard-display-mode";
 import { useAppTheme } from "../../lib/theme-context";
 import {
@@ -51,6 +52,7 @@ export default function LessonReady() {
   const posthog = useAnalytics();
   const { matrixMode } = useAppTheme();
   const { data: categories = [] } = useCategories();
+  const { data: entitlements } = useEntitlements();
   const {
     topic,
     topicTitle,
@@ -135,9 +137,14 @@ export default function LessonReady() {
     return routeAvailableCardCount ?? (typeof categoryAvailableCardCount === "number" ? categoryAvailableCardCount : null);
   })();
   const { min: minCardCount, max: maxCardCount } = resolveCardCountBounds(availableCardCount);
+  // Lock difficulty 3+ behind Pro for non-paid plans.
+  const lockHighDifficulty = entitlements?.tier === "free";
+  const selectedDifficultyLocked =
+    lockHighDifficulty && selectedDifficulty !== null && selectedDifficulty > MAX_FREE_DIFFICULTY;
   const canStart =
     Boolean(apiCategoryId) &&
     selectedDifficulty !== null &&
+    !selectedDifficultyLocked &&
     !starting &&
     maxCardCount > 0;
   const backButtonPalette = matrixMode
@@ -161,6 +168,13 @@ export default function LessonReady() {
     }
     setSelectedDifficulty(availableDifficulties[0] ?? null);
   }, [selectedDifficultyParam, supportedDifficulties]);
+
+  // Free tier can't sit on a locked difficulty — clamp down to the highest allowed.
+  useEffect(() => {
+    if (!selectedDifficultyLocked) return;
+    const allowed = availableDifficulties.filter((value) => value <= MAX_FREE_DIFFICULTY);
+    setSelectedDifficulty(allowed.length > 0 ? allowed[allowed.length - 1] : null);
+  }, [selectedDifficultyLocked, supportedDifficulties]);
 
   useEffect(() => {
     if (displayModeInitializedRef.current) return;
@@ -266,7 +280,13 @@ export default function LessonReady() {
   }
 
   const handleStart = async () => {
-    if (!apiCategoryId || selectedDifficulty === null || starting || startLockRef.current) {
+    if (
+      !apiCategoryId ||
+      selectedDifficulty === null ||
+      selectedDifficultyLocked ||
+      starting ||
+      startLockRef.current
+    ) {
       return;
     }
 
@@ -470,6 +490,7 @@ export default function LessonReady() {
               <View className="flex-row justify-center gap-3">
                 {availableDifficulties.map((value) => {
                   const selected = selectedDifficulty === value;
+                  const locked = lockHighDifficulty && value > MAX_FREE_DIFFICULTY;
                   return (
                     <Pressable
                       key={value}
@@ -479,13 +500,18 @@ export default function LessonReady() {
                         setErrorMessage("");
                       }}
                       className={`w-11 h-11 rounded-full border items-center justify-center ${
-                        selected ? "bg-accent border-primary" : "bg-background border-border"
+                        locked
+                          ? "bg-background border-border opacity-40"
+                          : selected
+                            ? "bg-accent border-primary"
+                            : "bg-background border-border"
                       }`}
-                      disabled={starting || availableDifficulties.length === 0}
+                      disabled={locked || starting || availableDifficulties.length === 0}
+                      accessibilityState={{ disabled: locked, selected }}
                     >
                       <Text
                         className={`text-base font-semibold ${
-                          selected ? "text-primary" : "text-foreground"
+                          selected && !locked ? "text-primary" : "text-foreground"
                         }`}
                       >
                         {value}
@@ -494,6 +520,11 @@ export default function LessonReady() {
                   );
                 })}
               </View>
+              {lockHighDifficulty ? (
+                <Text className="text-xs text-muted mt-3 text-center">
+                  Difficulty 3+ is available on Pro.
+                </Text>
+              ) : null}
             </View>
 
             <View className="h-px bg-border mt-5 mb-4" />
