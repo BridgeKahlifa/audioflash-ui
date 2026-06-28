@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   View, Text, Pressable, ScrollView, ActivityIndicator,
 } from "react-native";
@@ -9,6 +9,13 @@ import { useAuth } from "../../lib/auth-context";
 import { captureHandledException, useAnalytics } from "../../lib/analytics";
 import { fetchLanguages, ApiLanguage } from "../../lib/api";
 import { StepDots } from "../../components/onboarding/StepDots";
+import { LanguageFlag } from "../../components/LanguageFlag";
+
+const V1_LANGUAGE_ORDER = ["Chinese", "Spanish", "French", "German", "Japanese"] as const;
+
+function normalizeLanguageName(value: string): string {
+  return value.trim().toLowerCase();
+}
 
 export default function OnboardingTargetLanguages() {
   const { updateProfileData } = useAuth();
@@ -30,6 +37,24 @@ export default function OnboardingTargetLanguages() {
       })
       .finally(() => setLoadingLanguages(false));
   }, []);
+
+  const { launchLanguages, comingSoonLanguages } = useMemo(() => {
+    const byName = new Map(
+      languages.map((language) => [normalizeLanguageName(language.language), language] as const),
+    );
+
+    const launch = V1_LANGUAGE_ORDER.map((name) => byName.get(normalizeLanguageName(name))).filter(
+      (language): language is ApiLanguage => Boolean(language),
+    );
+
+    const launchIds = new Set(launch.map((language) => String(language.id)));
+    const comingSoon = languages.filter((language) => !launchIds.has(String(language.id)));
+
+    return {
+      launchLanguages: launch,
+      comingSoonLanguages: comingSoon,
+    };
+  }, [languages]);
 
   function toggleLanguage(id: string) {
     setError(null);
@@ -81,7 +106,7 @@ export default function OnboardingTargetLanguages() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 16 }}
           >
-            {languages.map((lang) => {
+            {launchLanguages.map((lang) => {
               const isSelected = selectedIds.includes(String(lang.id));
               return (
                 <Pressable
@@ -91,13 +116,54 @@ export default function OnboardingTargetLanguages() {
                     isSelected ? "bg-accent border-primary" : "bg-card border-border"
                   }`}
                 >
-                  <Text className="text-base font-medium text-foreground">
-                    {lang.language}
-                  </Text>
+                  <View className="flex-row items-center flex-1 pr-3">
+                    <View className="w-12 h-12 rounded-xl items-center justify-center mr-4 bg-secondary">
+                      <LanguageFlag name={lang.language} size="lg" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-base font-medium text-foreground">
+                        {lang.language}
+                      </Text>
+                      <Text className="text-xs text-muted mt-1">
+                        Practice lessons available
+                      </Text>
+                    </View>
+                  </View>
                   {isSelected && <Ionicons name="checkmark" size={18} color="#E86A4A" />}
                 </Pressable>
               );
             })}
+
+            {comingSoonLanguages.length > 0 ? (
+              <View className="mt-4">
+                <Text className="text-xs font-semibold uppercase tracking-wide text-muted mb-3">
+                  Coming Soon
+                </Text>
+                {comingSoonLanguages.map((lang) => (
+                  <View
+                    key={String(lang.id)}
+                    className="flex-row items-center justify-between py-3.5 px-4 rounded-2xl mb-2 border border-border bg-card opacity-60"
+                  >
+                    <View className="flex-row items-center flex-1 pr-3">
+                      <View className="w-12 h-12 rounded-xl items-center justify-center mr-4 bg-secondary">
+                        <LanguageFlag name={lang.language} size="lg" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-base font-medium text-foreground">
+                          {lang.language}
+                        </Text>
+                        <Text className="text-xs text-muted mt-1">
+                          Coming soon
+                        </Text>
+                      </View>
+                    </View>
+                    <Text className="text-xs font-semibold uppercase tracking-wide text-muted">
+                      Soon
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </ScrollView>
         )}
 
