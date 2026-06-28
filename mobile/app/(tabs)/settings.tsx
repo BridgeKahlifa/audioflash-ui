@@ -16,7 +16,7 @@ import { router } from "expo-router";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { useAuth } from "../../lib/auth-context";
 import { useAnalytics } from "../../lib/analytics";
-import { useLanguages } from "../../lib/queries";
+import { useLanguages, useEntitlements, useSetTier } from "../../lib/queries";
 import { useAppTheme } from "../../lib/theme-context";
 import { AuthModeSettingsCard } from "../../components/AuthModeBadge";
 import { LanguagePickerModal } from "../../components/LanguagePickerModal";
@@ -83,6 +83,8 @@ function IdentityMismatchBanner({
 export default function SettingsScreen() {
   const { user, profile, profileLoading, updateProfileData, updateEmail, deleteAccount, signOut, isDevAuth } = useAuth();
   const { data: languages = [] } = useLanguages();
+  const { data: entitlements } = useEntitlements();
+  const setTier = useSetTier();
   const posthog = useAnalytics();
   const navigation = useNavigation();
   const { matrixMode, setMatrixMode, fontFamily } = useAppTheme();
@@ -496,6 +498,54 @@ export default function SettingsScreen() {
               apiUserId={apiUserId}
               apiUserName={apiUserName}
             />
+          ) : null}
+
+          {/* ── Developer (dev builds only) ── */}
+          {__DEV__ ? (
+            <>
+              <SectionLabel>Developer</SectionLabel>
+              <View className="bg-card border border-border rounded-2xl p-5">
+                <Text className="text-foreground font-medium mb-1" style={{ fontFamily }}>
+                  Subscription Tier
+                </Text>
+                <Text className="text-xs text-muted mb-3" style={{ fontFamily }}>
+                  Flips your tier on the server, so real limits apply. Requires the API to run
+                  with TIER_OVERRIDE_ENABLED.
+                </Text>
+                <View className="flex-row gap-2">
+                  {(["free", "pro"] as const).map((tier) => {
+                    const active = entitlements?.tier === tier;
+                    return (
+                      <Pressable
+                        key={tier}
+                        disabled={setTier.isPending || active}
+                        onPress={() => setTier.mutate(tier)}
+                        className={`flex-1 flex-row items-center justify-center gap-2 rounded-2xl border px-4 py-3 ${
+                          active ? "bg-accent border-primary" : "bg-secondary border-transparent"
+                        }`}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: active }}
+                      >
+                        <Text
+                          className={`font-medium text-sm capitalize ${active ? "text-foreground" : "text-muted"}`}
+                          style={{ fontFamily }}
+                        >
+                          {tier}
+                        </Text>
+                        {setTier.isPending && setTier.variables === tier ? (
+                          <ActivityIndicator size="small" />
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                {setTier.isError ? (
+                  <Text className="text-xs text-red-500 mt-3" style={{ fontFamily }}>
+                    Couldn't change tier. Is the API running with TIER_OVERRIDE_ENABLED=true?
+                  </Text>
+                ) : null}
+              </View>
+            </>
           ) : null}
 
           {/* ── Account ── */}

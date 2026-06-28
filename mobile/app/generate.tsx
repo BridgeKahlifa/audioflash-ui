@@ -19,6 +19,7 @@ import { useAnalytics } from "../lib/analytics";
 import {
   generateLesson,
   generateReplacements,
+  isLimitReachedError,
   type ApiEphemeralCard,
   bulkCreateDeckCards,
 } from "../lib/api";
@@ -28,7 +29,7 @@ import {
   setGeneratedDeckImport,
 } from "../lib/storage";
 import { LanguagePickerModal } from "../components/LanguagePickerModal";
-import { useDecks, useLanguages, queryKeys } from "../lib/queries";
+import { useDecks, useEntitlements, useLanguages, queryKeys } from "../lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppTheme } from "../lib/theme-context";
 const TOPIC_SUGGESTIONS = [
@@ -66,6 +67,7 @@ export default function Generate() {
   const { fontFamily, matrixMode } = useAppTheme();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
   const { data: decks } = useDecks();
+  const { data: entitlements } = useEntitlements();
   const { data: languagesData, error: languagesError } = useLanguages();
   const [topic, setTopic] = useState("");
   const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(
@@ -162,6 +164,7 @@ export default function Generate() {
         languageLabel: selectedLang?.language ?? "",
       });
       setPreviewCards(result.flashcards);
+      qc.invalidateQueries({ queryKey: queryKeys.entitlements(userId) });
       posthog?.capture("lesson_generated", {
         language: selectedLang?.language ?? "",
         difficulty: difficultyLevel,
@@ -173,7 +176,14 @@ export default function Generate() {
       setStatus("error");
       const msg = error?.message ?? "";
       let error_type = "unknown";
-      if (msg.includes("429") || msg.includes("limit")) {
+      if (isLimitReachedError(error)) {
+        setErrorMessage(
+          (error.data as any)?.detail?.message ??
+            "You've reached the Free plan's AI generation limit. Upgrade to Pro for unlimited generations.",
+        );
+        error_type = "tier_limit";
+        qc.invalidateQueries({ queryKey: queryKeys.entitlements(userId) });
+      } else if (msg.includes("429") || msg.includes("limit")) {
         setErrorMessage("You've hit the generation limit. Try again in an hour.");
         error_type = "rate_limit";
       } else if (msg.includes("422") || msg.includes("inappropriate")) {
@@ -715,6 +725,18 @@ export default function Generate() {
                 </Pressable>
               ))}
             </View>
+
+            {entitlements && entitlements.ai_generations.limit !== null ? (
+              <View className="bg-secondary border border-border rounded-2xl px-4 py-3 mb-4">
+                <Text className="text-sm text-foreground font-medium">
+                  {Math.max(0, entitlements.ai_generations.limit - entitlements.ai_generations.used)} of{" "}
+                  {entitlements.ai_generations.limit} free AI generations left
+                </Text>
+                <Text className="text-xs text-muted mt-0.5">
+                  Upgrade to Pro for unlimited generations.
+                </Text>
+              </View>
+            ) : null}
 
             {loadError ? (
               <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">

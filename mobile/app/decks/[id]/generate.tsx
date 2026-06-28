@@ -20,9 +20,11 @@ import {
   fetchDeck,
   generateDeckPreview,
   bulkCreateDeckCards,
+  isLimitReachedError,
   type ApiDeck,
   type ApiEphemeralDeckCard,
 } from "../../../lib/api";
+import { useEntitlements } from "../../../lib/queries";
 
 const CARD_COUNT_OPTIONS = [5, 10, 15, 20];
 const DIFFICULTY_OPTIONS = [1, 2, 3, 4, 5];
@@ -45,6 +47,7 @@ export default function DeckGenerate() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
+  const { data: entitlements } = useEntitlements();
 
   const [deck, setDeck] = useState<ApiDeck | null>(null);
   const [topic, setTopic] = useState("");
@@ -89,8 +92,18 @@ export default function DeckGenerate() {
       setPreviewCards(result.flashcards);
       // All cards accepted by default
       setAcceptedIds(new Set(result.flashcards.map((c) => c._clientId)));
+      qc.invalidateQueries({ queryKey: queryKeys.entitlements(userId) });
       setStatus("idle");
     } catch (error: any) {
+      if (isLimitReachedError(error)) {
+        setStatus("error");
+        setErrorMessage(
+          (error.data as any)?.detail?.message ??
+            "You've reached the Free plan's AI generation limit. Upgrade to Pro for unlimited generations.",
+        );
+        qc.invalidateQueries({ queryKey: queryKeys.entitlements(userId) });
+        return;
+      }
       const msg = error?.message ?? "";
       let errorType = "unknown";
       if (msg.includes("429") || msg.includes("limit")) {
@@ -420,6 +433,18 @@ export default function DeckGenerate() {
                 </Pressable>
               ))}
             </View>
+
+            {entitlements && entitlements.ai_generations.limit !== null ? (
+              <View className="bg-secondary border border-border rounded-2xl px-4 py-3 mb-4">
+                <Text className="text-sm text-foreground font-medium">
+                  {Math.max(0, entitlements.ai_generations.limit - entitlements.ai_generations.used)} of{" "}
+                  {entitlements.ai_generations.limit} free AI generations left
+                </Text>
+                <Text className="text-xs text-muted mt-0.5">
+                  Upgrade to Pro for unlimited generations.
+                </Text>
+              </View>
+            ) : null}
 
             {errorMessage ? (
               <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">

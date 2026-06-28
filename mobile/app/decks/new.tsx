@@ -17,7 +17,7 @@ import { useAuth } from "../../lib/auth-context";
 import { captureHandledException, useAnalytics } from "../../lib/analytics";
 import { useLanguages } from "../../lib/queries";
 import { queryKeys } from "../../lib/query-keys";
-import { createDeck, fetchLessonsByCategory, bulkCreateDeckCards } from "../../lib/api";
+import { createDeck, fetchLessonsByCategory, bulkCreateDeckCards, isLimitReachedError } from "../../lib/api";
 import { DeckEmojiInput } from "../../components/DeckEmojiInput";
 import { LanguagePickerModal } from "../../components/LanguagePickerModal";
 import {
@@ -121,8 +121,18 @@ export default function NewDeck() {
       }
 
       qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
+      qc.invalidateQueries({ queryKey: queryKeys.entitlements(userId) });
       router.replace({ pathname: "/decks/[id]", params: { id: deck.id } });
     } catch (error) {
+      if (isLimitReachedError(error)) {
+        setErrorMessage(
+          (error.data as any)?.detail?.message ??
+            "You've reached the Free plan's deck limit. Upgrade to Pro for unlimited decks.",
+        );
+        qc.invalidateQueries({ queryKey: queryKeys.entitlements(userId) });
+        setSubmitting(false);
+        return;
+      }
       captureHandledException(posthog, error, {
         error_context: "deck_create",
         selected_language_id: selectedLanguageId,
