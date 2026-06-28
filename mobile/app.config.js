@@ -12,6 +12,7 @@ module.exports = ({ config }) => {
     ...baseConfig,
     name: isDevelopmentVariant ? "AudioFlash Dev" : baseConfig.name,
     scheme: isDevelopmentVariant ? "audioflash-dev" : baseConfig.scheme,
+    plugins: Array.from(new Set([...(baseConfig.plugins ?? []), "expo-web-browser"])),
     ios: {
       ...baseConfig.ios,
       bundleIdentifier: isDevelopmentVariant

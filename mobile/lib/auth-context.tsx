@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import * as ExpoLinking from "expo-linking";
-import { Linking as RNLinking } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { supabase } from "./supabase";
 import {
   ApiProfile,
@@ -47,6 +47,8 @@ const DEV_USER_ID = process.env.EXPO_PUBLIC_DEV_USER_ID?.trim() || "dev-user";
 const DEV_USER_EMAIL =
   process.env.EXPO_PUBLIC_DEV_USER_EMAIL?.trim() || "dev@audioflash.local";
 const AUTH_CALLBACK_PATH = "auth/callback";
+
+WebBrowser.maybeCompleteAuthSession();
 
 type PasskeyModule = typeof import("react-native-passkey").Passkey;
 type PasskeyCreateResult = import("react-native-passkey").PasskeyCreateResult;
@@ -369,10 +371,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!data?.url) return { error: "We couldn't start Google sign-in right now. Please try again." };
 
     try {
-      await RNLinking.openURL(data.url);
-      return { error: null };
-    } catch (openError) {
-      return { error: getOAuthErrorMessage(openError) };
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type !== "success" || !result.url) {
+        return { error: getOAuthErrorMessage(result.type) };
+      }
+
+      const completion = await completeOAuthRedirect(result.url);
+      if (!completion.handled) {
+        return { error: "Google sign-in returned an unexpected redirect." };
+      }
+
+      return { error: completion.error };
+    } catch (authError) {
+      return { error: getOAuthErrorMessage(authError) };
     }
   }
 

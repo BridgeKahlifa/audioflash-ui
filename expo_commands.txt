@@ -1,3 +1,7 @@
+RUN expo
+_________
+npx expo start
+
 Android
 ______
 Run the app natively for Android: npx expo run:android
