@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../lib/auth-context";
 import { captureHandledException, useAnalytics } from "../../lib/analytics";
-import { useLanguages } from "../../lib/queries";
+import { useLanguages, useEntitlements } from "../../lib/queries";
 import { queryKeys } from "../../lib/query-keys";
 import { createDeck, fetchLessonsByCategory, bulkCreateDeckCards, isLimitReachedError } from "../../lib/api";
 import { DeckEmojiInput } from "../../components/DeckEmojiInput";
@@ -39,6 +39,7 @@ export default function NewDeck() {
   }>();
 
   const { data: languages } = useLanguages();
+  const { data: entitlements } = useEntitlements();
 
   const [name, setName] = useState("");
   const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(
@@ -55,7 +56,13 @@ export default function NewDeck() {
     [languages],
   );
   const selectedLanguageLabel = availableLanguages.find((language) => language.id === selectedLanguageId)?.language ?? "Select a language";
-  const canSubmit = name.trim().length >= 1 && selectedLanguageId !== null && !submitting;
+  // null limit = unlimited (Pro); otherwise how many decks remain on the plan.
+  const decksLeft =
+    entitlements && entitlements.decks.limit !== null
+      ? Math.max(0, entitlements.decks.limit - entitlements.decks.used)
+      : null;
+  const outOfDecks = decksLeft !== null && decksLeft <= 0;
+  const canSubmit = name.trim().length >= 1 && selectedLanguageId !== null && !submitting && !outOfDecks;
   const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
 
   useEffect(() => {
@@ -184,6 +191,20 @@ export default function NewDeck() {
               </Text>
             </View>
           </View>
+
+          {entitlements && entitlements.decks.limit !== null ? (
+            <View className="px-6 pb-2">
+              <View className="bg-secondary border border-border rounded-2xl px-4 py-3">
+                <Text className="text-sm text-foreground font-medium">
+                  {Math.max(0, entitlements.decks.limit - entitlements.decks.used)} of{" "}
+                  {entitlements.decks.limit} free decks left
+                </Text>
+                <Text className="text-xs text-muted mt-0.5">
+                  Upgrade to Pro for unlimited decks.
+                </Text>
+              </View>
+            </View>
+          ) : null}
 
           <ScrollView
             className="flex-1 px-6 pt-4"

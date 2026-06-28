@@ -350,7 +350,7 @@ export default function Home() {
 
             {/* My Decks */}
             <Pressable
-              onPress={() => { posthog?.capture("home_action_tapped", { action: "my_decks" }); router.push("/decks"); }}
+              onPress={() => { posthog?.capture("home_action_tapped", { action: "my_decks" }); router.push("/(tabs)/decks"); }}
               className="rounded-2xl p-5 bg-card border border-border flex-row items-center"
               style={{
                 shadowColor: "#000",

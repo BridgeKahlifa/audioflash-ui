@@ -416,16 +416,14 @@ export default function SettingsScreen() {
               <View className="gap-2">
                 <Pressable
                   onPress={() => void saveDefaultDisplayMode("audio-first")}
-                  className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
-                    defaultDisplayMode === "audio-first" ? "bg-accent border-primary" : "bg-secondary border-transparent"
-                  }`}
+                  className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${defaultDisplayMode === "audio-first" ? "bg-accent border-primary" : "bg-secondary border-transparent"
+                    }`}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: defaultDisplayMode === "audio-first" }}
                 >
                   <View
-                    className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
-                      defaultDisplayMode === "audio-first" ? "border-primary bg-primary" : "border-muted bg-background"
-                    }`}
+                    className={`w-5 h-5 rounded-full border-2 items-center justify-center ${defaultDisplayMode === "audio-first" ? "border-primary bg-primary" : "border-muted bg-background"
+                      }`}
                   >
                     {defaultDisplayMode === "audio-first" ? (
                       <View className="w-2 h-2 rounded-full bg-white" />
@@ -441,16 +439,14 @@ export default function SettingsScreen() {
 
                 <Pressable
                   onPress={() => void saveDefaultDisplayMode("traditional")}
-                  className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
-                    defaultDisplayMode === "traditional" ? "bg-accent border-primary" : "bg-secondary border-transparent"
-                  }`}
+                  className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${defaultDisplayMode === "traditional" ? "bg-accent border-primary" : "bg-secondary border-transparent"
+                    }`}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: defaultDisplayMode === "traditional" }}
                 >
                   <View
-                    className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
-                      defaultDisplayMode === "traditional" ? "border-primary bg-primary" : "border-muted bg-background"
-                    }`}
+                    className={`w-5 h-5 rounded-full border-2 items-center justify-center ${defaultDisplayMode === "traditional" ? "border-primary bg-primary" : "border-muted bg-background"
+                      }`}
                   >
                     {defaultDisplayMode === "traditional" ? (
                       <View className="w-2 h-2 rounded-full bg-white" />
@@ -489,6 +485,26 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
+          {/* ── Plan ── */}
+          <SectionLabel>Plan</SectionLabel>
+          <View className="bg-card border border-border rounded-2xl p-4 flex-row items-center justify-between">
+            <View className="flex-1 mr-3">
+              <Text className="text-foreground font-medium" style={{ fontFamily }}>
+                {entitlements ? (entitlements.tier === "pro" ? "Pro" : "Free") : "—"}
+              </Text>
+              <Text className="text-xs text-muted mt-0.5" style={{ fontFamily }}>
+                {entitlements?.tier === "pro"
+                  ? "Unlimited decks and AI generations."
+                  : "Limited decks, AI generations, and difficulty. Upgrade to Pro for more"}
+              </Text>
+            </View>
+            {entitlements?.tier === "pro" ? (
+              <View className="rounded-full px-3 py-1 bg-primary">
+                <Text className="text-xs font-bold text-primary-foreground" style={{ fontFamily }}>PRO</Text>
+              </View>
+            ) : null}
+          </View>
+
           <SectionLabel>Environment</SectionLabel>
           <AuthModeSettingsCard />
           {hasIdentityMismatch ? (
@@ -520,9 +536,8 @@ export default function SettingsScreen() {
                         key={tier}
                         disabled={setTier.isPending || active}
                         onPress={() => setTier.mutate(tier)}
-                        className={`flex-1 flex-row items-center justify-center gap-2 rounded-2xl border px-4 py-3 ${
-                          active ? "bg-accent border-primary" : "bg-secondary border-transparent"
-                        }`}
+                        className={`flex-1 flex-row items-center justify-center gap-2 rounded-2xl border px-4 py-3 ${active ? "bg-accent border-primary" : "bg-secondary border-transparent"
+                          }`}
                         accessibilityRole="radio"
                         accessibilityState={{ checked: active }}
                       >
