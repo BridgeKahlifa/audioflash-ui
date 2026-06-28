@@ -463,18 +463,49 @@ export default function FlashcardPractice() {
     },
   });
 
+  function clearRevealTimer() {
+    if (revealTimerRef.current) {
+      clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+  }
+
+  function hydrateCardState(nextIndex: number) {
+    const existingResult = results[nextIndex];
+    console.log("[practice-fix][hydrateCardState]", {
+      currentIndex,
+      nextIndex,
+      hasExistingResult: Boolean(existingResult),
+      confidenceRating: existingResult?.confidenceRating ?? null,
+      isTraditionalMode,
+    });
+    setSelectedConfidence(existingResult?.confidenceRating ?? null);
+
+    if (existingResult) {
+      setCanRevealAnswer(true);
+      setShowAnswer(true);
+      return;
+    }
+
+    setShowAnswer(false);
+    setCanRevealAnswer(isTraditionalMode);
+  }
+
   function goPrev() {
     if (currentIndex > 0 && !submitting) {
-      setCurrentIndex((i) => i - 1);
-      setShowAnswer(false);
+      const nextIndex = currentIndex - 1;
+      clearRevealTimer();
+      hydrateCardState(nextIndex);
+      setCurrentIndex(nextIndex);
     }
   }
 
   async function onResult(knew: boolean) {
     const outcome = await handleResult(knew);
     if (!outcome || outcome.isComplete) return;
+    clearRevealTimer();
+    hydrateCardState(outcome.nextIndex);
     setCurrentIndex(outcome.nextIndex);
-    setShowAnswer(false);
   }
 
   function revealAnswer() {
@@ -506,6 +537,11 @@ export default function FlashcardPractice() {
     }
 
     if (apiCategoryId) {
+      if (router.canGoBack()) {
+        router.back();
+        return;
+      }
+
       router.replace({
         pathname: "/lesson-ready/[topic]",
         params: {
