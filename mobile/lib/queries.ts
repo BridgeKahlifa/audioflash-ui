@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useAuth } from "./auth-context";
 import {
@@ -13,6 +13,8 @@ import {
   fetchDeck,
   fetchDeckCards,
   fetchDeckFlashcards,
+  fetchEntitlements,
+  setEntitlementTier,
 } from "./api";
 import { queryKeys } from "./query-keys";
 
@@ -32,6 +34,37 @@ const STALE = {
 };
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
+
+export function useEntitlements() {
+  const { session, isDevAuth } = useAuth();
+  const token = session?.access_token;
+  const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
+  return useQuery({
+    queryKey: queryKeys.entitlements(userId),
+    queryFn:  () => fetchEntitlements(token ?? null),
+    enabled:  !!(token || isDevAuth),
+    staleTime: STALE.user,
+  });
+}
+
+/**
+ * Dev-only: flip the signed-in user's tier between free/pro on the server.
+ * On success it writes the returned entitlements straight into the cache and
+ * invalidates so every limit-gated screen re-reads the new caps.
+ */
+export function useSetTier() {
+  const { session, isDevAuth } = useAuth();
+  const qc = useQueryClient();
+  const token = session?.access_token;
+  const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
+  return useMutation({
+    mutationFn: (tier: "free" | "pro") => setEntitlementTier(token ?? null, tier),
+    onSuccess: (entitlements) => {
+      qc.setQueryData(queryKeys.entitlements(userId), entitlements);
+      qc.invalidateQueries({ queryKey: queryKeys.entitlements(userId) });
+    },
+  });
+}
 
 export function useSRSQueue() {
   const { session, isDevAuth } = useAuth();

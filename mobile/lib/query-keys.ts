@@ -16,6 +16,7 @@ const getDeckScopedQueryKeyArgs = (
 
 export const queryKeys = {
   profile:          (userId: string) => ["profile",          userId] as const,
+  entitlements:     (userId: string) => ["entitlements",     userId] as const,
   srsQueue:         (userId: string) => ["srsQueue",         userId] as const,
   inProgressLesson: (userId: string) => ["inProgressLesson", userId] as const,
   categories:       (languageId?: string) => languageId ? ["categories", languageId] as const : ["categories"] as const,

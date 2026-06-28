@@ -171,19 +171,60 @@ if (SHOULD_LOG_API) {
 export const AUTH_MODE = process.env.EXPO_PUBLIC_AUTH_MODE ?? "supabase";
 export const DEV_AUTH_MODE = AUTH_MODE === "dev";
 
-async function buildApiError(res: Response): Promise<Error> {
+/**
+ * Error thrown for non-2xx API responses. Carries the HTTP status and, when the
+ * server returns a structured `detail` object (e.g. tier limit errors), a
+ * machine-readable `code` so callers can branch without string-matching.
+ */
+export class ApiError extends Error {
+  status: number;
+  code: string | null;
+  data: unknown;
+
+  constructor(message: string, status: number, code: string | null, data: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.data = data;
+  }
+}
+
+/** True when the API rejected a request because a free-tier limit was hit. */
+export function isLimitReachedError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.code === "limit_reached";
+}
+
+async function buildApiError(res: Response): Promise<ApiError> {
   let detail = "";
+  let code: string | null = null;
+  let data: unknown = null;
   try {
     const contentType = res.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
-      const data = await res.json();
+      data = await res.json();
       if (data && typeof data === "object") {
-        const maybeMessage =
-          (data as any).message ?? (data as any).error ?? (data as any).detail;
-        if (typeof maybeMessage === "string" && maybeMessage.trim()) {
-          detail = maybeMessage.trim();
+        // FastAPI nests our payload under `detail`; it may be a string or object.
+        const rawDetail = (data as any).detail ?? data;
+        if (rawDetail && typeof rawDetail === "object") {
+          if (typeof (rawDetail as any).code === "string") {
+            code = (rawDetail as any).code;
+          }
+          const nestedMessage =
+            (rawDetail as any).message ?? (rawDetail as any).error;
+          detail =
+            typeof nestedMessage === "string" && nestedMessage.trim()
+              ? nestedMessage.trim()
+              : JSON.stringify(rawDetail);
+        } else if (typeof rawDetail === "string" && rawDetail.trim()) {
+          detail = rawDetail.trim();
         } else {
-          detail = JSON.stringify(data);
+          const maybeMessage =
+            (data as any).message ?? (data as any).error;
+          detail =
+            typeof maybeMessage === "string" && maybeMessage.trim()
+              ? maybeMessage.trim()
+              : JSON.stringify(data);
         }
       }
     } else {
@@ -199,7 +240,7 @@ async function buildApiError(res: Response): Promise<Error> {
     res.statusText ? " " + res.statusText : ""
   }${res.url ? ` @ ${res.url}` : ""}`;
   const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
-  return new Error(message);
+  return new ApiError(message, res.status, code, data);
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -232,6 +273,47 @@ export async function fetchProfile(token?: string | null): Promise<ApiProfile> {
     headers: authHeaders(token),
   });
   return parseJson<ApiProfile>(res);
+}
+
+// ── Entitlements (free/paid tier limits) ────────────────────────────────────
+
+/** A metered resource: how many used and the cap (`null` = unlimited). */
+export interface ApiEntitlementLimit {
+  used: number;
+  limit: number | null;
+}
+
+export interface ApiEntitlements {
+  tier: string;
+  decks: ApiEntitlementLimit;
+  ai_generations: ApiEntitlementLimit;
+}
+
+export async function fetchEntitlements(
+  token?: string | null,
+): Promise<ApiEntitlements> {
+  const res = await apiFetch(`${API_BASE_URL}/entitlements`, {
+    headers: authHeaders(token),
+  });
+  return parseJson<ApiEntitlements>(res);
+}
+
+/**
+ * Dev-only: flip the signed-in user's subscription tier so the server actually
+ * enforces it (not just a client display toggle). Backed by `PUT /entitlements/
+ * tier`, which the API exposes only when `TIER_OVERRIDE_ENABLED=true` — it 404s
+ * otherwise. Returns the refreshed entitlements.
+ */
+export async function setEntitlementTier(
+  token: string | null | undefined,
+  tier: "free" | "pro",
+): Promise<ApiEntitlements> {
+  const res = await apiFetch(`${API_BASE_URL}/entitlements/tier`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({ tier }),
+  });
+  return parseJson<ApiEntitlements>(res);
 }
 
 export async function updateProfile(
