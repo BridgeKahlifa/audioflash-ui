@@ -48,6 +48,35 @@ const storage = Platform.OS === "web"
       removeItem: (key: string) => SecureStore.deleteItemAsync(key),
     };
 
+type LockOperation<T> = () => Promise<T>;
+
+const inProcessLockQueues = new Map<string, Promise<void>>();
+
+async function withInProcessLock<T>(
+  name: string,
+  _acquireTimeout: number,
+  fn: LockOperation<T>,
+): Promise<T> {
+  const previous = inProcessLockQueues.get(name) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const queued = previous.then(() => current);
+  inProcessLockQueues.set(name, queued);
+
+  await previous;
+
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (inProcessLockQueues.get(name) === queued) {
+      inProcessLockQueues.delete(name);
+    }
+  }
+}
+
 export const supabase = SUPABASE_CONFIG_ERROR
   ? createMissingConfigClient()
   : createClient(supabaseUrl, supabaseAnonKey, {
@@ -56,5 +85,6 @@ export const supabase = SUPABASE_CONFIG_ERROR
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
+        lock: withInProcessLock,
       },
     });

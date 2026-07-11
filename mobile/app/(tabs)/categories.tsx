@@ -27,7 +27,12 @@ const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
 export default function Categories() {
   const { profile, profileLoading, updateProfileData } = useAuth();
   const { matrixMode, fontFamily } = useAppTheme();
-  const { data: languages = [], isPending: languagesLoading, error: languagesError } = useLanguages();
+  const {
+    data: languages = [],
+    isPending: languagesLoading,
+    error: languagesError,
+    refetch: refetchLanguages,
+  } = useLanguages();
   const {
     data: contextCategories = [],
     isPending: categoriesLoading,

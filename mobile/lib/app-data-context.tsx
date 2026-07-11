@@ -29,9 +29,15 @@ import {
 
 interface AppDataContextValue {
   ready: boolean;
+  error: string | null;
+  retry: () => Promise<void>;
 }
 
-const AppDataContext = createContext<AppDataContextValue>({ ready: false });
+const AppDataContext = createContext<AppDataContextValue>({
+  ready: false,
+  error: null,
+  retry: async () => {},
+});
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const { session, isDevAuth } = useAuth();
@@ -119,6 +125,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     !cacheReset.inProgress &&
     queriesSettled &&
     (!needsMinTime || minTimeElapsed);
+  const error =
+    results.find((result) => result.error)?.error
+      ? ((results.find((result) => result.error)?.error as any)?.message as string | undefined) ??
+        "We couldn't load app data."
+      : null;
 
   // Start the 1.5s gate the first time we have no cached data after restore,
   // and whenever a previously warm cache is explicitly cleared.
@@ -173,8 +184,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     });
   }, [appQueries, isDevAuth, posthog, results]);
 
+  async function retry() {
+    await Promise.all(results.map((result) => result.refetch()));
+  }
+
   return (
-    <AppDataContext.Provider value={{ ready }}>
+    <AppDataContext.Provider value={{ ready, error, retry }}>
       {children}
     </AppDataContext.Provider>
   );
