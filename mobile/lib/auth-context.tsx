@@ -26,6 +26,7 @@ interface AuthContextValue {
   profile: ApiProfile | null;
   profileLoading: boolean;
   profileError: string | null;
+  retryProfile: () => Promise<void>;
   updateProfileData: (updates: ApiUpdateProfile) => Promise<{ error: string | null }>;
   // OTP flow
   sendOtp: (email: string) => Promise<{ error: string | null }>;
@@ -48,6 +49,7 @@ const DEV_USER_ID = process.env.EXPO_PUBLIC_DEV_USER_ID?.trim() || "dev-user";
 const DEV_USER_EMAIL =
   process.env.EXPO_PUBLIC_DEV_USER_EMAIL?.trim() || "dev@audioflash.local";
 const AUTH_CALLBACK_PATH = "auth/callback";
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 4000;
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -355,12 +357,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    let cancelled = false;
+
+    const bootstrapTimeout = setTimeout(() => {
+      if (cancelled) return;
+      console.warn("[auth] getSession bootstrap timed out; continuing as signed out");
+      captureHandledException(posthog, new Error("auth_bootstrap_timeout"), {
+        error_context: "auth_bootstrap",
+        auth_method: "session_restore",
+      });
+      setSession(null);
       setLoading(false);
-    });
+    }, AUTH_BOOTSTRAP_TIMEOUT_MS);
+
+    void supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (cancelled) return;
+        clearTimeout(bootstrapTimeout);
+        setSession(session);
+        setLoading(false);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        clearTimeout(bootstrapTimeout);
+        captureHandledException(posthog, error, {
+          error_context: "auth_bootstrap",
+          auth_method: "session_restore",
+        });
+        setSession(null);
+        setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!cancelled) {
+        clearTimeout(bootstrapTimeout);
+        setLoading(false);
+      }
       setSession(session);
       if (event === "SIGNED_IN" && session?.user) {
         void ensureProfileRecord(session.user);
@@ -371,9 +403,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPasskeySupported(passkey?.isSupported?.() ?? false);
 
     return () => {
+      cancelled = true;
+      clearTimeout(bootstrapTimeout);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [posthog]);
 
   // ── Auth methods ───────────────────────────────────────────────────────────
   async function sendOtp(email: string) {
@@ -653,6 +687,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearQueryCache();
   }
 
+  async function retryProfile() {
+    if (!profileEnabled) return;
+    await profileQuery.refetch();
+  }
+
   return (
     <AuthContext.Provider value={{
       session,
@@ -662,6 +701,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       profileLoading,
       profileError,
+      retryProfile,
       updateProfileData,
       updateEmail,
       deleteAccount,

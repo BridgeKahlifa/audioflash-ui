@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from "../lib/auth-context";
 import { ConfigProvider } from "../lib/config-context";
 import { AppDataProvider, useAppData } from "../lib/app-data-context";
 import { SplashScreen } from "../components/SplashScreen";
+import { ServerIssueScreen } from "../components/ServerIssueScreen";
 import { AppThemeProvider, useAppTheme } from "../lib/theme-context";
 import {
   POSTHOG_ENABLE_ERROR_TRACKING,
@@ -67,13 +68,14 @@ function ConfigurationErrorScreen({ message }: { message: string }) {
 }
 
 function RootNavigator() {
-  const { session, loading, isDevAuth, profile, profileLoading, profileError } = useAuth();
-  const { ready: appDataReady } = useAppData();
+  const { session, loading, isDevAuth, profile, profileLoading, profileError, retryProfile } = useAuth();
+  const { ready: appDataReady, error: appDataError, retry: retryAppData } = useAppData();
   const segments = useSegments();
   const posthog = usePostHog();
   const hasTrackedOpen = useRef(false);
   const prevSessionId = useRef<string | null>(null);
   const [splashMounted, setSplashMounted] = useState(true);
+  const [retryingStartup, setRetryingStartup] = useState(false);
 
   useEffect(() => {
     setAnalyticsClient(posthog);
@@ -116,7 +118,18 @@ function RootNavigator() {
 
   const isAuthenticated = !!(session || isDevAuth);
   const profilePending = isAuthenticated && profile === null && profileLoading && !profileError;
-  const showSplash = loading || profilePending || (isAuthenticated && !appDataReady);
+  const startupError = isAuthenticated ? profileError ?? appDataError : null;
+  const showSplash = !startupError && (loading || profilePending || (isAuthenticated && !appDataReady));
+
+  async function handleRetryStartup() {
+    setRetryingStartup(true);
+    try {
+      await retryProfile();
+      await retryAppData();
+    } finally {
+      setRetryingStartup(false);
+    }
+  }
 
   useEffect(() => {
     console.log("[startup][RootNavigator]", {
@@ -155,7 +168,7 @@ function RootNavigator() {
   const effectiveSplashMounted = splashMounted || showSplash;
 
   useEffect(() => {
-    if (loading || profilePending) return;
+    if (loading || profilePending || startupError) return;
 
     const inAuthGroup = segments[0] === "(auth)" || segments[0] === "auth";
     const inOnboardingGroup = segments[0] === "(onboarding)";
@@ -184,7 +197,7 @@ function RootNavigator() {
       console.log("[startup][redirect]", "/(tabs)");
       router.replace("/(tabs)");
     }
-  }, [isAuthenticated, loading, profilePending, segments, profile?.onboarding_completed]);
+  }, [isAuthenticated, loading, profilePending, startupError, segments, profile?.onboarding_completed]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -208,6 +221,17 @@ function RootNavigator() {
         <Stack.Screen name="decks/[id]/generate" options={{ animation: "none" }} />
         <Stack.Screen name="decks/[id]/practice-ready" options={{ animation: "none" }} />
       </Stack>
+      {startupError ? (
+        <ServerIssueScreen
+          title="We Couldn't Reach The Server"
+          message="AudioFlash loaded, but the app couldn't finish startup because the server returned an error."
+          details={startupError}
+          retrying={retryingStartup}
+          onRetry={() => {
+            void handleRetryStartup();
+          }}
+        />
+      ) : null}
       {effectiveSplashMounted && (
         <SplashScreen visible={showSplash} onHidden={() => setSplashMounted(false)} />
       )}

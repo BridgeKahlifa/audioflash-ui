@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import {
   View, Text, TextInput, Pressable,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -52,9 +52,15 @@ export default function Verify() {
     <SafeAreaView edges={["top", "left", "right", "bottom"]} className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
         className="flex-1"
       >
-        <View className="flex-1 max-w-md w-full mx-auto px-6 justify-center">
+        <ScrollView
+          className="flex-1"
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexGrow: 1 }}
+        >
+          <View className="flex-1 max-w-md w-full mx-auto px-6 pt-10 pb-8 justify-start">
           <Pressable
             onPress={() => router.back()}
             className="w-10 h-10 items-center justify-center rounded-full bg-secondary mb-8"
@@ -116,7 +122,8 @@ export default function Verify() {
               {!resent && <Text className="text-primary font-medium">Resend code</Text>}
             </Text>
           </Pressable>
-        </View>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
