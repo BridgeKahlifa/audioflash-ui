@@ -58,8 +58,7 @@ jobs:
             --profile production \
             --platform "${{ inputs.platform }}" \
             --auto-submit \
-            --non-interactive \
-            --no-wait
+            --non-interactive
         working-directory: ./mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
