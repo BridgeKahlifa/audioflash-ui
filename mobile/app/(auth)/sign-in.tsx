@@ -81,9 +81,9 @@ export default function SignIn() {
               {googleLoading
                 ? <ActivityIndicator color="#1A1A1A" />
                 : <>
-                    <Ionicons name="logo-google" size={20} color="#1A1A1A" />
-                    <Text className="text-foreground font-medium">Continue with Gmail</Text>
-                  </>
+                  <Ionicons name="logo-google" size={20} color="#1A1A1A" />
+                  <Text className="text-foreground font-medium">Continue with Gmail</Text>
+                </>
               }
             </Pressable>
 
@@ -152,12 +152,12 @@ export default function SignIn() {
               </>
             )} */}
           </View>
-
-          <Text className="text-center text-xs text-muted pb-4">
-            By continuing, you agree to our Terms of Service and Privacy Policy
-          </Text>
         </View>
       </KeyboardAvoidingView>
+
+      <Text className="text-center text-xs text-muted pb-4 px-6 max-w-md w-full mx-auto">
+        By continuing, you agree to our Terms of Service and Privacy Policy
+      </Text>
     </SafeAreaView>
   );
 }
