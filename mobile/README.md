@@ -150,7 +150,7 @@ Four GitHub Actions workflows handle all deployment automation.
 
 ### Required secret
 
-All four workflows need `EXPO_TOKEN` set as a GitHub repository secret (Settings → Secrets and variables → Actions → New repository secret). The production release workflow needs nothing else — store submission credentials are hosted on EAS, not in this repo.
+All four workflows need `EXPO_TOKEN` set as a GitHub repository secret (Settings → Secrets and variables → Actions → New repository secret). `build.yml` also requires `EAS_BUILD_WEBHOOK_URL` and `EAS_BUILD_WEBHOOK_SECRET`. The production release workflow needs nothing else — store submission credentials are hosted on EAS, not in this repo.
 
 Get the token from **expo.dev** → **User settings** → **Access tokens** → **Create token**. Make sure the Expo account has access to this project.
 
