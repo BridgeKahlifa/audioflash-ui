@@ -146,11 +146,11 @@ Also remember to bump `versionCode` (Android) in `app.json` whenever you cut a n
 
 ## CI / CD
 
-Three GitHub Actions workflows handle all deployment automation.
+Four GitHub Actions workflows handle all deployment automation.
 
 ### Required secret
 
-All three workflows need `EXPO_TOKEN` set as a GitHub repository secret (Settings → Secrets and variables → Actions → New repository secret).
+All four workflows need `EXPO_TOKEN` set as a GitHub repository secret (Settings → Secrets and variables → Actions → New repository secret). The production release workflow needs nothing else — store submission credentials are hosted on EAS, not in this repo.
 
 Get the token from **expo.dev** → **User settings** → **Access tokens** → **Create token**. Make sure the Expo account has access to this project.
 
@@ -196,6 +196,47 @@ The workflow writes the resolved version back to `app.json`, `package.json`, and
 # Trigger via GitHub CLI
 gh workflow run build.yml --ref main
 ```
+
+---
+
+### 4. Production release + store submission (`mobile-release-production.yml`)
+
+The auto-deploy and promote workflows only ever touch the **preview** and **production OTA** channels. Neither can deliver a **native** change (app icon, new dependency, permission, Expo SDK bump) to real App Store / Play Store users — that requires a native production build submitted to the stores. This workflow does exactly that.
+
+1. Bump `version` in `mobile/app.json` (user-visible release)
+2. GitHub → **Actions** → **Release Mobile to Production** → **Run workflow**
+3. Choose the platform (`all`, `ios`, or `android`)
+
+It runs `eas build --profile production --auto-submit`, which builds the App Store `.ipa` / Play `.aab` and submits them to the stores automatically. Android is uploaded as a **draft** on the production track (finalise the rollout in Play Console); iOS lands in App Store Connect for review and manual release. Submit behaviour is configured in `eas.json` under `submit.production`.
+
+**When to use which:**
+
+| Change | Path |
+|---|---|
+| JS/UI only, for already-released users | Promote (`mobile-promote.yml`) — OTA, no store review |
+| Native change bound for the stores | This workflow — native build + submit |
+| Just need a native artifact, no store submit | Manual build (`build.yml`) |
+
+#### Store credentials (one-time, hosted on EAS)
+
+Submission credentials live on EAS servers, not in this repo, so the workflow needs no secrets beyond `EXPO_TOKEN`. Set them up once:
+
+```bash
+cd mobile
+eas credentials -p ios       # add the App Store Connect API key (.p8 + Key ID + Issuer ID)
+eas credentials -p android   # add the Google Play service account JSON
+```
+
+- **App Store Connect API key:** App Store Connect → Users and Access → Integrations → App Store Connect API. Create a key (role: App Manager) and download the `.p8` — you can only download it once.
+- **Play service account JSON:** Google Cloud → a service account granted "Release manager" access in the Play Console.
+
+**Confirm they're set:** open the project credentials page at
+`https://expo.dev/accounts/nbbabys-organization/projects/audio-flash/credentials`
+(you should see an App Store Connect API Key and a Google Service Account Key), or run
+`eas credentials -p ios` / `-p android` and view the configured entries. The final proof is
+the workflow's submit step succeeding.
+
+**First Android submission must be manual:** Google Play requires the very first `.aab` to be uploaded by hand in the Play Console. `eas submit` (this workflow) works for every release after that.
 
 ## Configuration
 
