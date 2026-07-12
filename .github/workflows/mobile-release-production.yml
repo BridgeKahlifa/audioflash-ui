@@ -1,0 +1,80 @@
+name: Release Mobile to Production
+
+# Native production build + store submission.
+#
+# Use this for changes that CANNOT ship over-the-air — app icon, native deps,
+# config plugins, SDK/runtime bumps. It builds the App Store .ipa / Play .aab on
+# the `production` channel and submits them to the stores.
+#
+# For JS-only changes, use "Promote Mobile to Production" (OTA) instead.
+#
+# Before running: bump `expo.version` in mobile/app.json for a user-visible
+# release (build numbers auto-increment via appVersionSource: remote).
+#
+# Store credentials live on EAS, not in this repo. One-time setup:
+#   cd mobile && eas credentials     # upload the App Store Connect API key and
+#                                    # the Play service account for submissions
+# The only repo secret needed is EXPO_TOKEN (already used by the other workflows).
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platforms to build & submit
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - ios
+          - android
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build & submit → production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./mobile
+
+      - name: Build and auto-submit to stores
+        run: |
+          eas build \
+            --profile production \
+            --platform "${{ inputs.platform }}" \
+            --auto-submit \
+            --non-interactive
+        working-directory: ./mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CI: 1
+
+      - name: Summarise
+        run: |
+          VERSION=$(jq -r '.expo.version' mobile/app.json)
+          {
+            echo "## Production release queued"
+            echo ""
+            echo "- **Version:** \`$VERSION\`"
+            echo "- **Platforms:** \`${{ inputs.platform }}\`"
+            echo "- **Flow:** native build → auto-submit (App Store / Play)"
+            echo ""
+            echo "Track progress in the EAS dashboard. Android's release is uploaded"
+            echo "as a **draft** on the production track — finalise rollout in Play Console."
+            echo "iOS lands in App Store Connect for review + manual release."
+          } >> "$GITHUB_STEP_SUMMARY"

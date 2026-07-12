@@ -26,5 +26,14 @@
       },
       "autoIncrement": true
     }
+  },
+  "submit": {
+    "production": {
+      "ios": {},
+      "android": {
+        "track": "production",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }
