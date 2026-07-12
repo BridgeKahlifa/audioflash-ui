@@ -2,7 +2,7 @@
   "expo": {
     "name": "AudioFlash",
     "slug": "audio-flash",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "scheme": "audioflash",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -16,7 +16,7 @@
     "splash": {
       "image": "./assets/app_icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FAFAFA"
+      "backgroundColor": "#F55809"
     },
     "ios": {
       "supportsTablet": false,
@@ -30,7 +30,7 @@
       "package": "com.audioflash.app",
       "versionCode": 3,
       "adaptiveIcon": {
-        "backgroundColor": "#FAFAFA",
+        "backgroundColor": "#F55809",
         "foregroundImage": "./assets/app_icon.png"
       },
       "predictiveBackGestureEnabled": false
