@@ -211,7 +211,7 @@ It runs `eas build --profile production --auto-submit`, which builds the App Sto
 
 **When to use which:**
 
-| Change | Path |
+| Change | Workflow |
 |---|---|
 | JS/UI only, for already-released users | Promote (`mobile-promote.yml`) — OTA, no store review |
 | Native change bound for the stores | This workflow — native build + submit |
