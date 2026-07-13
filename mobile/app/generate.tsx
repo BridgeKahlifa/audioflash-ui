@@ -544,7 +544,7 @@ export default function Generate() {
                     if (isReplacing) return;
                     if (selectionMode) toggleSelected(card._clientId);
                   }}
-                  onLongPress={() => !isReplacing && enterSelection(card._clientId)}
+                  onLongPress={() => !isReplacing && !selectionMode && enterSelection(card._clientId)}
                   delayLongPress={300}
                   className={`border rounded-2xl px-4 py-4 mb-3 ${selectionMode && isSelected
                     ? "bg-primary/10 border-primary"
