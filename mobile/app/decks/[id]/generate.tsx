@@ -312,7 +312,7 @@ export default function DeckGenerate() {
                 <Pressable
                   key={card._clientId}
                   onPress={() => (selectionMode ? toggleSelected(card._clientId) : undefined)}
-                  onLongPress={() => enterSelection(card._clientId)}
+                  onLongPress={() => !selectionMode && enterSelection(card._clientId)}
                   delayLongPress={300}
                   className={`border rounded-2xl px-4 py-4 mb-3 ${
                     selectionMode && isSelected
