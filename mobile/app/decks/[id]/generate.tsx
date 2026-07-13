@@ -366,6 +366,7 @@ export default function DeckGenerate() {
                         </Pressable>
                         <Pressable
                           onPress={() => deleteCards(new Set([card._clientId]))}
+                          disabled={status === "generating" || status === "saving"}
                           hitSlop={6}
                           className="w-8 h-8 rounded-full bg-secondary items-center justify-center"
                         >
