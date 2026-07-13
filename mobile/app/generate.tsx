@@ -91,6 +91,9 @@ export default function Generate() {
   // Preview step
   const [generatedResult, setGeneratedResult] = useState<GeneratedResult | null>(null);
   const [previewCards, setPreviewCards] = useState<ApiEphemeralCard[]>([]);
+  // Every generated card is kept and saved by default. Long-press enters selection
+  // mode to bulk regenerate/delete; per-card icons act on a single card.
+  const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [replacingIds, setReplacingIds] = useState<Set<string>>(new Set());
   const [showDeckModal, setShowDeckModal] = useState(false);
@@ -289,9 +292,9 @@ export default function Generate() {
     });
   }
 
-  function handleRemoveCard(clientId: string) {
-    setPreviewCards((prev) => prev.filter((c) => c._clientId !== clientId));
-    setSelectedIds((prev) => { const s = new Set(prev); s.delete(clientId); return s; });
+  function enterSelection(clientId: string) {
+    setSelectionMode(true);
+    setSelectedIds(new Set([clientId]));
   }
 
   function toggleSelected(clientId: string) {
@@ -303,12 +306,34 @@ export default function Generate() {
     });
   }
 
-  async function handleRegenerateSelected() {
-    if (!generatedResult || !session?.access_token || selectedIds.size === 0) return;
-
-    const idsToReplace = Array.from(selectedIds);
-    setReplacingIds(new Set(idsToReplace));
+  function exitSelection() {
+    setSelectionMode(false);
     setSelectedIds(new Set());
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) =>
+      prev.size === previewCards.length
+        ? new Set()
+        : new Set(previewCards.map((c) => c._clientId)),
+    );
+  }
+
+  function deleteCards(clientIds: Set<string>) {
+    if (clientIds.size === 0) return;
+    setPreviewCards((prev) => prev.filter((c) => !clientIds.has(c._clientId)));
+    exitSelection();
+  }
+
+  // Replace the target cards in place with freshly generated ones. Used for both
+  // the per-card regenerate icon (one id) and bulk regenerate (the selection).
+  async function regenerateCards(clientIds: Set<string>) {
+    if (!generatedResult || !session?.access_token || clientIds.size === 0) return;
+    if (replacingIds.size > 0) return;
+
+    const idsToReplace = Array.from(clientIds);
+    setReplacingIds(new Set(idsToReplace));
+    exitSelection();
 
     try {
       const result = await generateReplacements(session.access_token, {
@@ -337,6 +362,7 @@ export default function Generate() {
   function handleBackToForm() {
     setGeneratedResult(null);
     setPreviewCards([]);
+    setSelectionMode(false);
     setSelectedIds(new Set());
     setReplacingIds(new Set());
     setStatus("idle");
@@ -464,25 +490,45 @@ export default function Generate() {
       <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
         <View className="flex-1 max-w-md w-full mx-auto">
           {/* Header */}
-          <View className="px-6 pt-6 pb-2 flex-row items-center gap-3">
-            <Pressable
-              onPress={handleBackToForm}
-              className="w-10 h-10 items-center justify-center rounded-full"
-              style={{ backgroundColor: backButtonPalette.background }}
-            >
-              <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
-            </Pressable>
-            <View className="flex-1">
-              <Text className="text-2xl font-semibold text-foreground tracking-tight">
-                Review Cards
-              </Text>
-              <Text className="text-muted text-sm">
-                {selectedIds.size > 0
-                  ? `${selectedIds.size} selected · tap to deselect`
-                  : `${previewCards.length} card${previewCards.length !== 1 ? "s" : ""} · ${generatedResult.languageLabel} · ${diffLabel} · tap to select`}
-              </Text>
+          {selectionMode ? (
+            <View className="px-6 pt-6 pb-2 flex-row items-center gap-3">
+              <Pressable
+                onPress={exitSelection}
+                className="w-10 h-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: backButtonPalette.background }}
+              >
+                <Ionicons name="close" size={22} color={backButtonPalette.icon} />
+              </Pressable>
+              <View className="flex-1">
+                <Text className="text-2xl font-semibold text-foreground tracking-tight">
+                  {selectedIds.size} selected
+                </Text>
+              </View>
+              <Pressable onPress={toggleSelectAll} hitSlop={8} className="px-2 py-2">
+                <Text className="text-primary font-semibold">
+                  {selectedIds.size === previewCards.length ? "Clear" : "Select all"}
+                </Text>
+              </Pressable>
             </View>
-          </View>
+          ) : (
+            <View className="px-6 pt-6 pb-2 flex-row items-center gap-3">
+              <Pressable
+                onPress={handleBackToForm}
+                className="w-10 h-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: backButtonPalette.background }}
+              >
+                <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
+              </Pressable>
+              <View className="flex-1">
+                <Text className="text-2xl font-semibold text-foreground tracking-tight">
+                  Review Cards
+                </Text>
+                <Text className="text-muted text-sm">
+                  {previewCards.length} card{previewCards.length !== 1 ? "s" : ""} · {generatedResult.languageLabel} · {diffLabel} · long-press to select
+                </Text>
+              </View>
+            </View>
+          )}
 
           <ScrollView
             className="flex-1 px-6 pt-3"
@@ -494,8 +540,13 @@ export default function Generate() {
               return (
                 <Pressable
                   key={card._clientId}
-                  onPress={() => !isReplacing && toggleSelected(card._clientId)}
-                  className={`border rounded-2xl px-4 py-4 mb-3 ${isSelected
+                  onPress={() => {
+                    if (isReplacing) return;
+                    if (selectionMode) toggleSelected(card._clientId);
+                  }}
+                  onLongPress={() => !isReplacing && !selectionMode && enterSelection(card._clientId)}
+                  delayLongPress={300}
+                  className={`border rounded-2xl px-4 py-4 mb-3 ${selectionMode && isSelected
                     ? "bg-primary/10 border-primary"
                     : "bg-card border-border"
                     }`}
@@ -509,6 +560,17 @@ export default function Generate() {
                   }}
                 >
                   <View className="flex-row items-start justify-between gap-3">
+                    {selectionMode ? (
+                      <View
+                        className={`w-6 h-6 rounded-full items-center justify-center border mt-0.5 ${
+                          isSelected ? "bg-primary border-primary" : "bg-transparent border-border"
+                        }`}
+                      >
+                        {isSelected ? (
+                          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                        ) : null}
+                      </View>
+                    ) : null}
                     <View className="flex-1">
                       {isReplacing ? (
                         <ActivityIndicator size="small" color="#FF6B4A" />
@@ -524,26 +586,34 @@ export default function Generate() {
                         </>
                       )}
                     </View>
-                    <View className="items-end gap-2">
-                      {isSelected ? (
-                        <View className="w-6 h-6 rounded-full bg-primary items-center justify-center">
-                          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                        </View>
-                      ) : (
+                    {selectionMode ? null : (
+                      <View className="items-end gap-2">
                         <View className="bg-secondary rounded-lg px-2 py-0.5">
                           <Text className="text-xs font-semibold text-muted">
                             {card.difficulty}
                           </Text>
                         </View>
-                      )}
-                      <Pressable
-                        onPress={() => handleRemoveCard(card._clientId)}
-                        hitSlop={8}
-                        className="w-7 h-7 rounded-full bg-secondary items-center justify-center"
-                      >
-                        <Ionicons name="close" size={16} color="#737373" />
-                      </Pressable>
-                    </View>
+                        {isReplacing ? null : (
+                          <View className="flex-row items-center gap-2">
+                            <Pressable
+                              onPress={() => void regenerateCards(new Set([card._clientId]))}
+                              disabled={replacingIds.size > 0}
+                              hitSlop={6}
+                              className="w-8 h-8 rounded-full bg-secondary items-center justify-center"
+                            >
+                              <Ionicons name="refresh" size={16} color="#737373" />
+                            </Pressable>
+                            <Pressable
+                              onPress={() => deleteCards(new Set([card._clientId]))}
+                              hitSlop={6}
+                              className="w-8 h-8 rounded-full bg-secondary items-center justify-center"
+                            >
+                              <Ionicons name="trash-outline" size={16} color="#737373" />
+                            </Pressable>
+                          </View>
+                        )}
+                      </View>
+                    )}
                   </View>
                 </Pressable>
               );
@@ -562,60 +632,79 @@ export default function Generate() {
           </ScrollView>
 
           {/* Actions */}
-          {previewCards.length > 0 && (
-            <View className="px-6 pb-6 pt-3 gap-3">
-              {selectedIds.size > 0 ? (
-                <Pressable
-                  onPress={handleRegenerateSelected}
-                  disabled={replacingIds.size > 0}
-                  className="py-4 rounded-2xl items-center bg-primary"
-                  style={{
-                    shadowColor: "#FF6B4A",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 4,
-                  }}
-                >
-                  {replacingIds.size > 0 ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text className="text-base font-semibold text-primary-foreground">
-                      Regenerate Selected ({selectedIds.size})
-                    </Text>
-                  )}
-                </Pressable>
-              ) : (
-                <Pressable
-                  onPress={() => setShowDeckModal(true)}
-                  disabled={status === "saving"}
-                  className="py-4 rounded-2xl items-center bg-primary"
-                  style={{
-                    shadowColor: "#FF6B4A",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 4,
-                  }}
-                >
-                  {status === "saving" ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text className="text-base font-semibold text-primary-foreground">
-                      Save Flashcards ({previewCards.length})
-                    </Text>
-                  )}
-                </Pressable>
-              )}
+          {selectionMode ? (
+            <View className="px-6 pb-6 pt-3 flex-row gap-3">
               <Pressable
-                onPress={handleBackToForm}
-                disabled={status === "saving" || replacingIds.size > 0}
-                className="py-3 rounded-2xl items-center bg-secondary"
+                onPress={() => void regenerateCards(selectedIds)}
+                disabled={selectedIds.size === 0 || replacingIds.size > 0}
+                className={`flex-1 py-4 rounded-2xl items-center flex-row justify-center gap-2 ${
+                  selectedIds.size === 0 ? "bg-secondary" : "bg-primary"
+                }`}
               >
-                <Text className="text-sm font-medium text-muted">Regenerate All</Text>
+                {replacingIds.size > 0 ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="refresh"
+                      size={18}
+                      color={selectedIds.size === 0 ? "#A0A0A0" : "#FFFFFF"}
+                    />
+                    <Text
+                      className={`text-base font-semibold ${
+                        selectedIds.size === 0 ? "text-muted" : "text-primary-foreground"
+                      }`}
+                    >
+                      Regenerate{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => deleteCards(selectedIds)}
+                disabled={selectedIds.size === 0 || replacingIds.size > 0}
+                className={`flex-1 py-4 rounded-2xl items-center flex-row justify-center gap-2 ${
+                  selectedIds.size === 0 ? "bg-secondary" : "bg-red-500"
+                }`}
+              >
+                <Ionicons
+                  name="trash"
+                  size={18}
+                  color={selectedIds.size === 0 ? "#A0A0A0" : "#FFFFFF"}
+                />
+                <Text
+                  className={`text-base font-semibold ${
+                    selectedIds.size === 0 ? "text-muted" : "text-white"
+                  }`}
+                >
+                  Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+                </Text>
               </Pressable>
             </View>
-          )}
+          ) : previewCards.length > 0 ? (
+            <View className="px-6 pb-6 pt-3">
+              <Pressable
+                onPress={() => setShowDeckModal(true)}
+                disabled={status === "saving" || replacingIds.size > 0}
+                className="py-4 rounded-2xl items-center bg-primary"
+                style={{
+                  shadowColor: "#FF6B4A",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+              >
+                {status === "saving" ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-base font-semibold text-primary-foreground">
+                    Save Flashcards ({previewCards.length})
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          ) : null}
         </View>
         {renderDeckModal()}
       </SafeAreaView>

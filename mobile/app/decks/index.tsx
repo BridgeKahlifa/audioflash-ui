@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -8,14 +9,54 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from "react-native-gesture-handler/ReanimatedSwipeable";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../../lib/auth-context";
 import { useDecks } from "../../lib/queries";
+import { queryKeys } from "../../lib/query-keys";
 import { useAppTheme } from "../../lib/theme-context";
+import { deleteDeck, type ApiDeck } from "../../lib/api";
 
 export default function DecksIndex() {
   const { data: decks, isLoading, error, refetch, isStale } = useDecks();
+  const { session, isDevAuth } = useAuth();
+  const qc = useQueryClient();
+  const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
   const { matrixMode, fontFamily } = useAppTheme();
+
+  const handleEditDeck = useCallback((deckId: string) => {
+    router.push({ pathname: "/decks/[id]/edit", params: { id: deckId } });
+  }, []);
+
+  const handleDeleteDeck = useCallback(
+    (deck: ApiDeck) => {
+      if (!session && !isDevAuth) return;
+      Alert.alert(
+        "Delete Deck",
+        `Delete "${deck.name}"? This will remove all cards in the deck.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await deleteDeck(session?.access_token, deck.id);
+                qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
+              } catch {
+                Alert.alert("Error", "Couldn't delete the deck. Please try again.");
+              }
+            },
+          },
+        ],
+      );
+    },
+    [session, isDevAuth, qc, userId],
+  );
   const isStaleRef = useRef(false);
   isStaleRef.current = isStale;
   const [query, setQuery] = useState("");
@@ -144,44 +185,13 @@ export default function DecksIndex() {
                   )
                 : decks
               ).map((deck) => (
-                <Pressable
+                <DeckRow
                   key={deck.id}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/decks/[id]",
-                      params: { id: deck.id },
-                    })
-                  }
-                  className="bg-card border border-border rounded-2xl p-4 flex-row items-center"
-                  style={{
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 4,
-                    elevation: 1,
-                  }}
-                >
-                  <View className="w-12 h-12 rounded-xl bg-accent items-center justify-center mr-4 flex-shrink-0">
-                    {deck.icon ? (
-                      <Text style={{ fontSize: 24 }}>{deck.icon}</Text>
-                    ) : (
-                      <Ionicons name="albums" size={24} color="#FF6B4A" />
-                    )}
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-foreground font-semibold" style={{ fontFamily }}>{deck.name}</Text>
-                    {deck.description ? (
-                      <Text className="text-muted text-xs mt-0.5" numberOfLines={1} style={{ fontFamily }}>
-                        {deck.description}
-                      </Text>
-                    ) : null}
-                    <Text className="text-muted text-xs mt-0.5" style={{ fontFamily }}>
-                      {deck.card_count ?? 0} card
-                      {(deck.card_count ?? 0) !== 1 ? "s" : ""}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
-                </Pressable>
+                  deck={deck}
+                  fontFamily={fontFamily}
+                  onEdit={handleEditDeck}
+                  onDelete={handleDeleteDeck}
+                />
               ))}
               {query.trim() &&
                 decks.filter((d) =>
@@ -199,5 +209,112 @@ export default function DecksIndex() {
         </ScrollView>
       </View>
     </SafeAreaView>
+  );
+}
+
+function DeckRow({
+  deck,
+  fontFamily,
+  onEdit,
+  onDelete,
+}: {
+  deck: ApiDeck;
+  fontFamily?: string;
+  onEdit: (deckId: string) => void;
+  onDelete: (deck: ApiDeck) => void;
+}) {
+  const swipeableRef = useRef<SwipeableMethods>(null);
+
+  const close = useCallback(() => swipeableRef.current?.close(), []);
+
+  const openDeck = useCallback(() => {
+    router.push({ pathname: "/decks/[id]", params: { id: deck.id } });
+  }, [deck.id]);
+
+  const showActions = useCallback(() => {
+    Alert.alert(deck.name, undefined, [
+      { text: "Edit", onPress: () => onEdit(deck.id) },
+      { text: "Delete", style: "destructive", onPress: () => onDelete(deck) },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }, [deck, onEdit, onDelete]);
+
+  const renderRightActions = useCallback(
+    () => (
+      <View className="flex-row items-stretch ml-3 gap-3">
+        <Pressable
+          onPress={() => {
+            close();
+            onEdit(deck.id);
+          }}
+          className="w-16 rounded-2xl items-center justify-center bg-secondary"
+        >
+          <Ionicons name="pencil" size={20} color="#1A1A1A" />
+          <Text className="text-foreground text-xs mt-1" style={{ fontFamily }}>
+            Edit
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            close();
+            onDelete(deck);
+          }}
+          className="w-16 rounded-2xl items-center justify-center bg-red-500"
+        >
+          <Ionicons name="trash" size={20} color="#FFFFFF" />
+          <Text className="text-white text-xs mt-1" style={{ fontFamily }}>
+            Delete
+          </Text>
+        </Pressable>
+      </View>
+    ),
+    [deck, close, onEdit, onDelete, fontFamily],
+  );
+
+  return (
+    <ReanimatedSwipeable
+      ref={swipeableRef}
+      friction={2}
+      rightThreshold={40}
+      overshootRight={false}
+      renderRightActions={renderRightActions}
+    >
+      <Pressable
+        onPress={openDeck}
+        onLongPress={showActions}
+        delayLongPress={300}
+        className="bg-card border border-border rounded-2xl p-4 flex-row items-center"
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
+          elevation: 1,
+        }}
+      >
+        <View className="w-12 h-12 rounded-xl bg-accent items-center justify-center mr-4 flex-shrink-0">
+          {deck.icon ? (
+            <Text style={{ fontSize: 24 }}>{deck.icon}</Text>
+          ) : (
+            <Ionicons name="albums" size={24} color="#FF6B4A" />
+          )}
+        </View>
+        <View className="flex-1">
+          <Text className="text-foreground font-semibold" style={{ fontFamily }}>
+            {deck.name}
+          </Text>
+          {deck.description ? (
+            <Text className="text-muted text-xs mt-0.5" numberOfLines={1} style={{ fontFamily }}>
+              {deck.description}
+            </Text>
+          ) : null}
+          <Text className="text-muted text-xs mt-0.5" style={{ fontFamily }}>
+            {deck.card_count ?? 0} card
+            {(deck.card_count ?? 0) !== 1 ? "s" : ""}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
+      </Pressable>
+    </ReanimatedSwipeable>
   );
 }
