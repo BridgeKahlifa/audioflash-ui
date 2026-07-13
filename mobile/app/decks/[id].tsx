@@ -186,9 +186,9 @@ export default function DeckDetail() {
           onPress: async () => {
             setBulkDeleting(true);
             try {
-              await Promise.all(
-                ids.map((id) => deleteDeckCard(session?.access_token, deckId!, id)),
-              );
+              for (const id of ids) {
+                await deleteDeckCard(session?.access_token, deckId!, id);
+              }
               qc.invalidateQueries({ queryKey: queryKeys.deckCards(userId, deckId!) });
               qc.invalidateQueries({ queryKey: queryKeys.deck(userId, deckId!) });
               qc.invalidateQueries({ queryKey: queryKeys.decks(userId) });
