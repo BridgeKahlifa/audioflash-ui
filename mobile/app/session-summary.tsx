@@ -15,6 +15,19 @@ interface GradeHistoryPoint {
   grade: number;
 }
 
+function isSameGradeHistoryPoint(a: GradeHistoryPoint, b: GradeHistoryPoint): boolean {
+  return a.endedAt === b.endedAt && a.grade === b.grade;
+}
+
+function getSessionGradePoint(session: SessionHistoryItem | null): GradeHistoryPoint | null {
+  if (!session || session.total <= 0) return null;
+
+  return {
+    endedAt: session.completedAt,
+    grade: Math.round((session.correct / session.total) * 100),
+  };
+}
+
 function formatChartTime(dateInput: string | number): string {
   return new Date(dateInput).toLocaleTimeString(undefined, {
     hour: "numeric",
@@ -346,6 +359,15 @@ export default function SessionSummary() {
     session && session.total > 0
       ? Math.round((session.correct / session.total) * 100)
       : 0;
+  const isReviewSession = session?.language === "review";
+  const sessionGradePoint = useMemo(() => getSessionGradePoint(session), [session]);
+  const displayedGradeHistory = useMemo(() => {
+    if (!sessionGradePoint) return gradeHistory;
+    if (gradeHistory.some((point) => isSameGradeHistoryPoint(point, sessionGradePoint))) {
+      return gradeHistory;
+    }
+    return [...gradeHistory, sessionGradePoint];
+  }, [gradeHistory, sessionGradePoint]);
 
   async function retryMissed() {
     if (!session || missed.length === 0) return;
@@ -421,6 +443,37 @@ export default function SessionSummary() {
     });
   }
 
+  async function restartLesson() {
+    if (!session || session.cards.length === 0) return;
+
+    setError("");
+
+    await setCurrentCards(
+      session.topic,
+      session.cards.map((card, index) => ({
+        id: index + 1,
+        dbId: typeof card.cardId === "string" ? card.cardId : undefined,
+        sourceText: card.sourceText,
+        romanization: card.romanization,
+        translation: card.translation,
+      })),
+    );
+
+    router.replace({
+      pathname: "/practice/[topic]",
+      params: {
+        topic: session.topic,
+        topicTitle: session.topicTitle,
+        language: session.language,
+        languageLabel: session.languageLabel,
+        apiCategoryId: session.categoryId ?? "",
+        deckId: session.deckId ?? "",
+        difficulty: typeof session.difficulty === "number" ? String(session.difficulty) : undefined,
+        displayMode: session.displayMode,
+      },
+    });
+  }
+
   if (!session) {
     return (
       <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
@@ -461,7 +514,7 @@ export default function SessionSummary() {
             <Text className="text-muted mt-1">Missed: {missedCount}</Text>
           </View>
 
-          {!session.reviewId ? (
+          {!isReviewSession ? (
             <View className="bg-card border border-border rounded-2xl p-5 mb-4">
               <Text className="text-base font-medium text-foreground mb-1">Score History</Text>
               <Text className="text-sm text-muted mb-4">
@@ -473,12 +526,12 @@ export default function SessionSummary() {
                 </View>
               ) : gradeHistoryError ? (
                 <Text className="text-sm text-muted">{gradeHistoryError}</Text>
-              ) : gradeHistory.length === 0 ? (
+              ) : displayedGradeHistory.length === 0 ? (
                 <Text className="text-sm text-muted">
                   No grade history is available for this session yet.
                 </Text>
               ) : (
-                <SimpleGradeHistoryChart points={gradeHistory} />
+                <SimpleGradeHistoryChart points={displayedGradeHistory} />
               )}
             </View>
           ) : null}
@@ -530,6 +583,18 @@ export default function SessionSummary() {
           ) : null}
 
           <View className="gap-3">
+            {!isReviewSession ? (
+              <Pressable
+                onPress={() => void restartLesson()}
+                disabled={session.cards.length === 0}
+                className={`py-4 rounded-2xl items-center ${session.cards.length > 0 ? "bg-primary" : "bg-secondary"}`}
+              >
+                <Text className={`font-semibold ${session.cards.length > 0 ? "text-primary-foreground" : "text-muted"}`}>
+                  Restart Lesson
+                </Text>
+              </Pressable>
+            ) : null}
+
             {missedCount > 0 ? (
               <Pressable
                 onPress={retryMissed}
