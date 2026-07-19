@@ -296,6 +296,32 @@ export default function Home() {
               </Pressable>
             ) : null}
 
+
+       {/* Browse Categories */}
+            <Pressable
+              onPress={handleBrowseCategories}
+              className="rounded-2xl p-5 bg-card border border-border flex-row items-center"
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                elevation: 2,
+              }}
+            >
+              <View
+                className="w-12 h-12 rounded-xl items-center justify-center mr-4"
+                style={{ backgroundColor: quickActionPalette.iconContainer }}
+              >
+                <Ionicons name="grid" size={24} color={quickActionPalette.iconColor} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-foreground font-semibold text-base" style={{ fontFamily }}>Browse Categories</Text>
+                <Text className="text-muted text-sm mt-0.5" style={{ fontFamily }}>Pick a language and topic to practice</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
+            </Pressable>
+
             {/* Generate Flashcards */}
             <Pressable
               onPress={() => { posthog?.capture("home_action_tapped", { action: "generate_lesson" }); router.push("/generate"); }}
@@ -323,31 +349,7 @@ export default function Home() {
               <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
             </Pressable>
 
-            {/* Browse Categories */}
-            <Pressable
-              onPress={handleBrowseCategories}
-              className="rounded-2xl p-5 bg-card border border-border flex-row items-center"
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 8,
-                elevation: 2,
-              }}
-            >
-              <View
-                className="w-12 h-12 rounded-xl items-center justify-center mr-4"
-                style={{ backgroundColor: quickActionPalette.iconContainer }}
-              >
-                <Ionicons name="grid" size={24} color={quickActionPalette.iconColor} />
-              </View>
-              <View className="flex-1">
-                <Text className="text-foreground font-semibold text-base" style={{ fontFamily }}>Browse Categories</Text>
-                <Text className="text-muted text-sm mt-0.5" style={{ fontFamily }}>Pick a language and topic to practice</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#A0A0A0" />
-            </Pressable>
-
+     
             {/* My Decks */}
             <Pressable
               onPress={() => { posthog?.capture("home_action_tapped", { action: "my_decks" }); router.push("/(tabs)/decks"); }}

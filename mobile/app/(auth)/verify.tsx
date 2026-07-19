@@ -8,16 +8,27 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/auth-context";
 import { useAnalytics } from "../../lib/analytics";
+import { useAppTheme } from "../../lib/theme-context";
 
 export default function Verify() {
   const { email } = useLocalSearchParams<{ email: string }>();
   const { verifyOtp, sendOtp } = useAuth();
   const posthog = useAnalytics();
+  const { matrixMode } = useAppTheme();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resent, setResent] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const backButtonPalette = matrixMode
+    ? {
+        background: "#202020",
+        icon: "#ff8c42",
+      }
+    : {
+        background: "#FBE7DE",
+        icon: "#1A1A1A",
+      };
 
   async function handleVerify() {
     if (code.length !== 6) {
@@ -63,9 +74,10 @@ export default function Verify() {
           <View className="flex-1 max-w-md w-full mx-auto px-6 pt-10 pb-8 justify-start">
           <Pressable
             onPress={() => router.back()}
-            className="w-10 h-10 items-center justify-center rounded-full bg-secondary mb-8"
+            className="w-10 h-10 items-center justify-center rounded-full mb-8"
+            style={{ backgroundColor: backButtonPalette.background }}
           >
-            <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+            <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
           </Pressable>
 
           <Text className="text-3xl font-semibold text-foreground tracking-tight mb-2">

@@ -356,6 +356,7 @@ export default function FlashcardPractice() {
   const shouldShowRevealButton = canRevealAnswer && !showAnswer;
   const shouldShowAnswerActions = canRevealAnswer && showAnswer;
   const showMatrixRain = matrixMode && displayModeResolved && cards.length > 0;
+  const cardRenderKey = `${currentIndex}-${String(currentCard?.dbId ?? currentCard?.id ?? "card")}-${showAnswer ? "answer" : "prompt"}`;
 
   // ── Playback speed slider ──────────────────────────────────────────────────
   const minPlaybackSpeed = 0.5;
@@ -638,6 +639,7 @@ export default function FlashcardPractice() {
         {/* Card */}
         <View className="flex-1 px-4 pb-4">
           <Animated.View
+            key={cardRenderKey}
             {...previousCardPanResponder.panHandlers}
             className="bg-card rounded-3xl"
             style={{

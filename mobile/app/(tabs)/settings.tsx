@@ -610,10 +610,10 @@ export default function SettingsScreen() {
                   <Ionicons name="mail-outline" size={18} color="#6B7280" />
                   <Text className="text-foreground font-medium" style={{ fontFamily }}>Contact Support</Text>
                 </Pressable>
-                <Pressable onPress={confirmDelete} className="flex-row items-center gap-2 p-4">
+                {/* <Pressable onPress={confirmDelete} className="flex-row items-center gap-2 p-4">
                   <Ionicons name="trash-outline" size={18} color="#EF4444" />
                   <Text className="text-red-500 font-medium" style={{ fontFamily }}>Delete Account</Text>
-                </Pressable>
+                </Pressable> */}
               </>
             )}
           </View>
