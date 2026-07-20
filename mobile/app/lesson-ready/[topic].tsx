@@ -112,6 +112,9 @@ export default function LessonReady() {
   const categoryAvailableCardCount = categories.find(
     (category) => String(category.id) === String(apiCategoryId),
   )?.total_cards;
+  const currentCategorySource = categories.find(
+    (category) => String(category.id) === String(apiCategoryId),
+  )?.source;
   const cardsByDifficulty: Record<number, number> = (() => {
     try {
       return cardsByDifficultyParam ? JSON.parse(cardsByDifficultyParam) : {};
@@ -273,6 +276,8 @@ export default function LessonReady() {
         language: language ?? "",
         languageLabel: languageLabel ?? "",
         apiLanguageId: apiLanguageId ?? "",
+        categorySource: currentCategorySource ?? "",
+        hideAddToDeck: "true",
         supportedDifficulties: supportedDifficulties ?? "",
         availableCardCount: availableCardCountParam ?? "",
       },

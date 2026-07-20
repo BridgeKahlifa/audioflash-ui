@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchLessonsByCategory, bulkCreateDeckCards, type ApiLessonCard } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
-import { useDecks, queryKeys } from "../../lib/queries";
+import { useCategories, useDecks, queryKeys } from "../../lib/queries";
 import { useAppTheme } from "../../lib/theme-context";
 
 function CardRow({
@@ -73,6 +73,8 @@ export default function CategoryDetail() {
     language,
     languageLabel,
     apiLanguageId,
+    categorySource,
+    hideAddToDeck,
     supportedDifficulties,
     availableCardCount,
   } = useLocalSearchParams<{
@@ -82,6 +84,8 @@ export default function CategoryDetail() {
     language: string;
     languageLabel: string;
     apiLanguageId: string;
+    categorySource?: string;
+    hideAddToDeck?: string;
     supportedDifficulties: string;
     availableCardCount: string;
   }>();
@@ -91,6 +95,7 @@ export default function CategoryDetail() {
   const qc = useQueryClient();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
   const { data: decks } = useDecks();
+  const { data: categories = [] } = useCategories(apiLanguageId ?? undefined);
   const [activeLevel, setActiveLevel] = useState<number | null>(null);
   const [cardQuery, setCardQuery] = useState("");
   const [showDeckModal, setShowDeckModal] = useState(false);
@@ -181,6 +186,11 @@ export default function CategoryDetail() {
   const presentLevels = cards
     ? Array.from(new Set(cards.map((c) => c.difficulty))).sort()
     : [];
+  const resolvedCategorySource = categorySource ?? categories.find(
+    (category) => String(category.id) === String(apiCategoryId),
+  )?.source;
+  const canAddCategoryToDeck =
+    hideAddToDeck !== "true" && resolvedCategorySource !== "curated";
 
   const effectiveLevel = presentLevels.length === 1 ? presentLevels[0] : activeLevel;
 
@@ -375,7 +385,7 @@ export default function CategoryDetail() {
           </>
         )}
 
-        {!isLoading && !error && (cards?.length ?? 0) > 0 && (
+        {!isLoading && !error && (cards?.length ?? 0) > 0 && canAddCategoryToDeck && (
           <View className="px-6 pb-6 pt-3 border-t border-border bg-background gap-3">
             {(session || isDevAuth) && (
               <Pressable
