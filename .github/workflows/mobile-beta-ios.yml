@@ -1,0 +1,71 @@
+name: Distribute iOS Beta (TestFlight)
+
+# One-command iOS beta distribution — the iOS counterpart to the Android
+# preview APK. Builds a store-signed .ipa on the `testflight` profile and
+# submits it to App Store Connect, where it lands in TestFlight for your
+# internal testers (no App Review needed for internal testers).
+#
+# The build is on the `preview` channel, so TestFlight testers receive the
+# same OTA updates (`npm run update:preview`) as your Android preview testers.
+#
+# Prerequisites (one-time):
+#   - The app must exist in App Store Connect (bundle id ai.audioflash.mobile).
+#   - Store credentials must live on EAS:
+#       cd mobile && eas credentials -p ios   # add the App Store Connect API key
+#   - Testers added to an Internal Testing group in App Store Connect → TestFlight.
+# The only repo secret needed is EXPO_TOKEN (already used by the other workflows).
+#
+# For Android beta, just run `npm run beta:android` (or the preview build in
+# mobile-deploy.yml) — it produces an install-anywhere APK, no submission step.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  beta-ios:
+    name: Build & submit → TestFlight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./mobile
+
+      - name: Build and submit to TestFlight
+        run: |
+          eas build \
+            --profile testflight \
+            --platform ios \
+            --auto-submit-with-profile preview \
+            --non-interactive
+        working-directory: ./mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CI: 1
+
+      - name: Summarise
+        run: |
+          VERSION=$(jq -r '.expo.version' mobile/app.json)
+          {
+            echo "## iOS beta queued → TestFlight"
+            echo ""
+            echo "- **Version:** \`$VERSION\`"
+            echo "- **Profile:** \`testflight\` (store distribution, \`preview\` OTA channel)"
+            echo "- **Flow:** native build → auto-submit to App Store Connect"
+            echo ""
+            echo "Once processing finishes in App Store Connect, the build is available"
+            echo "to your Internal Testing group in TestFlight — no App Review required."
+          } >> "$GITHUB_STEP_SUMMARY"

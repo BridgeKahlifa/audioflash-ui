@@ -18,6 +18,15 @@
         "buildType": "apk"
       }
     },
+    "testflight": {
+      "environment": "preview",
+      "channel": "preview",
+      "distribution": "store",
+      "autoIncrement": true,
+      "ios": {
+        "buildConfiguration": "Release"
+      }
+    },
     "production": {
       "environment": "production",
       "channel": "production",
@@ -28,6 +37,12 @@
     }
   },
   "submit": {
+    "preview": {
+      "ios": {
+        "ascAppId": "6761799123",
+        "appleTeamId": "UTS33LWLQV"
+      }
+    },
     "production": {
       "ios": {},
       "android": {

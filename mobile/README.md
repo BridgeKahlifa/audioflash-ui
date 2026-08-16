@@ -76,6 +76,7 @@ AudioFlash uses [EAS Build](https://docs.expo.dev/build/introduction/) to produc
 | Profile | Output | Use for |
 |---|---|---|
 | `preview` | APK (Android) / IPA (iOS), internal | Sharing with testers |
+| `testflight` | IPA (iOS), store-signed | iOS beta via TestFlight |
 | `production` | AAB (Android) / IPA (iOS), store-ready | Play Store / App Store |
 
 ### Build commands
@@ -96,6 +97,37 @@ npm run build:ios
 ```
 
 EAS builds in the cloud and provides a download link when done.
+
+### Beta distribution (getting the app onto testers' phones)
+
+Two one-command paths, one per platform:
+
+```bash
+# Android — builds an install-anywhere APK; share the EAS link with testers
+npm run beta:android
+
+# iOS — builds a store-signed IPA and submits it to TestFlight
+npm run beta:ios
+```
+
+- **Android** (`beta:android`, the `preview` profile) produces an APK. Send testers
+  the EAS download link/QR; they tap, allow "install unknown apps," and they're in.
+  No device registration, unlimited testers.
+- **iOS** (`beta:ios`, the `testflight` profile) produces a store-signed IPA and
+  auto-submits it to App Store Connect using the `submit.preview` config. It lands
+  in **TestFlight** for anyone in your Internal Testing group — no App Review, up to
+  10,000 testers, and no UDID collection (unlike ad-hoc `build:ios:preview`).
+
+Both builds are on the **`preview` OTA channel**, so `npm run update:preview` pushes
+JS/UI fixes to Android and iOS testers alike without a rebuild.
+
+The same iOS flow is available as a GitHub Action — **Actions → Distribute iOS Beta
+(TestFlight) → Run workflow** (`mobile-beta-ios.yml`).
+
+**iOS one-time setup:** the app must exist in App Store Connect (bundle id
+`ai.audioflash.mobile`), the App Store Connect API key must be uploaded to EAS
+(`cd mobile && eas credentials -p ios`), and testers must be added to an Internal
+Testing group in App Store Connect → TestFlight.
 
 ### OTA updates (push JS changes without a new build)
 
