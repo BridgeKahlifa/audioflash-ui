@@ -149,6 +149,9 @@ export default function FlashcardPractice() {
   const sliderPageXRef = useRef(0);
   const sliderMeasuredWidthRef = useRef(0);
   const translateX = useRef(new Animated.Value(0)).current;
+  // True while the playback-speed slider is being dragged, so the card's
+  // swipe-back capture doesn't hijack a horizontal slider drag.
+  const sliderActiveRef = useRef(false);
   const isResumeSession = resumeSession === "true";
   const isTraditionalMode = displayMode === "traditional";
   const initialResumeIndex = Number(initialCurrentIndex ?? 0);
@@ -411,6 +414,7 @@ export default function FlashcardPractice() {
       onMoveShouldSetPanResponder: () => true,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (event, gestureState) => {
+        sliderActiveRef.current = true;
         const pageX = event.nativeEvent.pageX || gestureState.x0;
         measureSlider(pageX);
         updatePlaybackSpeedFromPageX(pageX);
@@ -418,15 +422,34 @@ export default function FlashcardPractice() {
       onPanResponderMove: (_, gestureState) => {
         updatePlaybackSpeedFromPageX(gestureState.moveX);
       },
+      onPanResponderRelease: () => {
+        sliderActiveRef.current = false;
+      },
+      onPanResponderTerminate: () => {
+        sliderActiveRef.current = false;
+      },
     })
   ).current;
 
+  // A rightward drag is the "go back a card" gesture. Only positive dx counts,
+  // so a forward (leftward) swipe never advances the deck — you move forward
+  // only via the answer buttons. The capture variant lets this claim the
+  // gesture even when it starts on top of one of the card's Pressables (audio
+  // button, reveal area, answer buttons); without it those children swallow
+  // the touch and the swipe-back never fires. The slider guards itself via
+  // sliderActiveRef so its horizontal drag is never mistaken for a swipe-back.
+  const shouldSwipeBack = (dx: number, dy: number) =>
+    currentIndex > 0 &&
+    !submitting &&
+    !sliderActiveRef.current &&
+    dx > 20 &&
+    Math.abs(dx) > Math.abs(dy) * 1.25;
+
   const previousCardPanResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) =>
-      currentIndex > 0 &&
-      !submitting &&
-      gestureState.dx > 35 &&
-      Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25,
+      shouldSwipeBack(gestureState.dx, gestureState.dy),
+    onMoveShouldSetPanResponderCapture: (_, gestureState) =>
+      shouldSwipeBack(gestureState.dx, gestureState.dy),
     onPanResponderGrant: () => {
       translateX.stopAnimation();
     },
@@ -524,6 +547,20 @@ export default function FlashcardPractice() {
   }
 
   function handleBackNavigation() {
+    // Practice is always reached by navigating from its parent screen (deck
+    // practice-ready, review, category lesson-ready, or a session summary that
+    // itself replaced a practice launched from one of those). Returning there
+    // is just a back pop. Using router.replace to synthesize the parent
+    // duplicated screens already in the stack — e.g. the deck flow pushed
+    // practice-ready → practice, so replacing practice with a fresh
+    // practice-ready left two copies and made "back" appear to loop.
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    // Fallbacks below only run when practice is the first screen in the stack
+    // (deep link / cold start) and there is nothing to pop back to.
     if (reviewId) {
       router.replace("/(tabs)/review");
       return;
@@ -538,11 +575,6 @@ export default function FlashcardPractice() {
     }
 
     if (apiCategoryId) {
-      if (router.canGoBack()) {
-        router.back();
-        return;
-      }
-
       router.replace({
         pathname: "/lesson-ready/[topic]",
         params: {
