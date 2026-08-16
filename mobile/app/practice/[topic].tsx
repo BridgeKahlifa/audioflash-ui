@@ -348,6 +348,12 @@ export default function FlashcardPractice() {
     speakText(card.sourceText, language ?? "chinese", playbackSpeed);
   }, [currentIndex, cards, displayModeResolved, isTraditionalMode]);
 
+  // Whenever the visible card changes, make sure it rests at the center. Guards
+  // against a residual swipe offset leaving a freshly-mounted card off-screen.
+  useEffect(() => {
+    translateX.setValue(0);
+  }, [currentIndex, translateX]);
+
   useEffect(() => {
     return () => {
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
@@ -464,14 +470,15 @@ export default function FlashcardPractice() {
         gestureState.dx > 80 &&
         Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25
       ) {
-        Animated.timing(translateX, {
-          toValue: 420,
-          duration: 180,
-          useNativeDriver: true,
-        }).start(() => {
-          translateX.setValue(0);
-          goPrev();
-        });
+        // Switch to the previous card immediately. This previously animated the
+        // card off-screen (translateX → 420) and swapped content inside the
+        // animation callback; with useNativeDriver + the keyed remount, the
+        // incoming card could mount while the shared translateX still held the
+        // off-screen offset, rendering the new card outside the viewport — i.e.
+        // blank after a flash. Resetting synchronously before the swap (and via
+        // the currentIndex effect) keeps the incoming card centered.
+        translateX.setValue(0);
+        goPrev();
         return;
       }
 
