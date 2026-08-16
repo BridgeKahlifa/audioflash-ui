@@ -158,7 +158,7 @@ export default function FlashcardPractice() {
   const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
 
   // ── Session manager (all API orchestration) ────────────────────────────────
-  const { submitting, submittingResult, attemptError, results, handleResult } = useSessionManager({
+  const { submitting, submittingResult, attemptError, handleResult } = useSessionManager({
     cards,
     currentIndex,
     resolvedActivityId,
@@ -314,14 +314,17 @@ export default function FlashcardPractice() {
       return;
     }
 
+    // Present every card fresh — the same whether advancing forward or swiping
+    // back to a previous one — exactly as if it were seen for the first time:
+    // answer hidden, reveal re-armed, audio replayed. We deliberately do NOT
+    // restore the previously-answered state; swiping back is a fresh attempt.
+    // (This also avoids the blank card that the old "restore answered state"
+    // path produced on back-navigation.)
     shownAtRef.current = Date.now();
     setAudioPlayCount(0);
-
-    const existingResult = results[currentIndex];
-    // Restore the confidence rating the user already picked for this card (if navigating back).
-    setSelectedConfidence(existingResult?.confidenceRating ?? null);
-    setCanRevealAnswer(Boolean(existingResult));
-    setShowAnswer(Boolean(existingResult));
+    setSelectedConfidence(null);
+    setShowAnswer(false);
+    setCanRevealAnswer(isTraditionalMode);
 
     if (revealTimerRef.current) {
       clearTimeout(revealTimerRef.current);
@@ -329,7 +332,7 @@ export default function FlashcardPractice() {
     }
 
     const card = cards[currentIndex];
-    if (!card?.sourceText || existingResult) {
+    if (!card?.sourceText) {
       return;
     }
 
@@ -343,9 +346,7 @@ export default function FlashcardPractice() {
       revealTimerRef.current = null;
     }, 1500);
     speakText(card.sourceText, language ?? "chinese", playbackSpeed);
-  // `results` is a dep because we read results[currentIndex] to restore state
-  // when the user navigates back to a card they already answered.
-  }, [currentIndex, cards, displayModeResolved, isTraditionalMode, results]);
+  }, [currentIndex, cards, displayModeResolved, isTraditionalMode]);
 
   useEffect(() => {
     return () => {
@@ -494,23 +495,11 @@ export default function FlashcardPractice() {
     }
   }
 
-  function hydrateCardState(nextIndex: number) {
-    const existingResult = results[nextIndex];
-    console.log("[practice-fix][hydrateCardState]", {
-      currentIndex,
-      nextIndex,
-      hasExistingResult: Boolean(existingResult),
-      confidenceRating: existingResult?.confidenceRating ?? null,
-      isTraditionalMode,
-    });
-    setSelectedConfidence(existingResult?.confidenceRating ?? null);
-
-    if (existingResult) {
-      setCanRevealAnswer(true);
-      setShowAnswer(true);
-      return;
-    }
-
+  function hydrateCardState() {
+    // Reset to the fresh first-view state immediately so the outgoing card's
+    // answered state doesn't flash before the per-card effect re-arms reveal
+    // and replays audio for the newly-committed index.
+    setSelectedConfidence(null);
     setShowAnswer(false);
     setCanRevealAnswer(isTraditionalMode);
   }
@@ -519,7 +508,7 @@ export default function FlashcardPractice() {
     if (currentIndex > 0 && !submitting) {
       const nextIndex = currentIndex - 1;
       clearRevealTimer();
-      hydrateCardState(nextIndex);
+      hydrateCardState();
       setCurrentIndex(nextIndex);
     }
   }
@@ -528,7 +517,7 @@ export default function FlashcardPractice() {
     const outcome = await handleResult(knew);
     if (!outcome || outcome.isComplete) return;
     clearRevealTimer();
-    hydrateCardState(outcome.nextIndex);
+    hydrateCardState();
     setCurrentIndex(outcome.nextIndex);
   }
 
