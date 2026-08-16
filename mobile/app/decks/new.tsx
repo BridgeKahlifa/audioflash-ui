@@ -24,12 +24,14 @@ import {
   clearGeneratedDeckImport,
   getGeneratedDeckImport,
 } from "../../lib/storage";
+import { useAppTheme } from "../../lib/theme-context";
 
 export default function NewDeck() {
   const { session, isDevAuth, profile } = useAuth();
   const posthog = useAnalytics();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const { matrixMode } = useAppTheme();
   const userId = session?.user?.id ?? (isDevAuth ? "dev" : "");
 
   const { categoryId, languageId: languageIdParam, importSource } = useLocalSearchParams<{
@@ -64,6 +66,15 @@ export default function NewDeck() {
   const outOfDecks = decksLeft !== null && decksLeft <= 0;
   const canSubmit = name.trim().length >= 1 && selectedLanguageId !== null && !submitting && !outOfDecks;
   const actionBarPaddingBottom = Platform.OS === "android" ? 24 + Math.max(insets.bottom, 12) : 24;
+  const backButtonPalette = matrixMode
+    ? {
+        background: "#202020",
+        icon: "#ff8c42",
+      }
+    : {
+        background: "#FBE7DE",
+        icon: "#1A1A1A",
+      };
 
   useEffect(() => {
     if (selectedLanguageId || availableLanguages.length === 0) return;
@@ -176,9 +187,12 @@ export default function NewDeck() {
           <View className="px-6 pt-6 pb-2 flex-row items-center gap-3">
             <Pressable
               onPress={() => router.back()}
-              className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+              className="w-10 h-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: backButtonPalette.background }}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
-              <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+              <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
             </Pressable>
             <View>
               <Text className="text-2xl font-semibold text-foreground tracking-tight">
