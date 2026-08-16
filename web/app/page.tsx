@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { BulletList } from "../components/BulletList";
 import {
   Card,
@@ -335,6 +336,10 @@ export default function HomePage() {
           <p className="text-xs text-muted">
             Audio flashcards for language learning, built for listening and speaking recall.
           </p>
+          <div className="flex items-center gap-4 text-xs text-muted">
+            <Link href="/privacy" className="transition-colors hover:text-foreground">Privacy</Link>
+            <Link href="/terms" className="transition-colors hover:text-foreground">Terms</Link>
+          </div>
           <a
             href="mailto:support@audioflash.ai" target="_blank" rel="noreferrer"
             className="flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"

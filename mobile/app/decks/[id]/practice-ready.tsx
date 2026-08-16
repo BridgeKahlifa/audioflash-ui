@@ -16,6 +16,7 @@ import {
   type TraditionalFlashcardFront,
 } from "../../../lib/traditional-flashcard-front";
 import { LanguageFlag } from "../../../components/LanguageFlag";
+import { useAppTheme } from "../../../lib/theme-context";
 
 const MIN_CARD_COUNT = 1;
 const CARD_COUNT_STEP = 5;
@@ -24,6 +25,7 @@ export default function DeckPracticeReady() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
   const { session, isDevAuth, profile } = useAuth();
   const posthog = useAnalytics();
+  const { matrixMode } = useAppTheme();
 
   const { data: deck, isLoading: deckLoading } = useDeck(deckId ?? "");
   const { data: cards, isLoading: cardsLoading } = useDeckCards(deckId ?? "");
@@ -180,15 +182,27 @@ export default function DeckPracticeReady() {
   }
 
   const isLoading = deckLoading || cardsLoading;
+  const backButtonPalette = matrixMode
+    ? {
+        background: "#202020",
+        icon: "#ff8c42",
+      }
+    : {
+        background: "#FBE7DE",
+        icon: "#1A1A1A",
+      };
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">
       <View className="px-6 pt-4 pb-2 max-w-md w-full mx-auto flex-row items-center justify-between">
         <Pressable
           onPress={() => router.back()}
-          className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
+          className="w-10 h-10 items-center justify-center rounded-full"
+          style={{ backgroundColor: backButtonPalette.background }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
-          <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+          <Ionicons name="chevron-back" size={22} color={backButtonPalette.icon} />
         </Pressable>
         <View className="w-10 h-10" />
       </View>
