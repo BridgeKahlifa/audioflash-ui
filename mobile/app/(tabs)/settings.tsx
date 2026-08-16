@@ -505,15 +505,19 @@ export default function SettingsScreen() {
             ) : null}
           </View>
 
-          <SectionLabel>Environment</SectionLabel>
-          <AuthModeSettingsCard />
-          {hasIdentityMismatch ? (
-            <IdentityMismatchBanner
-              uiUserId={uiUserId}
-              uiUserEmail={uiUserEmail}
-              apiUserId={apiUserId}
-              apiUserName={apiUserName}
-            />
+          {__DEV__ ? (
+            <>
+              <SectionLabel>Environment</SectionLabel>
+              <AuthModeSettingsCard />
+              {hasIdentityMismatch ? (
+                <IdentityMismatchBanner
+                  uiUserId={uiUserId}
+                  uiUserEmail={uiUserEmail}
+                  apiUserId={apiUserId}
+                  apiUserName={apiUserName}
+                />
+              ) : null}
+            </>
           ) : null}
 
           {/* ── Developer (dev builds only) ── */}
