@@ -270,6 +270,20 @@ the workflow's submit step succeeding.
 
 **First Android submission must be manual:** Google Play requires the very first `.aab` to be uploaded by hand in the Play Console. `eas submit` (this workflow) works for every release after that.
 
+### Google Play reviewer account
+
+The sign-in screen includes an **App reviewer sign-in** link for a permanent
+email/password account. Create this account in Supabase Dashboard under
+Authentication → Users → Add user, choose **Create new user**, set a strong
+password, and leave **Auto Confirm User** enabled. Do not put the password in
+the repository or in an `EXPO_PUBLIC_*` environment variable.
+
+In Google Play Console, enter the same email and password under App content →
+App access and note: “Tap App reviewer sign-in on the initial sign-in screen.
+This account does not require an email code, Google verification, or 2-step
+verification.” Keep the account active and its credentials unchanged for the
+entire review period.
+
 ## Configuration
 
 | Variable | Description |

@@ -31,6 +31,7 @@ interface AuthContextValue {
   // OTP flow
   sendOtp: (email: string) => Promise<{ error: string | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
   completeOAuthRedirect: (url: string) => Promise<{ handled: boolean; error: string | null }>;
   // Passkey flow
@@ -453,6 +454,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   }
 
+  async function signInWithPassword(email: string, password: string) {
+    if (DEV_AUTH_MODE) return { error: "Password sign-in is disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
+    const normalizedEmail = normalizeEmail(email);
+    const validationError = getEmailValidationError(normalizedEmail);
+    if (validationError) return { error: validationError };
+    if (!password) return { error: "Enter the review account password." };
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
+    if (error) {
+      captureHandledException(posthog, error, {
+        error_context: "auth_sign_in_with_password",
+        auth_method: "review_account",
+      });
+      return { error: "The review account email or password is incorrect." };
+    }
+
+    await ensureProfileRecord(data.user);
+    return { error: null };
+  }
+
   async function signInWithGoogle() {
     if (DEV_AUTH_MODE) return { error: "Google sign-in is disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
 
@@ -707,6 +731,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       deleteAccount,
       sendOtp,
       verifyOtp,
+      signInWithPassword,
       signInWithGoogle,
       completeOAuthRedirect,
       passkeySupported,

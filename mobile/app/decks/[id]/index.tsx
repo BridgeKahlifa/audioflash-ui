@@ -15,15 +15,15 @@ import ReanimatedSwipeable, {
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "../../lib/auth-context";
-import { useDeck, useDeckCards, useLanguages } from "../../lib/queries";
-import { queryKeys } from "../../lib/query-keys";
-import { useAppTheme } from "../../lib/theme-context";
+import { useAuth } from "../../../lib/auth-context";
+import { useDeck, useDeckCards, useLanguages } from "../../../lib/queries";
+import { queryKeys } from "../../../lib/query-keys";
+import { useAppTheme } from "../../../lib/theme-context";
 import {
   deleteDeckCard,
   deleteDeck,
   type ApiDeckCard,
-} from "../../lib/api";
+} from "../../../lib/api";
 
 export default function DeckDetail() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
