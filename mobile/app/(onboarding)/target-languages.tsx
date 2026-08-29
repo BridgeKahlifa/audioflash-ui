@@ -10,6 +10,7 @@ import { captureHandledException, useAnalytics } from "../../lib/analytics";
 import { fetchLanguages, ApiLanguage } from "../../lib/api";
 import { StepDots } from "../../components/onboarding/StepDots";
 import { LanguageFlag } from "../../components/LanguageFlag";
+import { ensureSpeechVoiceAvailable } from "../../lib/audio";
 
 const V1_LANGUAGE_ORDER = ["Chinese", "Spanish", "French", "German", "Japanese"] as const;
 
@@ -58,6 +59,8 @@ export default function OnboardingTargetLanguages() {
 
   function toggleLanguage(id: string) {
     setError(null);
+    const language = languages.find((item) => String(item.id) === id);
+    if (language && !selectedIds.includes(id)) void ensureSpeechVoiceAvailable(language.language);
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id]
     );

@@ -37,7 +37,7 @@ const matrixThemeVars = vars({
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
-  const [matrixMode, setMatrixModeState] = useState(true);
+  const [matrixMode, setMatrixModeState] = useState(false);
 
   useEffect(() => {
     const matrixFontFamily = Platform.select({
