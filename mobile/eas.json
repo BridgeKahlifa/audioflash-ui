@@ -44,7 +44,10 @@
       }
     },
     "production": {
-      "ios": {},
+      "ios": {
+        "ascAppId": "6761799123",
+        "appleTeamId": "UTS33LWLQV"
+      },
       "android": {
         "track": "production",
         "releaseStatus": "draft"
