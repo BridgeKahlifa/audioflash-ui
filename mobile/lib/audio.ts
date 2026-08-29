@@ -11,6 +11,19 @@ let iosSessionKeeper:
   | null = null;
 let iosSessionSetupPromise: Promise<void> | null = null;
 
+export type MissingSpeechVoice = {
+  language: string;
+  locale: string;
+};
+
+let missingVoiceHandler: ((requirement: MissingSpeechVoice) => void) | null = null;
+
+export function setMissingSpeechVoiceHandler(
+  handler: ((requirement: MissingSpeechVoice) => void) | null,
+): void {
+  missingVoiceHandler = handler;
+}
+
 // Expo AV only applies the iOS playback category once an AV object is active.
 // A muted looping silent sound keeps that session alive while expo-speech speaks.
 const SILENT_WAV_DATA_URI =
@@ -108,6 +121,50 @@ const LANGUAGE_TO_BCP47: Record<string, string> = {
 
 export function languageToBcp47(language: string): string {
   return LANGUAGE_TO_BCP47[language.toLowerCase()] ?? "zh-CN";
+}
+
+function requiredVoice(language: string): MissingSpeechVoice | null {
+  const normalized = language.trim().toLowerCase();
+  if (normalized.includes("chinese") || normalized === "mandarin" || normalized.startsWith("zh-")) {
+    const locale = normalized.includes("traditional") || normalized.includes("taiwan")
+      ? "zh-TW"
+      : languageToBcp47(language);
+    return { language: "Chinese", locale };
+  }
+  if (normalized.includes("japanese") || normalized.startsWith("ja-")) {
+    return { language: "Japanese", locale: "ja-JP" };
+  }
+  return null;
+}
+
+function normalizeLocale(locale: string): string {
+  return locale.replace(/_/g, "-").toLowerCase();
+}
+
+export async function ensureSpeechVoiceAvailable(language: string): Promise<boolean> {
+  if (Platform.OS !== "android") return true;
+
+  const requirement = requiredVoice(language);
+  if (!requirement) return true;
+
+  try {
+    const voices = await Speech.getAvailableVoicesAsync();
+    const requiredLocale = normalizeLocale(requirement.locale);
+    const requiredLanguage = requiredLocale.split("-")[0];
+    const available = voices.some((voice) => {
+      const voiceLocale = normalizeLocale(voice.language);
+      return voiceLocale === requiredLocale || voiceLocale.split("-")[0] === requiredLanguage;
+    });
+
+    if (!available) missingVoiceHandler?.(requirement);
+    return available;
+  } catch (error) {
+    captureGlobalHandledException(error, {
+      error_context: "audio_check_android_voice",
+      language,
+    });
+    return true;
+  }
 }
 
 let webSpeakTimer: ReturnType<typeof setTimeout> | null = null;

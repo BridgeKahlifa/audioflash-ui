@@ -24,6 +24,7 @@ import {
 import { API_CONFIG_ERROR } from "../lib/api";
 import { queryClient, QUERY_CACHE_PERSIST_KEY } from "../lib/query-client";
 import { SUPABASE_CONFIG_ERROR } from "../lib/supabase";
+import { SpeechVoiceRequirementProvider } from "../components/SpeechVoiceRequirementProvider";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -290,7 +291,9 @@ function ThemedAppShell() {
             <AuthProvider>
               <ConfigProvider>
                 <AppDataProvider>
-                  <RootNavigator />
+                  <SpeechVoiceRequirementProvider>
+                    <RootNavigator />
+                  </SpeechVoiceRequirementProvider>
                 </AppDataProvider>
               </ConfigProvider>
             </AuthProvider>

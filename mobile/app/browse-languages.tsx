@@ -7,6 +7,7 @@ import { ApiLanguage, fetchLanguages } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { captureHandledException, useAnalytics } from "../lib/analytics";
 import { LanguageFlag } from "../components/LanguageFlag";
+import { ensureSpeechVoiceAvailable } from "../lib/audio";
 
 
 function languageKey(label: string): string {
@@ -127,7 +128,11 @@ export default function BrowseLanguages() {
                 return (
                   <Pressable
                     key={language.id}
-                    onPress={() => available && setSelectedLanguage(language.id)}
+                    onPress={() => {
+                      if (!available) return;
+                      void ensureSpeechVoiceAvailable(language.language);
+                      setSelectedLanguage(language.id);
+                    }}
                     disabled={!available}
                     className={`rounded-2xl p-4 border-2 flex-row items-center ${
                       isSelected ? "bg-accent border-primary" : "bg-card border-transparent"

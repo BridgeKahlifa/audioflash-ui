@@ -8,6 +8,7 @@ import { useAuth } from "../../lib/auth-context";
 import { useLanguages, useCategories } from "../../lib/queries";
 import { useAppTheme } from "../../lib/theme-context";
 import { LanguageFlag } from "../../components/LanguageFlag";
+import { ensureSpeechVoiceAvailable } from "../../lib/audio";
 
 interface Topic {
   id: string;
@@ -102,6 +103,7 @@ export default function Categories() {
     }));
 
   async function handleSelectLanguage(lang: ApiLanguage) {
+    void ensureSpeechVoiceAvailable(lang.language);
     setResolvedLanguage(lang);
     setSavingLanguage(true);
     setErrorMessage("");

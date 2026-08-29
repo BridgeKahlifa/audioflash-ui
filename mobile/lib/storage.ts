@@ -150,7 +150,7 @@ const defaultSettings: AppSettings = {
   audioRate: 0.8,
   remindersEnabled: false,
   dailyGoalCards: 25,
-  matrixMode: true,
+  matrixMode: false,
   defaultDisplayMode: "audio-first",
 };
 
