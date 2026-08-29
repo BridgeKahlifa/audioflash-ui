@@ -128,6 +128,13 @@ export default function SignIn() {
               }
             </Pressable>
 
+            <Pressable
+              onPress={() => router.push("/(auth)/reviewer-sign-in")}
+              className="items-center py-2"
+            >
+              <Text className="text-muted text-sm underline">App reviewer sign-in</Text>
+            </Pressable>
+
             {/* {passkeySupported && (
               <>
                 <View className="flex-row items-center gap-3 mb-4">

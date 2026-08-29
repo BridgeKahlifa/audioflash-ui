@@ -11,7 +11,7 @@ Build the app for Android: npx eas-cli build --profile preview --platform androi
 
 
 
-
+BUILD prod app bundle: eas build --platform android --profile production
 
 
 IOS:

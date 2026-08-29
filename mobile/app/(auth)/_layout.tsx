@@ -5,6 +5,7 @@ export default function AuthLayout() {
     <Stack screenOptions={{ headerShown: false, animation: "none" }}>
       <Stack.Screen name="sign-in" />
       <Stack.Screen name="verify" options={{ animation: "none" }} />
+      <Stack.Screen name="reviewer-sign-in" options={{ animation: "slide_from_right" }} />
     </Stack>
   );
 }
