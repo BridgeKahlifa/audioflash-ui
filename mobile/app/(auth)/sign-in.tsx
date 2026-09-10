@@ -6,18 +6,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useAuth } from "../../lib/auth-context";
 import { useAnalytics } from "../../lib/analytics";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
 
 export default function SignIn() {
-  const { sendOtp, signInWithGoogle } = useAuth();
+  const { sendOtp, signInWithGoogle, signInWithApple, appleSignInSupported } = useAuth();
   const posthog = useAnalytics();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
 
   async function handleContinue() {
     if (!email.trim()) {
@@ -49,6 +51,18 @@ export default function SignIn() {
     }
   }
 
+  async function handleApple() {
+    setError(null);
+    setAppleLoading(true);
+    posthog?.capture("auth_apple_sign_in_started");
+    const { error } = await signInWithApple();
+    setAppleLoading(false);
+    if (error) {
+      setError(error);
+      posthog?.capture("auth_apple_sign_in_failed");
+    }
+  }
+
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} className="flex-1 bg-background">
       <KeyboardAvoidingView
@@ -70,8 +84,31 @@ export default function SignIn() {
               AudioFlash
             </Text>
             <Text className="text-muted mb-10">
-              Continue with Gmail or use your email to sign in or create a free account
+              {appleSignInSupported
+                ? "Continue with Apple or Gmail, or use your email to sign in or create a free account"
+                : "Continue with Gmail or use your email to sign in or create a free account"}
             </Text>
+
+            {appleSignInSupported && (
+              <View className="mb-4">
+                {appleLoading
+                  ? (
+                    <View className="h-14 rounded-2xl items-center justify-center bg-card border border-border">
+                      <ActivityIndicator color="#1A1A1A" />
+                    </View>
+                  )
+                  : (
+                    <AppleAuthentication.AppleAuthenticationButton
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                      cornerRadius={16}
+                      style={{ width: "100%", height: 56 }}
+                      onPress={handleApple}
+                    />
+                  )
+                }
+              </View>
+            )}
 
             <Pressable
               onPress={handleGoogle}

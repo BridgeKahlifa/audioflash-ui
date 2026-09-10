@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { Session, User } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import * as ExpoLinking from "expo-linking";
@@ -33,6 +34,8 @@ interface AuthContextValue {
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
+  appleSignInSupported: boolean;
+  signInWithApple: () => Promise<{ error: string | null }>;
   completeOAuthRedirect: (url: string) => Promise<{ handled: boolean; error: string | null }>;
   // Passkey flow
   passkeySupported: boolean;
@@ -64,6 +67,18 @@ function getPasskeyModule(): PasskeyModule | null {
     return passkeyModule.Passkey ?? null;
   } catch (error) {
     console.warn("[auth] Passkey native module unavailable", error);
+    return null;
+  }
+}
+
+type AppleAuthenticationModule = typeof import("expo-apple-authentication");
+
+function getAppleAuthModule(): AppleAuthenticationModule | null {
+  if (Platform.OS !== "ios") return null;
+  try {
+    return require("expo-apple-authentication") as AppleAuthenticationModule;
+  } catch (error) {
+    console.warn("[auth] Apple authentication native module unavailable", error);
     return null;
   }
 }
@@ -183,6 +198,40 @@ function getOAuthErrorMessage(error: unknown): string {
   return "We couldn't sign you in with Google right now. Please try again.";
 }
 
+function isAppleCancellation(error: unknown): boolean {
+  const code = (error as any)?.code;
+  if (code === "ERR_REQUEST_CANCELED" || code === "ERR_CANCELED") return true;
+  const raw = typeof (error as any)?.message === "string" ? (error as any).message : "";
+  return raw.toLowerCase().includes("canceled") || raw.toLowerCase().includes("cancelled");
+}
+
+function getAppleErrorMessage(error: unknown): string {
+  const raw = typeof (error as any)?.message === "string"
+    ? (error as any).message
+    : typeof error === "string"
+      ? error
+      : "";
+  const message = raw.toLowerCase();
+
+  if (message.includes("network") || message.includes("failed to fetch") || message.includes("offline")) {
+    return "We couldn't reach Apple sign-in. Check your connection and try again.";
+  }
+
+  return "We couldn't sign you in with Apple right now. Please try again.";
+}
+
+function formatAppleFullName(fullName: {
+  givenName?: string | null;
+  familyName?: string | null;
+} | null | undefined): string | null {
+  if (!fullName) return null;
+  const name = [fullName.givenName, fullName.familyName]
+    .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+    .map((part) => part.trim())
+    .join(" ");
+  return name.length > 0 ? name : null;
+}
+
 function isOAuthCancellation(error: unknown): boolean {
   const raw = typeof (error as any)?.message === "string"
     ? (error as any).message
@@ -231,6 +280,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [passkeySupported, setPasskeySupported] = useState(false);
+  const [appleSignInSupported, setAppleSignInSupported] = useState(false);
   const posthog = useAnalytics();
   const lastProfileErrorRef = useRef<string | null>(null);
 
@@ -286,6 +336,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function ensureProfileRecord(user: User | null) {
     if (!user) return;
     await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
+  }
+
+  // Only fills a blank name: a user who has since renamed themselves keeps their choice.
+  async function persistAppleFullName(user: User | null, name: string | null) {
+    if (!user || !name) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ name })
+      .eq("id", user.id)
+      .is("name", null);
+    if (error) {
+      captureHandledException(posthog, error, {
+        error_context: "auth_persist_apple_full_name",
+        auth_method: "apple",
+      });
+    }
   }
 
   async function completeOAuthRedirect(url: string): Promise<{ handled: boolean; error: string | null }> {
@@ -354,6 +420,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (DEV_AUTH_MODE) {
       setSession(createDevSession());
       setPasskeySupported(false);
+      setAppleSignInSupported(false);
       setLoading(false);
       return;
     }
@@ -402,6 +469,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const passkey = getPasskeyModule();
     setPasskeySupported(passkey?.isSupported?.() ?? false);
+
+    const appleAuth = getAppleAuthModule();
+    if (appleAuth) {
+      void appleAuth.isAvailableAsync()
+        .then((available) => {
+          if (!cancelled) setAppleSignInSupported(available);
+        })
+        .catch((error) => {
+          console.warn("[auth] Apple sign-in availability check failed", error);
+          if (!cancelled) setAppleSignInSupported(false);
+        });
+    } else {
+      setAppleSignInSupported(false);
+    }
 
     return () => {
       cancelled = true;
@@ -519,6 +600,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: completion.error };
     } catch (authError) {
       return { error: getOAuthErrorMessage(authError) };
+    }
+  }
+
+  async function signInWithApple() {
+    if (DEV_AUTH_MODE) return { error: "Apple sign-in is disabled while EXPO_PUBLIC_AUTH_MODE=dev." };
+
+    const appleAuth = getAppleAuthModule();
+    if (!appleAuth) return { error: "Apple sign-in is not available on this device." };
+
+    try {
+      const credential = await appleAuth.signInAsync({
+        requestedScopes: [
+          appleAuth.AppleAuthenticationScope.FULL_NAME,
+          appleAuth.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        captureHandledException(posthog, new Error("apple_missing_identity_token"), {
+          error_context: "auth_sign_in_with_apple",
+          auth_method: "apple",
+          oauth_stage: "native_sign_in",
+        });
+        return { error: "Apple sign-in did not return a valid token. Please try again." };
+      }
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: credential.identityToken,
+      });
+      if (error) {
+        captureHandledException(posthog, error, {
+          error_context: "auth_sign_in_with_apple",
+          auth_method: "apple",
+          oauth_stage: "sign_in_with_id_token",
+        });
+        return { error: getAppleErrorMessage(error) };
+      }
+
+      await ensureProfileRecord(data.user);
+      // Apple returns the user's name only on the first authorization, so persist it now.
+      await persistAppleFullName(data.user, formatAppleFullName(credential.fullName));
+
+      return { error: null };
+    } catch (appleError) {
+      if (isAppleCancellation(appleError)) return { error: null };
+      captureHandledException(posthog, appleError, {
+        error_context: "auth_sign_in_with_apple",
+        auth_method: "apple",
+        oauth_stage: "native_sign_in",
+      });
+      return { error: getAppleErrorMessage(appleError) };
     }
   }
 
@@ -733,6 +866,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       verifyOtp,
       signInWithPassword,
       signInWithGoogle,
+      appleSignInSupported,
+      signInWithApple,
       completeOAuthRedirect,
       passkeySupported,
       registerPasskey,
