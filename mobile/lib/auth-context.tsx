@@ -11,6 +11,7 @@ import {
   DEV_AUTH_MODE,
   fetchProfile,
   updateProfile,
+  registerAppleCredential,
   deleteAccount as apiDeleteAccount,
 } from "./api";
 import { captureHandledException, useAnalytics } from "./analytics";
@@ -354,6 +355,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Apple requires tokens to be revoked when an account is deleted, which needs a
+  // refresh token the native flow never hands us — only the API can exchange the
+  // authorization code for one. Sign-in has already succeeded, so failures here are
+  // logged and swallowed rather than shown to the user.
+  async function registerAppleRevocationCredential(
+    accessToken: string | null | undefined,
+    authorizationCode: string | null | undefined,
+  ) {
+    if (!accessToken || !authorizationCode) return;
+    try {
+      await registerAppleCredential(accessToken, authorizationCode);
+    } catch (error) {
+      captureHandledException(posthog, error, {
+        error_context: "auth_register_apple_credential",
+        auth_method: "apple",
+      });
+    }
+  }
+
   async function completeOAuthRedirect(url: string): Promise<{ handled: boolean; error: string | null }> {
     const path = getOAuthCallbackPath(url);
     const params = getOAuthCallbackParams(url);
@@ -642,6 +662,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await ensureProfileRecord(data.user);
       // Apple returns the user's name only on the first authorization, so persist it now.
       await persistAppleFullName(data.user, formatAppleFullName(credential.fullName));
+      await registerAppleRevocationCredential(
+        data.session?.access_token,
+        credential.authorizationCode,
+      );
 
       return { error: null };
     } catch (appleError) {

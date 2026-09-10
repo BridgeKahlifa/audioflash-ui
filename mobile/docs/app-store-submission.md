@@ -99,7 +99,9 @@ ACCOUNT CREATION AND DELETION
 -----------------------------
 An account is required because decks and study progress sync across devices.
 Users can delete their account and all associated data in-app from Settings,
-with no support contact required.
+with no support contact required. For accounts created with Sign in with Apple,
+deletion also revokes the user's tokens through Apple's REST API
+(POST https://appleid.apple.com/auth/revoke) before the account is removed.
 
 THIRD-PARTY LOGIN (guideline 4.8)
 ---------------------------------
@@ -129,6 +131,13 @@ CONTACT
 - [ ] In the Apple Developer portal, enable the **Sign In with Apple** capability on the
       `ai.audioflash.mobile` App ID. `usesAppleSignIn: true` in `app.json` adds the entitlement
       to the build, but the App ID must allow it or the build is rejected at upload.
+- [ ] Create a **Sign in with Apple key** (Certificates, Identifiers & Profiles → Keys →
+      enable Sign in with Apple) and download the `.p8`. Apple shows it once. Then set
+      `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_CLIENT_ID`, and `APPLE_PRIVATE_KEY` in the
+      API environment — see `api/.env.example`. Without these the app still signs in, but
+      account deletion cannot revoke with Apple, which Apple requires.
+- [ ] Apply the `apple_credentials` migration
+      (`api/supabase/migrations/20260909000000_add_apple_credentials.sql`) to dev and prod.
 - [ ] If you ever email users directly, register Apple's private email relay domain in
       Certificates, Identifiers & Profiles → Sign In with Apple for Email Communication.
       Hide My Email addresses (`@privaterelay.appleid.com`) must keep working throughout.
