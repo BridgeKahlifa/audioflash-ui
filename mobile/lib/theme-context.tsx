@@ -37,7 +37,9 @@ const matrixThemeVars = vars({
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
-  const [matrixMode, setMatrixModeState] = useState(true);
+  // Start in the standard theme while persisted settings load. Matrix Mode is
+  // opt-in and should never flash for a new or signed-out user.
+  const [matrixMode, setMatrixModeState] = useState(false);
 
   useEffect(() => {
     const matrixFontFamily = Platform.select({
@@ -83,7 +85,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   const setMatrixMode = async (enabled: boolean) => {
     setMatrixModeState(enabled);
     const settings = await getSettings();
-    await setSettings({ ...settings, matrixMode: enabled });
+    await setSettings({ ...settings, matrixMode: enabled, matrixModeExplicit: true });
   };
 
   const value = useMemo<ThemeContextValue>(
