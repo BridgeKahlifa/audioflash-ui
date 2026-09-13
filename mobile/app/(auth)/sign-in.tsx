@@ -6,11 +6,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import * as AppleAuthentication from "expo-apple-authentication";
 import { useAuth } from "../../lib/auth-context";
 import { useAnalytics } from "../../lib/analytics";
 
 const LOGO_IMAGE = require("../../assets/AudioFlashLogo.png");
+
+// iOS-only native module: requiring it on Android or web would evaluate a module that
+// has no implementation there, before appleSignInSupported can gate the button.
+const AppleAuthentication: typeof import("expo-apple-authentication") | null =
+  Platform.OS === "ios" ? require("expo-apple-authentication") : null;
 
 export default function SignIn() {
   const { sendOtp, signInWithGoogle, signInWithApple, appleSignInSupported } = useAuth();
@@ -89,7 +93,7 @@ export default function SignIn() {
                 : "Continue with Gmail or use your email to sign in or create a free account"}
             </Text>
 
-            {appleSignInSupported && (
+            {appleSignInSupported && AppleAuthentication && (
               <View className="mb-4">
                 {appleLoading
                   ? (

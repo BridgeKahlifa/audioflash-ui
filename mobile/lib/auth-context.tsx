@@ -4,6 +4,7 @@ import { Session, User } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import * as ExpoLinking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
+import * as Crypto from "expo-crypto";
 import { supabase } from "./supabase";
 import {
   ApiProfile,
@@ -82,6 +83,18 @@ function getAppleAuthModule(): AppleAuthenticationModule | null {
     console.warn("[auth] Apple authentication native module unavailable", error);
     return null;
   }
+}
+
+// Apple embeds the nonce it is given verbatim in the identity token, while Supabase
+// hashes the nonce it is given and compares that to the claim. So Apple gets the hash
+// and Supabase gets the raw value; this is what binds the token to one sign-in attempt.
+async function createAppleNonce(): Promise<{ raw: string; hashed: string }> {
+  const bytes = await Crypto.getRandomBytesAsync(32);
+  const raw = Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw);
+  return { raw, hashed };
 }
 
 function createDevSession(): Session {
@@ -352,7 +365,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error_context: "auth_persist_apple_full_name",
         auth_method: "apple",
       });
+      return;
     }
+
+    // The write bypasses the query cache, and the SIGNED_IN listener may already have
+    // fetched a profile with a null name. Without this the UI and PostHog would show
+    // no name for the whole staleTime window after a first Apple sign-in.
+    await queryClient.invalidateQueries({ queryKey: queryKeys.profile(user.id) });
   }
 
   // Apple requires tokens to be revoked when an account is deleted, which needs a
@@ -630,11 +649,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!appleAuth) return { error: "Apple sign-in is not available on this device." };
 
     try {
+      const nonce = await createAppleNonce();
+
       const credential = await appleAuth.signInAsync({
         requestedScopes: [
           appleAuth.AppleAuthenticationScope.FULL_NAME,
           appleAuth.AppleAuthenticationScope.EMAIL,
         ],
+        nonce: nonce.hashed,
       });
 
       if (!credential.identityToken) {
@@ -649,6 +671,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: "apple",
         token: credential.identityToken,
+        nonce: nonce.raw,
       });
       if (error) {
         captureHandledException(posthog, error, {

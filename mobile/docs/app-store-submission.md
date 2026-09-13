@@ -5,7 +5,7 @@ Verified against the code at release 1.0.5.
 
 ## Part 1 — App Privacy answers
 
-Answer "Yes, we collect data from this app." Declare the four types below.
+Answer "Yes, we collect data from this app." Declare the six types below.
 
 ### Data collected
 
@@ -145,9 +145,9 @@ CONTACT
       `isAvailableAsync()` do not work in Expo Go, and the simulator needs an Apple ID
       signed in under Settings.
 - [ ] Create the review account in Supabase with a **password** (`signInWithPassword`,
-      `lib/auth-context.tsx:457`). An OTP-only account will not work.
+      `lib/auth-context.tsx`). An OTP-only account will not work.
 - [ ] Confirm `EXPO_PUBLIC_AUTH_MODE` is not `dev` in production — password sign-in is
-      disabled in dev auth mode (`lib/auth-context.tsx:458`).
+      disabled in dev auth mode (`lib/auth-context.tsx`).
 - [ ] Seed the review account with a few decks so the reviewer isn't looking at empty state.
 - [ ] Sign in as the reviewer on a **production-profile** build and confirm the flow end to end.
 - [ ] Fill in the email, password, and support email placeholders above.
