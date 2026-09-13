@@ -2,7 +2,7 @@
   "expo": {
     "name": "AudioFlash",
     "slug": "audio-flash",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "scheme": "audioflash",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -21,6 +21,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ai.audioflash.mobile",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Allow AudioFlash to connect to the local development server on your Mac.",
         "ITSAppUsesNonExemptEncryption": false
@@ -40,7 +41,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-apple-authentication"
     ],
     "extra": {
       "router": {},

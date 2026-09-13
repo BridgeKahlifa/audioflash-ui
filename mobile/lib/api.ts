@@ -338,6 +338,27 @@ export async function deleteAccount(
   if (!res.ok) throw await buildApiError(res);
 }
 
+// Hand-written rather than generated: the endpoint post-dates the last
+// `npm run gen:api-types` run, which needs a live API to read /openapi.json from.
+export interface ApiRegisterAppleCredential {
+  authorization_code: string;
+}
+
+/** Hands Apple's one-shot authorization code to the API, which exchanges it for a
+ *  refresh token so the account can be revoked with Apple on deletion. */
+export async function registerAppleCredential(
+  token: string | null | undefined,
+  authorizationCode: string,
+): Promise<void> {
+  const body: ApiRegisterAppleCredential = { authorization_code: authorizationCode };
+  const res = await apiFetch(`${API_BASE_URL}/auth/apple/credential`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw await buildApiError(res);
+}
+
 export async function fetchSessions(
   token?: string | null,
 ): Promise<ApiSession[]> {
