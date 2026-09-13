@@ -111,6 +111,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 export default function TabsLayout() {
   return (
     <Tabs
+      backBehavior="history"
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, animation: "none" }}
     >

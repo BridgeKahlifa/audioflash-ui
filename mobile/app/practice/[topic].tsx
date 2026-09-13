@@ -8,6 +8,8 @@ import {
   ScrollView,
   LayoutChangeEvent,
   Platform,
+  Alert,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -34,6 +36,7 @@ import { getLessonTraditionalFlashcardFront } from "../../lib/lesson-card-prefer
 
 export default function FlashcardPractice() {
   const insets = useSafeAreaInsets();
+  const leavePromptOpenRef = useRef(false);
   const {
     topic,
     topicTitle,
@@ -607,6 +610,46 @@ export default function FlashcardPractice() {
     });
   }
 
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (leavePromptOpenRef.current || submitting) return true;
+
+      leavePromptOpenRef.current = true;
+      Alert.alert(
+        "Leave this lesson?",
+        "Your completed cards are saved. You can return and continue the lesson later.",
+        [
+          {
+            text: "Keep Learning",
+            style: "cancel",
+            onPress: () => {
+              leavePromptOpenRef.current = false;
+            },
+          },
+          {
+            text: "Leave Lesson",
+            style: "destructive",
+            onPress: () => {
+              leavePromptOpenRef.current = false;
+              handleBackNavigation();
+            },
+          },
+        ],
+        {
+          cancelable: true,
+          onDismiss: () => {
+            leavePromptOpenRef.current = false;
+          },
+        },
+      );
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [submitting]);
+
   // ── Render ─────────────────────────────────────────────────────────────────
   if (!displayModeResolved || cards.length === 0 || !currentCard) {
     return (
@@ -841,7 +884,9 @@ export default function FlashcardPractice() {
 
           {shouldShowAnswerActions ? (
             <>
-              <View className="items-center gap-3">
+              {/* SRS confidence controls are intentionally hidden until the
+                  confidence-based scheduling flow is ready. */}
+              {/* <View className="items-center gap-3">
                 <Text className="text-sm font-medium text-muted" style={{ color: palette.muted, fontFamily: palette.fontFamily }}>How confident were you?</Text>
                 <View className="flex-row gap-2">
                   {[1, 2, 3, 4, 5].map((value) => {
@@ -869,7 +914,7 @@ export default function FlashcardPractice() {
                     );
                   })}
                 </View>
-              </View>
+              </View> */}
               <View className="flex-row gap-3">
                 <Pressable
                   onPress={() => void onResult(false)}

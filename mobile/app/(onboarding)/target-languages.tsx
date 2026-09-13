@@ -7,7 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAuth } from "../../lib/auth-context";
 import { captureHandledException, useAnalytics } from "../../lib/analytics";
-import { fetchLanguages, ApiLanguage } from "../../lib/api";
+import { fetchCategories, fetchLanguages, ApiLanguage } from "../../lib/api";
 import { StepDots } from "../../components/onboarding/StepDots";
 import { LanguageFlag } from "../../components/LanguageFlag";
 
@@ -18,13 +18,21 @@ function normalizeLanguageName(value: string): string {
 }
 
 export default function OnboardingTargetLanguages() {
-  const { updateProfileData } = useAuth();
+  const { session, profile, updateProfileData } = useAuth();
   const posthog = useAnalytics();
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loadingLanguages, setLoadingLanguages] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The global auth guard deliberately lets this screen finish its custom
+  // handoff. A completed user who opens this route directly still goes home.
+  useEffect(() => {
+    if (profile?.onboarding_completed && !saving && selectedIds.length === 0) {
+      router.replace("/(tabs)");
+    }
+  }, [profile?.onboarding_completed, saving, selectedIds.length]);
 
   useEffect(() => {
     fetchLanguages()
@@ -58,14 +66,33 @@ export default function OnboardingTargetLanguages() {
 
   function toggleLanguage(id: string) {
     setError(null);
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? [] : [id]));
   }
 
   async function handleContinue() {
     if (selectedIds.length === 0) return;
     setSaving(true);
+    setError(null);
+
+    const targetLanguageId = selectedIds[0];
+    const targetLanguage = languages.find(
+      (language) => String(language.id) === targetLanguageId,
+    );
+
+    let starterCategory = null;
+    try {
+      const categories = await fetchCategories(session?.access_token ?? null, targetLanguageId);
+      starterCategory = categories.find((category) => {
+        const name = category.name.trim().toLowerCase();
+        return name.includes("essential") && name.includes("greeting");
+      }) ?? null;
+    } catch (loadError) {
+      captureHandledException(posthog, loadError, {
+        error_context: "onboarding_load_starter_category",
+        target_language_id: targetLanguageId,
+      });
+    }
+
     const { error } = await updateProfileData({
       target_language_ids: selectedIds,
       onboarding_completed: true,
@@ -77,7 +104,36 @@ export default function OnboardingTargetLanguages() {
     }
     posthog?.capture("onboarding_target_languages_set", { count: selectedIds.length });
     posthog?.capture("onboarding_completed", { target_language_count: selectedIds.length });
-    router.replace("/(tabs)");
+
+    if (!starterCategory || !targetLanguage) {
+      router.replace("/(tabs)/categories");
+      return;
+    }
+
+    const cardsAtLevelOne = starterCategory.cards_by_difficulty?.[1];
+    router.replace({
+      pathname: "/first-lesson",
+      params: {
+        topic: `category-${starterCategory.id}`,
+        topicTitle: starterCategory.name,
+        language: targetLanguage.language.toLowerCase().replace(/\s+/g, "-"),
+        languageLabel: targetLanguage.language,
+        apiLanguageId: targetLanguageId,
+        apiCategoryId: String(starterCategory.id),
+        apiLoaded: "true",
+        supportedDifficulties: (starterCategory.supported_difficulties ?? []).join(","),
+        selectedDifficulty: "1",
+        availableCardCount:
+          typeof cardsAtLevelOne === "number"
+            ? String(cardsAtLevelOne)
+            : typeof starterCategory.total_cards === "number"
+              ? String(starterCategory.total_cards)
+              : "",
+        cardsByDifficulty: starterCategory.cards_by_difficulty
+          ? JSON.stringify(starterCategory.cards_by_difficulty)
+          : "",
+      },
+    });
   }
 
   const canContinue = selectedIds.length > 0;
@@ -93,7 +149,7 @@ export default function OnboardingTargetLanguages() {
           What do you want to learn?
         </Text>
         <Text className="text-muted mb-6">
-          Pick one or more languages. You can always add more later.
+          Pick a language. You can change it later in Settings.
         </Text>
 
         {loadingLanguages ? (
