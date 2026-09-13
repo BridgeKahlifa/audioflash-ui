@@ -172,6 +172,8 @@ function RootNavigator() {
 
     const inAuthGroup = segments[0] === "(auth)" || segments[0] === "auth";
     const inOnboardingGroup = segments[0] === "(onboarding)";
+    const inOnboardingCompletionScreen =
+      inOnboardingGroup && segments.join("/") === "(onboarding)/target-languages";
     const needsOnboarding = profile != null && !profile.onboarding_completed;
 
     console.log("[startup][redirect-check]", {
@@ -193,7 +195,12 @@ function RootNavigator() {
     } else if (isAuthenticated && needsOnboarding && !inOnboardingGroup) {
       console.log("[startup][redirect]", "/(onboarding)");
       router.replace("/(onboarding)");
-    } else if (isAuthenticated && !needsOnboarding && inOnboardingGroup) {
+    } else if (
+      isAuthenticated &&
+      !needsOnboarding &&
+      inOnboardingGroup &&
+      !inOnboardingCompletionScreen
+    ) {
       console.log("[startup][redirect]", "/(tabs)");
       router.replace("/(tabs)");
     }
@@ -207,6 +214,7 @@ function RootNavigator() {
         <Stack.Screen name="(onboarding)" />
         <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
         <Stack.Screen name="generate" options={{ animation: "none" }} />
+        <Stack.Screen name="first-lesson" options={{ animation: "fade" }} />
         <Stack.Screen name="lesson-ready/[topic]" options={{ animation: "none" }} />
         <Stack.Screen name="practice/[topic]" options={{ animation: "none" }} />
         <Stack.Screen name="session-summary" options={{ animation: "none" }} />
