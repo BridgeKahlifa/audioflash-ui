@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Modal,
 } from "react-native";
 import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -88,7 +89,35 @@ export default function SettingsScreen() {
   const posthog = useAnalytics();
   const navigation = useNavigation();
   const { matrixMode, setMatrixMode, fontFamily } = useAppTheme();
+  const deleteDialogPalette = matrixMode
+    ? {
+        surface: "#0A0A0A",
+        border: "#5C261A",
+        title: "#FF8C42",
+        body: "#C9704D",
+        iconBackground: "#29110B",
+        cancelBackground: "#1A1A1A",
+        cancelText: "#FF8C42",
+        errorBackground: "#2D1010",
+        errorBorder: "#7F1D1D",
+        errorText: "#FCA5A5",
+      }
+    : {
+        surface: "#FFFDFC",
+        border: "#F2CBBE",
+        title: "#2F1E19",
+        body: "#6B544D",
+        iconBackground: "#FEE2E2",
+        cancelBackground: "#FBE7DE",
+        cancelText: "#2F1E19",
+        errorBackground: "#FEF2F2",
+        errorBorder: "#FECACA",
+        errorText: "#B91C1C",
+      };
   const [errorMessage, setErrorMessage] = useState("");
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const [name, setName] = useState(profile?.name ?? "");
   const [nameStatus, setNameStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -218,25 +247,25 @@ export default function SettingsScreen() {
   }
 
   function confirmDelete() {
-    Alert.alert(
-      "Delete Account",
-      "This will permanently delete your account and all your data. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            const { error } = await deleteAccount();
-            if (error) {
-              Alert.alert("Error", error);
-            } else {
-              posthog?.capture("account_deleted");
-            }
-          },
-        },
-      ]
-    );
+    setDeleteError("");
+    setShowDeleteConfirmation(true);
+  }
+
+  async function performAccountDeletion() {
+    if (isDeletingAccount) return;
+    setDeleteError("");
+    setIsDeletingAccount(true);
+    try {
+      const { error } = await deleteAccount();
+      if (error) {
+        setDeleteError(error);
+        return;
+      }
+      posthog?.capture("account_deleted");
+      setShowDeleteConfirmation(false);
+    } finally {
+      setIsDeletingAccount(false);
+    }
   }
 
   const targetLanguageLabel = targetLanguageIds.length === 0
@@ -539,7 +568,10 @@ export default function SettingsScreen() {
                       <Pressable
                         key={tier}
                         disabled={setTier.isPending || active}
-                        onPress={() => setTier.mutate(tier)}
+                        onPress={() => {
+                          setTier.reset();
+                          setTier.mutate(tier);
+                        }}
                         className={`flex-1 flex-row items-center justify-center gap-2 rounded-2xl border px-4 py-3 ${active ? "bg-accent border-primary" : "bg-secondary border-transparent"
                           }`}
                         accessibilityRole="radio"
@@ -559,9 +591,15 @@ export default function SettingsScreen() {
                   })}
                 </View>
                 {setTier.isError ? (
-                  <Text className="text-xs text-red-500 mt-3" style={{ fontFamily }}>
-                    Couldn't change tier. Is the API running with TIER_OVERRIDE_ENABLED=true?
-                  </Text>
+                  <View className="bg-secondary rounded-xl px-3 py-3 mt-3">
+                    <Text className="text-xs text-foreground font-medium" style={{ fontFamily }}>
+                      Tier controls are unavailable
+                    </Text>
+                    <Text className="text-xs text-muted mt-1" style={{ fontFamily }}>
+                      This development API does not allow subscription overrides. Enable
+                      TIER_OVERRIDE_ENABLED on the API to test another tier.
+                    </Text>
+                  </View>
                 ) : null}
               </View>
             </>
@@ -614,10 +652,20 @@ export default function SettingsScreen() {
                   <Ionicons name="mail-outline" size={18} color="#6B7280" />
                   <Text className="text-foreground font-medium" style={{ fontFamily }}>Contact Support</Text>
                 </Pressable>
-                {/* <Pressable onPress={confirmDelete} className="flex-row items-center gap-2 p-4">
+                <Pressable
+                  onPress={confirmDelete}
+                  disabled={isDeletingAccount}
+                  className={`flex-row items-center gap-2 p-4 ${isDeletingAccount ? "opacity-50" : ""}`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete account permanently"
+                  accessibilityState={{ disabled: isDeletingAccount }}
+                >
                   <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                  <Text className="text-red-500 font-medium" style={{ fontFamily }}>Delete Account</Text>
-                </Pressable> */}
+                  <Text className="text-red-500 font-medium flex-1" style={{ fontFamily }}>
+                    Delete Account
+                  </Text>
+                  {isDeletingAccount ? <ActivityIndicator size="small" color="#EF4444" /> : null}
+                </Pressable>
               </>
             )}
           </View>
@@ -633,6 +681,134 @@ export default function SettingsScreen() {
         onToggle={selectTargetLanguage}
         onClose={() => setShowTargetPicker(false)}
       />
+
+      <Modal
+        visible={showDeleteConfirmation}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isDeletingAccount) setShowDeleteConfirmation(false);
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.62)",
+            paddingHorizontal: 24,
+            paddingVertical: 32,
+          }}
+        >
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 440,
+              borderRadius: 24,
+              borderWidth: 1,
+              borderColor: deleteDialogPalette.border,
+              backgroundColor: deleteDialogPalette.surface,
+              padding: 24,
+              shadowColor: "#000000",
+              shadowOffset: { width: 0, height: 12 },
+              shadowOpacity: 0.3,
+              shadowRadius: 24,
+              elevation: 16,
+            }}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+                backgroundColor: deleteDialogPalette.iconBackground,
+              }}
+            >
+              <Ionicons name="trash-outline" size={24} color="#DC2626" />
+            </View>
+            <Text
+              style={{ color: deleteDialogPalette.title, fontFamily, fontSize: 20, fontWeight: "600", lineHeight: 28 }}
+            >
+              Permanently delete account?
+            </Text>
+            <Text
+              style={{ color: deleteDialogPalette.body, fontFamily, fontSize: 14, lineHeight: 21, marginTop: 12 }}
+            >
+              Your AudioFlash account and all associated learning data will be deleted
+              immediately. This action cannot be undone.
+            </Text>
+            <Text
+              style={{ color: deleteDialogPalette.body, fontFamily, fontSize: 14, lineHeight: 21, marginTop: 12 }}
+            >
+              Any subscription billed by Apple or Google must be cancelled separately in your
+              device's subscription settings.
+            </Text>
+            {deleteError ? (
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: deleteDialogPalette.errorBorder,
+                  backgroundColor: deleteDialogPalette.errorBackground,
+                  borderRadius: 12,
+                  padding: 12,
+                  marginTop: 16,
+                }}
+              >
+                <Text style={{ color: deleteDialogPalette.errorText, fontFamily, fontSize: 14, lineHeight: 20 }}>
+                  {deleteError}
+                </Text>
+              </View>
+            ) : null}
+            <View style={{ flexDirection: "row", gap: 12, marginTop: 24 }}>
+              <Pressable
+                disabled={isDeletingAccount}
+                onPress={() => setShowDeleteConfirmation(false)}
+                accessibilityRole="button"
+                style={{
+                  flex: 1,
+                  minHeight: 48,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 16,
+                  backgroundColor: deleteDialogPalette.cancelBackground,
+                  opacity: isDeletingAccount ? 0.6 : 1,
+                }}
+              >
+                <Text style={{ color: deleteDialogPalette.cancelText, fontFamily, fontWeight: "600" }}>
+                  Keep Account
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={isDeletingAccount}
+                onPress={performAccountDeletion}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm permanent account deletion"
+                accessibilityState={{ disabled: isDeletingAccount, busy: isDeletingAccount }}
+                style={{
+                  flex: 1,
+                  minHeight: 48,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 16,
+                  backgroundColor: "#DC2626",
+                  opacity: isDeletingAccount ? 0.6 : 1,
+                }}
+              >
+                {isDeletingAccount ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={{ color: "#FFFFFF", fontFamily, fontWeight: "600" }}>Delete Forever</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
