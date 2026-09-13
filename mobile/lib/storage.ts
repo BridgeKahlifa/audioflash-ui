@@ -150,7 +150,8 @@ const defaultSettings: AppSettings = {
   audioRate: 0.8,
   remindersEnabled: false,
   dailyGoalCards: 25,
-  matrixMode: true,
+  matrixMode: false,
+  matrixModeExplicit: false,
   defaultDisplayMode: "audio-first",
 };
 
@@ -263,6 +264,12 @@ export async function getSettings(): Promise<AppSettings> {
     const raw = await AsyncStorage.getItem(KEYS.SETTINGS);
     if (!raw) return defaultSettings;
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
+
+    // Matrix Mode used to default to on. Treat that legacy value as unset so
+    // existing signed-out/new users do not inherit the old dark appearance.
+    if (parsed.matrixModeExplicit !== true) {
+      parsed.matrixMode = false;
+    }
 
     // Migrate the previous default of 20 cards to the new default of 5
     // without overriding any other custom setting.

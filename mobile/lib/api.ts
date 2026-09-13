@@ -331,7 +331,7 @@ export async function updateProfile(
 export async function deleteAccount(
   token: string | null | undefined,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/profile`, {
+  const res = await fetch(`${API_BASE_URL}/account`, {
     method: "DELETE",
     headers: authHeaders(token),
   });

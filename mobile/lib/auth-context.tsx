@@ -690,7 +690,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (DEV_AUTH_MODE) return { error: "Account deletion is unavailable while EXPO_PUBLIC_AUTH_MODE=dev." };
     try {
       await apiDeleteAccount(authToken);
-      await supabase.auth.signOut();
+      // The server has already permanently deleted the account. Clear the local
+      // session best-effort so a transient Supabase error cannot make the UI
+      // incorrectly report that deletion failed.
+      await supabase.auth.signOut().catch(() => undefined);
       await clearQueryCache();
       return { error: null };
     } catch (e: any) {
