@@ -69,6 +69,7 @@ export default function LessonReady() {
     shuffleEnabled: shuffleEnabledParam,
     displayMode: displayModeParam,
     traditionalFront: traditionalFrontParam,
+    autoStart,
   } =
     useLocalSearchParams<{
       topic: string;
@@ -86,6 +87,7 @@ export default function LessonReady() {
       shuffleEnabled?: string;
       displayMode?: string;
       traditionalFront?: string;
+      autoStart?: string;
     }>();
 
   const [status, setStatus] = useState<"ready" | "empty" | "error">("ready");
@@ -108,6 +110,7 @@ export default function LessonReady() {
       : (profile?.cards_per_session ?? DEFAULT_CARD_COUNT);
   });
   const startLockRef = useRef(false);
+  const autoStartAttemptedRef = useRef(false);
   const routeAvailableCardCount = resolveAvailableCardCount(availableCardCountParam);
   const categoryAvailableCardCount = categories.find(
     (category) => String(category.id) === String(apiCategoryId),
@@ -410,6 +413,20 @@ export default function LessonReady() {
       startLockRef.current = false;
     }
   };
+
+  useEffect(() => {
+    if (
+      autoStart !== "true" ||
+      autoStartAttemptedRef.current ||
+      status !== "ready" ||
+      !canStart
+    ) {
+      return;
+    }
+
+    autoStartAttemptedRef.current = true;
+    void handleStart();
+  }, [autoStart, canStart, status]);
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} className="flex-1 bg-background">

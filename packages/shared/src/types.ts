@@ -71,5 +71,7 @@ export interface AppSettings {
   remindersEnabled: boolean;
   dailyGoalCards: number;
   matrixMode: boolean;
+  /** Distinguishes an intentional choice from the app's former dark default. */
+  matrixModeExplicit?: boolean;
   defaultDisplayMode: FlashcardDisplayMode;
 }
