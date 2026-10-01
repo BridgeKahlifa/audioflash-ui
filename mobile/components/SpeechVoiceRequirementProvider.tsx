@@ -63,7 +63,7 @@ export function SpeechVoiceRequirementProvider({ children }: PropsWithChildren) 
                   5. Check which Preferred engine is selected (Google or Samsung){"\n"}
                   6. Tap the gear/settings icon next to the selected engine{"\n"}
                   7. Tap Install voice data{"\n"}
-                  8. Find Chinese and Japanese and download/install both voices
+                  8. Find {requirement?.language} and download/install its voice
                 </Text>
                 <Text className="text-muted text-sm leading-5 mt-3">
                   Once they're installed, completely close AudioFlash and reopen it, then try the audio again.

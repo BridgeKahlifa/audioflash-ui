@@ -115,6 +115,13 @@ export function setAnalyticsClient(client: AnalyticsClient) {
   globalAnalyticsClient = client;
 }
 
+export function captureGlobalEvent(
+  event: string,
+  context: AnalyticsProperties = {},
+) {
+  globalAnalyticsClient?.capture(event, sanitizeAnalyticsProperties(context));
+}
+
 export function captureHandledException(
   posthog: AnalyticsClient,
   error: unknown,
