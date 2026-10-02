@@ -375,6 +375,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
         categoryId,
         deckId,
         difficulty: typeof difficulty === "number" ? String(difficulty) : undefined,
+        displayMode,
       },
     });
 

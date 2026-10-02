@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ApiLanguage } from "../lib/api";
+import { ensureSpeechVoiceAvailable } from "../lib/audio";
 
 type LanguagePickerModalProps = {
   visible: boolean;
@@ -59,6 +60,7 @@ export function LanguagePickerModal({
                 <Pressable
                   key={String(lang.id)}
                   onPress={() => {
+                    void ensureSpeechVoiceAvailable(lang.language);
                     onToggle(String(lang.id));
                     if (!multiSelect) onClose();
                   }}
