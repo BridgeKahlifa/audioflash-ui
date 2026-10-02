@@ -260,12 +260,19 @@ export default function SessionSummary() {
   const insets = useSafeAreaInsets();
   const { session: authSession } = useAuth();
   const posthog = useAnalytics();
-  const { categoryId: categoryIdParam, deckId: deckIdParam, difficulty: difficultyParam } = useLocalSearchParams<{
+  const {
+    categoryId: categoryIdParam,
+    deckId: deckIdParam,
+    difficulty: difficultyParam,
+    displayMode: displayModeParam,
+  } = useLocalSearchParams<{
     categoryId?: string;
     deckId?: string;
     difficulty?: string;
+    displayMode?: string;
   }>();
   const [session, setSession] = useState<SessionHistoryItem | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [startingReview, setStartingReview] = useState(false);
   const [gradeHistory, setGradeHistory] = useState<GradeHistoryPoint[]>([]);
   const [loadingGradeHistory, setLoadingGradeHistory] = useState(false);
@@ -284,15 +291,27 @@ export default function SessionSummary() {
       : Number.isFinite(parsedDifficulty)
         ? parsedDifficulty
         : undefined;
-  const effectiveDisplayMode = session?.displayMode;
+  const routeDisplayMode =
+    displayModeParam === "traditional"
+      ? "traditional"
+      : displayModeParam === "audio" || displayModeParam === "audio-first"
+        ? "audio-first"
+        : undefined;
+  const effectiveDisplayMode =
+    session?.displayMode ?? routeDisplayMode ?? (sessionLoaded ? "audio-first" : undefined);
+  const isReviewSession = session?.language === "review";
 
   useEffect(() => {
-    getLastSession().then(setSession);
+    getLastSession()
+      .then(setSession)
+      .finally(() => setSessionLoaded(true));
   }, []);
 
   useEffect(() => {
     if (
       !authSession?.access_token ||
+      isReviewSession ||
+      !effectiveDisplayMode ||
       (!effectiveCategoryId && !effectiveDeckId)
     ) {
       setGradeHistory([]);
@@ -346,6 +365,7 @@ export default function SessionSummary() {
     effectiveDeckId,
     effectiveDifficulty,
     effectiveDisplayMode,
+    isReviewSession,
   ]);
 
   const missed = useMemo(
@@ -359,8 +379,10 @@ export default function SessionSummary() {
     session && session.total > 0
       ? Math.round((session.correct / session.total) * 100)
       : 0;
-  const isReviewSession = session?.language === "review";
-  const sessionGradePoint = useMemo(() => getSessionGradePoint(session), [session]);
+  const sessionGradePoint = useMemo(
+    () => (isReviewSession ? null : getSessionGradePoint(session)),
+    [isReviewSession, session],
+  );
   const displayedGradeHistory = useMemo(() => {
     if (!sessionGradePoint) return gradeHistory;
     if (gradeHistory.some((point) => isSameGradeHistoryPoint(point, sessionGradePoint))) {
@@ -507,12 +529,22 @@ export default function SessionSummary() {
             </View>
           ) : null}
 
-          <View className="bg-card border border-border rounded-2xl p-5 mb-4">
-            <Text className="text-muted text-xs mb-2">{session.languageLabel} · {session.topicTitle}</Text>
-            <Text className="text-3xl font-semibold text-foreground">{session.correct}/{session.total}</Text>
-            <Text className="text-muted mt-1">Accuracy: {accuracy}%</Text>
-            <Text className="text-muted mt-1">Missed: {missedCount}</Text>
-          </View>
+          {isReviewSession ? (
+            <View className="bg-card border border-border rounded-2xl p-5 mb-4">
+              <Text className="text-muted text-xs mb-2">{session.topicTitle}</Text>
+              <Text className="text-2xl font-semibold text-foreground">Review complete</Text>
+              <Text className="text-muted mt-1">
+                Cards reviewed: {session.total}
+              </Text>
+            </View>
+          ) : (
+            <View className="bg-card border border-border rounded-2xl p-5 mb-4">
+              <Text className="text-muted text-xs mb-2">{session.languageLabel} · {session.topicTitle}</Text>
+              <Text className="text-3xl font-semibold text-foreground">{session.correct}/{session.total}</Text>
+              <Text className="text-muted mt-1">Accuracy: {accuracy}%</Text>
+              <Text className="text-muted mt-1">Missed: {missedCount}</Text>
+            </View>
+          )}
 
           {!isReviewSession ? (
             <View className="bg-card border border-border rounded-2xl p-5 mb-4">
