@@ -424,6 +424,7 @@ export async function saveCompletedSession(input: {
   deckId?: string;
   difficulty?: number;
   displayMode?: FlashcardDisplayMode;
+  isRetry?: boolean;
   cards: SessionCardResult[];
   total?: number;
   correct?: number;
@@ -446,6 +447,7 @@ export async function saveCompletedSession(input: {
     deckId: input.deckId,
     difficulty: input.difficulty,
     displayMode: input.displayMode,
+    isRetry: input.isRetry,
     correct,
     total,
     missedCount: Math.max(total - correct, 0),

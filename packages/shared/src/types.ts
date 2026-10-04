@@ -43,6 +43,7 @@ export interface SessionHistoryItem {
   deckId?: string;
   difficulty?: number;
   displayMode?: FlashcardDisplayMode;
+  isRetry?: boolean;
   correct: number;
   total: number;
   missedCount?: number;
