@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Circle, Line, Polyline } from "react-native-svg";
 import { SessionHistoryItem } from "../lib/types";
-import { getLastSession, setCurrentCards } from "../lib/storage";
+import { getLastSession, getSessionHistory, setCurrentCards } from "../lib/storage";
 import { useAuth } from "../lib/auth-context";
 import { fetchGradeChart, startReviewLifecycle } from "../lib/api";
 import { captureHandledException, useAnalytics } from "../lib/analytics";
@@ -15,8 +15,21 @@ interface GradeHistoryPoint {
   grade: number;
 }
 
+const SAME_SESSION_TIME_TOLERANCE_MS = 60_000;
+
 function isSameGradeHistoryPoint(a: GradeHistoryPoint, b: GradeHistoryPoint): boolean {
-  return a.endedAt === b.endedAt && a.grade === b.grade;
+  if (a.grade !== b.grade) return false;
+
+  const aTime = new Date(a.endedAt).getTime();
+  const bTime = new Date(b.endedAt).getTime();
+
+  if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) {
+    return a.endedAt === b.endedAt;
+  }
+
+  // The server records ended_at before the local session summary is saved, so
+  // the same completion normally has two timestamps a few milliseconds apart.
+  return Math.abs(aTime - bTime) <= SAME_SESSION_TIME_TOLERANCE_MS;
 }
 
 function getSessionGradePoint(session: SessionHistoryItem | null): GradeHistoryPoint | null {
@@ -260,12 +273,19 @@ export default function SessionSummary() {
   const insets = useSafeAreaInsets();
   const { session: authSession } = useAuth();
   const posthog = useAnalytics();
-  const { categoryId: categoryIdParam, deckId: deckIdParam, difficulty: difficultyParam } = useLocalSearchParams<{
+  const {
+    categoryId: categoryIdParam,
+    deckId: deckIdParam,
+    difficulty: difficultyParam,
+    displayMode: displayModeParam,
+  } = useLocalSearchParams<{
     categoryId?: string;
     deckId?: string;
     difficulty?: string;
+    displayMode?: string;
   }>();
   const [session, setSession] = useState<SessionHistoryItem | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [startingReview, setStartingReview] = useState(false);
   const [gradeHistory, setGradeHistory] = useState<GradeHistoryPoint[]>([]);
   const [loadingGradeHistory, setLoadingGradeHistory] = useState(false);
@@ -284,15 +304,28 @@ export default function SessionSummary() {
       : Number.isFinite(parsedDifficulty)
         ? parsedDifficulty
         : undefined;
-  const effectiveDisplayMode = session?.displayMode;
+  const routeDisplayMode =
+    displayModeParam === "traditional"
+      ? "traditional"
+      : displayModeParam === "audio" || displayModeParam === "audio-first"
+        ? "audio-first"
+        : undefined;
+  const effectiveDisplayMode =
+    session?.displayMode ?? routeDisplayMode ?? (sessionLoaded ? "audio-first" : undefined);
+  const isReviewSession = session?.language === "review";
 
   useEffect(() => {
-    getLastSession().then(setSession);
+    getLastSession()
+      .then(setSession)
+      .finally(() => setSessionLoaded(true));
   }, []);
 
   useEffect(() => {
     if (
       !authSession?.access_token ||
+      isReviewSession ||
+      session?.isRetry ||
+      !effectiveDisplayMode ||
       (!effectiveCategoryId && !effectiveDeckId)
     ) {
       setGradeHistory([]);
@@ -346,6 +379,8 @@ export default function SessionSummary() {
     effectiveDeckId,
     effectiveDifficulty,
     effectiveDisplayMode,
+    isReviewSession,
+    session?.isRetry,
   ]);
 
   const missed = useMemo(
@@ -359,8 +394,10 @@ export default function SessionSummary() {
     session && session.total > 0
       ? Math.round((session.correct / session.total) * 100)
       : 0;
-  const isReviewSession = session?.language === "review";
-  const sessionGradePoint = useMemo(() => getSessionGradePoint(session), [session]);
+  const sessionGradePoint = useMemo(
+    () => (isReviewSession || session?.isRetry ? null : getSessionGradePoint(session)),
+    [isReviewSession, session],
+  );
   const displayedGradeHistory = useMemo(() => {
     if (!sessionGradePoint) return gradeHistory;
     if (gradeHistory.some((point) => isSameGradeHistoryPoint(point, sessionGradePoint))) {
@@ -438,7 +475,11 @@ export default function SessionSummary() {
         topicTitle: `${session.topicTitle} (Retry)`,
         language: session.language,
         languageLabel: session.languageLabel,
+        apiCategoryId: session.categoryId ?? "",
+        deckId: session.deckId ?? "",
+        difficulty: typeof session.difficulty === "number" ? String(session.difficulty) : undefined,
         displayMode: session.displayMode,
+        retry: "true",
       },
     });
   }
@@ -448,9 +489,28 @@ export default function SessionSummary() {
 
     setError("");
 
+    let lessonToRestart = session;
+    if (session.isRetry) {
+      const history = await getSessionHistory();
+      const officialSession = history.find((item) => {
+        if (item.isRetry || item.language === "review" || item.cards.length === 0) return false;
+        if (session.deckId) return item.deckId === session.deckId;
+        if (session.categoryId) {
+          return item.categoryId === session.categoryId && item.difficulty === session.difficulty;
+        }
+        return item.topic === session.topic;
+      });
+
+      if (!officialSession) {
+        setError("Couldn't find the original lesson cards to restart.");
+        return;
+      }
+      lessonToRestart = officialSession;
+    }
+
     await setCurrentCards(
-      session.topic,
-      session.cards.map((card, index) => ({
+      lessonToRestart.topic,
+      lessonToRestart.cards.map((card, index) => ({
         id: index + 1,
         dbId: typeof card.cardId === "string" ? card.cardId : undefined,
         sourceText: card.sourceText,
@@ -462,14 +522,15 @@ export default function SessionSummary() {
     router.replace({
       pathname: "/practice/[topic]",
       params: {
-        topic: session.topic,
-        topicTitle: session.topicTitle,
-        language: session.language,
-        languageLabel: session.languageLabel,
-        apiCategoryId: session.categoryId ?? "",
-        deckId: session.deckId ?? "",
-        difficulty: typeof session.difficulty === "number" ? String(session.difficulty) : undefined,
-        displayMode: session.displayMode,
+        topic: lessonToRestart.topic,
+        topicTitle: lessonToRestart.topicTitle,
+        language: lessonToRestart.language,
+        languageLabel: lessonToRestart.languageLabel,
+        apiCategoryId: lessonToRestart.categoryId ?? "",
+        deckId: lessonToRestart.deckId ?? "",
+        difficulty: typeof lessonToRestart.difficulty === "number" ? String(lessonToRestart.difficulty) : undefined,
+        displayMode: lessonToRestart.displayMode,
+        retry: "true",
       },
     });
   }
@@ -507,14 +568,24 @@ export default function SessionSummary() {
             </View>
           ) : null}
 
-          <View className="bg-card border border-border rounded-2xl p-5 mb-4">
-            <Text className="text-muted text-xs mb-2">{session.languageLabel} · {session.topicTitle}</Text>
-            <Text className="text-3xl font-semibold text-foreground">{session.correct}/{session.total}</Text>
-            <Text className="text-muted mt-1">Accuracy: {accuracy}%</Text>
-            <Text className="text-muted mt-1">Missed: {missedCount}</Text>
-          </View>
+          {isReviewSession ? (
+            <View className="bg-card border border-border rounded-2xl p-5 mb-4">
+              <Text className="text-muted text-xs mb-2">{session.topicTitle}</Text>
+              <Text className="text-2xl font-semibold text-foreground">Review complete</Text>
+              <Text className="text-muted mt-1">
+                Cards reviewed: {session.total}
+              </Text>
+            </View>
+          ) : (
+            <View className="bg-card border border-border rounded-2xl p-5 mb-4">
+              <Text className="text-muted text-xs mb-2">{session.languageLabel} · {session.topicTitle}</Text>
+              <Text className="text-3xl font-semibold text-foreground">{session.correct}/{session.total}</Text>
+              <Text className="text-muted mt-1">Accuracy: {accuracy}%</Text>
+              <Text className="text-muted mt-1">Missed: {missedCount}</Text>
+            </View>
+          )}
 
-          {!isReviewSession ? (
+          {!isReviewSession && !session.isRetry ? (
             <View className="bg-card border border-border rounded-2xl p-5 mb-4">
               <Text className="text-base font-medium text-foreground mb-1">Score History</Text>
               <Text className="text-sm text-muted mb-4">

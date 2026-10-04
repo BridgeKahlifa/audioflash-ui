@@ -51,6 +51,7 @@ export default function FlashcardPractice() {
     deckSessionId,
     activityId,
     reviewId,
+    retry,
     resumeSession,
     initialCurrentIndex,
     lessonStatus,
@@ -76,6 +77,7 @@ export default function FlashcardPractice() {
     deckSessionId?: string;
     activityId?: string;
     reviewId?: string;
+    retry?: string;
     resumeSession?: string;
     initialCurrentIndex?: string;
     lessonStatus?: string;
@@ -179,6 +181,7 @@ export default function FlashcardPractice() {
     lessonSessionId,
     deckSessionId,
     reviewId,
+    isRetry: retry === "true",
     topic,
     topicTitle,
     language,

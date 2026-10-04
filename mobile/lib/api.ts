@@ -759,7 +759,7 @@ export async function fetchGradeChart({
     query.set("category_id", categoryId);
   }
   if (sessionMode) {
-    query.set("session_mode", sessionMode);
+    query.set("session_mode", sessionMode === "audio-first" ? "audio" : "traditional");
   }
   const res = await fetch(
     `${API_BASE_URL}/analytics/grade-chart?${query.toString()}`,

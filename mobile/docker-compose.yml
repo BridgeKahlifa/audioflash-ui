@@ -1,23 +1,25 @@
 services:
   app:
     build:
-      context: .
+      context: ..
+      dockerfile: mobile/Dockerfile
       target: dev
     env_file:
       - .env
     ports:
-      - "8082:8081"
+      - "8081:8081"
       - "19000:19000"
       - "19001:19001"
       - "19002:19002"
     volumes:
-      - .:/app
-      - /app/node_modules
+      - ..:/app
+      - /app/mobile/node_modules
     restart: unless-stopped
 
   web:
     build:
-      context: .
+      context: ..
+      dockerfile: mobile/Dockerfile
       target: production
       args:
         EXPO_PUBLIC_OPENROUTER_API_KEY: ${EXPO_PUBLIC_OPENROUTER_API_KEY:-}

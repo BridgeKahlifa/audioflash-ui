@@ -17,9 +17,8 @@ import {
 } from "../../../lib/traditional-flashcard-front";
 import { LanguageFlag } from "../../../components/LanguageFlag";
 import { useAppTheme } from "../../../lib/theme-context";
-
-const MIN_CARD_COUNT = 1;
-const CARD_COUNT_STEP = 5;
+import { CardCountPicker } from "../../../components/CardCountPicker";
+import { clampCardCount } from "../../../lib/card-count";
 
 export default function DeckPracticeReady() {
   const { id: deckId } = useLocalSearchParams<{ id: string }>();
@@ -60,9 +59,7 @@ export default function DeckPracticeReady() {
 
   useEffect(() => {
     if (maxCardCount > 0) {
-      setCardCount((current) =>
-        Math.min(maxCardCount, Math.max(MIN_CARD_COUNT, current)),
-      );
+      setCardCount((current) => clampCardCount(current, maxCardCount));
     }
   }, [maxCardCount]);
 
@@ -70,12 +67,6 @@ export default function DeckPracticeReady() {
     ? (languages?.find((l) => l.id === deck.language_id)?.language ?? "")
     : "";
   const languageSlug = languageName.toLowerCase().replace(/\s+/g, "-");
-
-  function updateCardCount(direction: 1 | -1) {
-    setCardCount((current) =>
-      Math.min(maxCardCount, Math.max(MIN_CARD_COUNT, current + direction * CARD_COUNT_STEP)),
-    );
-  }
 
   const canStart = !starting && maxCardCount > 0 && !!deck;
 
@@ -384,39 +375,17 @@ export default function DeckPracticeReady() {
             <View className="h-px bg-border mt-5 mb-4" />
 
             {/* Card count */}
-            <View className="flex-row items-center justify-center">
-              <Text className="text-base font-medium text-foreground mr-4">Cards</Text>
-              <View className="flex-row items-center">
-                <Text className="w-9 text-center text-xl font-semibold text-foreground">
-                  {Math.min(cardCount, maxCardCount || cardCount)}
-                </Text>
-                <View className="ml-1.5 rounded-xl border border-border bg-background overflow-hidden">
-                  <Pressable
-                    onPress={() => updateCardCount(1)}
-                    disabled={starting || cardCount >= maxCardCount}
-                    className="w-8 h-7 items-center justify-center"
-                    style={{ opacity: cardCount >= maxCardCount ? 0.4 : 1 }}
-                  >
-                    <Ionicons name="chevron-up" size={16} color="#E86A4A" />
-                  </Pressable>
-                  <View className="h-px bg-border" />
-                  <Pressable
-                    onPress={() => updateCardCount(-1)}
-                    disabled={starting || cardCount <= MIN_CARD_COUNT}
-                    className="w-8 h-7 items-center justify-center"
-                    style={{ opacity: cardCount <= MIN_CARD_COUNT ? 0.4 : 1 }}
-                  >
-                    <Ionicons name="chevron-down" size={16} color="#E86A4A" />
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-
-            {maxCardCount > 0 ? (
-              <Text className="text-center text-xs text-muted mt-2">
-                {maxCardCount} card{maxCardCount !== 1 ? "s" : ""} in this deck
-              </Text>
-            ) : null}
+            <CardCountPicker
+              value={cardCount}
+              onChange={setCardCount}
+              availableCardCount={maxCardCount}
+              disabled={starting}
+              availabilityLabel={
+                maxCardCount > 0
+                  ? `${maxCardCount} card${maxCardCount !== 1 ? "s" : ""} in this deck`
+                  : null
+              }
+            />
 
             {errorMessage ? (
               <Text className="mt-5 text-center text-sm text-primary">{errorMessage}</Text>

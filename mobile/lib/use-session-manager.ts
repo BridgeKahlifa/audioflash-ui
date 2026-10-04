@@ -33,6 +33,7 @@ interface SessionManagerParams {
   lessonSessionId?: string;
   deckSessionId?: string;
   reviewId?: string;
+  isRetry?: boolean;
   topic: string;
   topicTitle?: string;
   language?: string;
@@ -77,7 +78,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       cards, currentIndex, resolvedActivityId, categoryId, deckId, difficulty, displayMode, selectedConfidence, audioPlayCount,
       shownAtRef, sessionStartedAt, isResumeSession,
       resumeCardsSeen = 0, resumeCardsCorrect = 0,
-      lessonSessionId, deckSessionId, reviewId, topic, topicTitle, language, languageLabel,
+      lessonSessionId, deckSessionId, reviewId, isRetry, topic, topicTitle, language, languageLabel,
     } = params;
 
     const currentCard = cards[currentIndex];
@@ -308,6 +309,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       deckId,
       difficulty: typeof difficulty === "number" ? difficulty : undefined,
       displayMode,
+      isRetry,
       cards: completedResults,
       total: aggregateTotal,
       correct: aggregateCorrect,
@@ -375,6 +377,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
         categoryId,
         deckId,
         difficulty: typeof difficulty === "number" ? String(difficulty) : undefined,
+        displayMode,
       },
     });
 

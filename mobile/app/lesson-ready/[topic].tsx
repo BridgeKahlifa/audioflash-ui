@@ -18,11 +18,14 @@ import {
   type TraditionalFlashcardFront,
 } from "../../lib/traditional-flashcard-front";
 import { setLessonTraditionalFlashcardFront } from "../../lib/lesson-card-preferences";
+import { CardCountPicker } from "../../components/CardCountPicker";
+import {
+  MIN_CARD_COUNT,
+  clampCardCount,
+  resolveCardCountBounds,
+} from "../../lib/card-count";
 
 const DEFAULT_CARD_COUNT = 5;
-const MIN_CARD_COUNT = 5;
-const MAX_CARD_COUNT = 50;
-const CARD_COUNT_STEP = 5;
 
 function resolveAvailableCardCount(value?: string) {
   if (typeof value !== "string" || value.trim() === "") {
@@ -30,21 +33,6 @@ function resolveAvailableCardCount(value?: string) {
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-}
-
-function resolveCardCountBounds(availableCardCount: number | null) {
-  if (availableCardCount === null) {
-    return { min: MIN_CARD_COUNT, max: MAX_CARD_COUNT };
-  }
-
-  const max = Math.min(MAX_CARD_COUNT, availableCardCount);
-  const min = max < MIN_CARD_COUNT ? max : MIN_CARD_COUNT;
-  return { min, max };
-}
-
-function clampCardCount(value: number, availableCardCount: number | null) {
-  const { min, max } = resolveCardCountBounds(availableCardCount);
-  return Math.min(max, Math.max(min, value));
 }
 
 export default function LessonReady() {
@@ -142,7 +130,7 @@ export default function LessonReady() {
     }
     return routeAvailableCardCount ?? (typeof categoryAvailableCardCount === "number" ? categoryAvailableCardCount : null);
   })();
-  const { min: minCardCount, max: maxCardCount } = resolveCardCountBounds(availableCardCount);
+  const { max: maxCardCount } = resolveCardCountBounds(availableCardCount);
   // Lock difficulty 3+ behind Pro for non-paid plans.
   const lockHighDifficulty = entitlements?.tier === "free";
   const selectedDifficultyLocked =
@@ -241,10 +229,6 @@ export default function LessonReady() {
     setStatus("ready");
     setErrorMessage("");
   }, [apiCategoryId, availableCardCount, supportedDifficulties]);
-
-  function updateCardCount(direction: 1 | -1) {
-    setCardCount((current) => clampCardCount(current + direction * CARD_COUNT_STEP, availableCardCount));
-  }
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -656,39 +640,17 @@ export default function LessonReady() {
 
             <View className="h-px bg-border mt-5 mb-4" />
 
-            <View className="flex-row items-center justify-center">
-              <Text className="text-base font-medium text-foreground mr-4">Cards</Text>
-              <View className="flex-row items-center">
-                <Text className="w-9 text-center text-xl font-semibold text-foreground">
-                  {cardCount}
-                </Text>
-                <View className="ml-1.5 rounded-xl border border-border bg-background overflow-hidden">
-                  <Pressable
-                    onPress={() => updateCardCount(1)}
-                    disabled={starting || cardCount >= maxCardCount}
-                    className="w-8 h-7 items-center justify-center"
-                    style={{ opacity: cardCount >= maxCardCount ? 0.4 : 1 }}
-                  >
-                    <Ionicons name="chevron-up" size={16} color="#E86A4A" />
-                  </Pressable>
-                  <View className="h-px bg-border" />
-                  <Pressable
-                    onPress={() => updateCardCount(-1)}
-                    disabled={starting || cardCount <= minCardCount}
-                    className="w-8 h-7 items-center justify-center"
-                    style={{ opacity: cardCount <= minCardCount ? 0.4 : 1 }}
-                  >
-                    <Ionicons name="chevron-down" size={16} color="#E86A4A" />
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-
-            {availableCardCount !== null ? (
-              <Text className="text-center text-xs text-muted mt-2">
-                {availableCardCount} cards available in this category
-              </Text>
-            ) : null}
+            <CardCountPicker
+              value={cardCount}
+              onChange={setCardCount}
+              availableCardCount={availableCardCount}
+              disabled={starting}
+              availabilityLabel={
+                availableCardCount !== null
+                  ? `${availableCardCount} cards available in this category`
+                  : null
+              }
+            />
 
             {errorMessage ? (
               <Text
