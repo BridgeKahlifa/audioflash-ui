@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import * as Speech from "expo-speech";
+import { requireOptionalNativeModule } from "expo-modules-core";
 import { captureGlobalEvent, captureGlobalHandledException } from "./analytics";
 
 let audioModeConfigured = false;
@@ -11,6 +12,9 @@ let iosSessionKeeper:
   | null = null;
 let iosSessionSetupPromise: Promise<void> | null = null;
 let androidSpeechRequestId = 0;
+let androidSpeechGeneration = 0;
+let androidActiveSpeechRequestId: number | null = null;
+let androidDiagnosticsSubscribed = false;
 
 const VOICE_ENUMERATION_TIMEOUT_MS = 3000;
 const SPEECH_START_TIMEOUT_MS = 3000;
@@ -18,6 +22,7 @@ const SPEECH_START_TIMEOUT_MS = 3000;
 export type MissingSpeechVoice = {
   language: string;
   locale: string;
+  reason?: "missing" | "check_failed" | "playback_failed";
 };
 
 let missingVoiceHandler: ((requirement: MissingSpeechVoice) => void) | null = null;
@@ -110,6 +115,7 @@ async function cleanupIosSpeechSession(requestId: number): Promise<void> {
 
 const LANGUAGE_TO_BCP47: Record<string, string> = {
   chinese: "zh-CN",
+  "traditional chinese": "zh-TW",
   mandarin: "zh-CN",
   japanese: "ja-JP",
   korean: "ko-KR",
@@ -124,7 +130,48 @@ const LANGUAGE_TO_BCP47: Record<string, string> = {
 };
 
 export function languageToBcp47(language: string): string {
-  return LANGUAGE_TO_BCP47[language.toLowerCase()] ?? "zh-CN";
+  const normalized = language.trim().toLowerCase();
+  const locale = normalized === "zh-tw" || normalized.includes("chinese") && (normalized.includes("traditional") || normalized.includes("taiwan"))
+    ? "zh-TW"
+    : LANGUAGE_TO_BCP47[normalized] ?? Object.values(LANGUAGE_TO_BCP47).find((value) => value.toLowerCase() === normalized);
+  if (!locale) throw new Error(`Unsupported speech language: ${language}`);
+  return locale;
+}
+
+type NativeSpeechDiagnostic = {
+  id?: string;
+  phase?: string;
+  requestedLocale?: string;
+  selectedLocale?: string;
+  selectedVoice?: string;
+  engine?: string;
+  availability?: number;
+  setLanguageResult?: number;
+  speakResult?: number;
+  initStatus?: number;
+  interrupted?: boolean;
+};
+
+function subscribeToAndroidSpeechDiagnostics(): void {
+  if (Platform.OS !== "android" || androidDiagnosticsSubscribed) return;
+  const nativeSpeech = requireOptionalNativeModule("ExpoSpeech");
+  if (!nativeSpeech) return;
+  nativeSpeech.addListener("Exponent.speakingDiagnostic", (diagnostic: NativeSpeechDiagnostic) => {
+    captureGlobalEvent("audio_android_native_diagnostic", {
+      native_utterance_id: diagnostic.id ?? null,
+      phase: diagnostic.phase ?? null,
+      requested_locale: diagnostic.requestedLocale ?? null,
+      selected_locale: diagnostic.selectedLocale ?? null,
+      selected_voice: diagnostic.selectedVoice ?? null,
+      engine: diagnostic.engine ?? null,
+      availability: diagnostic.availability ?? null,
+      set_language_result: diagnostic.setLanguageResult ?? null,
+      speak_result: diagnostic.speakResult ?? null,
+      init_status: diagnostic.initStatus ?? null,
+      interrupted: diagnostic.interrupted ?? null,
+    });
+  });
+  androidDiagnosticsSubscribed = true;
 }
 
 function requiredVoice(language: string): MissingSpeechVoice | null {
@@ -192,21 +239,38 @@ export async function ensureSpeechVoiceAvailable(language: string): Promise<bool
       return voiceLocale === requiredLocale || voiceLocale.split("-")[0] === requiredLanguage;
     });
 
-    if (!available) missingVoiceHandler?.(requirement);
+    captureGlobalEvent("audio_android_voice_check", {
+      language,
+      locale: requirement.locale,
+      available,
+      voice_count: voices.length,
+    });
+    if (!available) missingVoiceHandler?.({ ...requirement, reason: "missing" });
     return available;
   } catch (error) {
     captureGlobalHandledException(error, {
       error_context: "audio_check_android_voice",
       language,
     });
-    return true;
+    missingVoiceHandler?.({ ...requirement, reason: "check_failed" });
+    return false;
   }
 }
 
 let webSpeakTimer: ReturnType<typeof setTimeout> | null = null;
 
 export async function speakText(text: string, language: string, rate = 1.0): Promise<void> {
-  const bcp47 = languageToBcp47(language);
+  let bcp47: string;
+  try {
+    bcp47 = languageToBcp47(language);
+  } catch (error) {
+    captureGlobalHandledException(error, {
+      error_context: "audio_unsupported_language",
+      language,
+      platform: Platform.OS,
+    });
+    return;
+  }
 
   if (Platform.OS === "web") {
     if (webSpeakTimer) clearTimeout(webSpeakTimer);
@@ -218,6 +282,8 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
   } else {
     const requestId = Platform.OS === "ios" ? ++iosSpeechRequestId : 0;
     const androidRequestId = Platform.OS === "android" ? ++androidSpeechRequestId : 0;
+    const androidGeneration = Platform.OS === "android" ? ++androidSpeechGeneration : 0;
+    if (Platform.OS === "android") subscribeToAndroidSpeechDiagnostics();
 
     if (Platform.OS === "ios") {
       try {
@@ -234,8 +300,23 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
     }
 
     const speaking = await Speech.isSpeakingAsync();
-    if (speaking) await Speech.stop();
+    if (Platform.OS === "android" && androidGeneration !== androidSpeechGeneration) return;
+    const pendingAndroidRequestId = Platform.OS === "android" ? androidActiveSpeechRequestId : null;
+    if (speaking || pendingAndroidRequestId !== null) {
+      if (Platform.OS === "android") {
+        captureGlobalEvent("audio_android_stop_requested", {
+          stopped_request_id: pendingAndroidRequestId,
+          replacing_request_id: androidRequestId,
+          reason: "new_speech_request",
+          was_speaking: speaking,
+        });
+      }
+      await Speech.stop();
+    }
+    if (Platform.OS === "android" && androidGeneration !== androidSpeechGeneration) return;
 
+    const requestedAt = Date.now();
+    let started = false;
     let speechStartTimer: ReturnType<typeof setTimeout> | null = null;
     const clearSpeechStartTimer = () => {
       if (!speechStartTimer) return;
@@ -244,6 +325,15 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
     };
 
     if (Platform.OS === "android") {
+      androidActiveSpeechRequestId = androidRequestId;
+      captureGlobalEvent("audio_android_speech_requested", {
+        language,
+        locale: bcp47,
+        rate,
+        request_id: androidRequestId,
+        text_length: text.length,
+        was_speaking_before_request: speaking,
+      });
       speechStartTimer = setTimeout(() => {
         speechStartTimer = null;
         captureGlobalHandledException(new Error("Android speech did not start within 3 seconds"), {
@@ -262,6 +352,7 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
         language: bcp47,
         rate,
         onStart: () => {
+          started = true;
           clearSpeechStartTimer();
           if (Platform.OS === "android") {
             captureGlobalEvent("audio_android_speech_started", {
@@ -269,11 +360,15 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
               locale: bcp47,
               rate,
               request_id: androidRequestId,
+              time_to_start_ms: Date.now() - requestedAt,
             });
           }
         },
         onDone: () => {
           clearSpeechStartTimer();
+          if (Platform.OS === "android" && androidActiveSpeechRequestId === androidRequestId) {
+            androidActiveSpeechRequestId = null;
+          }
           if (Platform.OS === "ios") {
             void cleanupIosSpeechSession(requestId);
           } else if (Platform.OS === "android") {
@@ -287,6 +382,9 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
         },
         onStopped: () => {
           clearSpeechStartTimer();
+          if (Platform.OS === "android" && androidActiveSpeechRequestId === androidRequestId) {
+            androidActiveSpeechRequestId = null;
+          }
           if (Platform.OS === "ios") {
             void cleanupIosSpeechSession(requestId);
           } else if (Platform.OS === "android") {
@@ -295,11 +393,24 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
               locale: bcp47,
               rate,
               request_id: androidRequestId,
+              started,
+              elapsed_ms: Date.now() - requestedAt,
             });
+            if (!started) {
+              captureGlobalEvent("audio_android_speech_prestart_stopped", {
+                language,
+                locale: bcp47,
+                request_id: androidRequestId,
+                elapsed_ms: Date.now() - requestedAt,
+              });
+            }
           }
         },
         onError: (error) => {
           clearSpeechStartTimer();
+          if (Platform.OS === "android" && androidActiveSpeechRequestId === androidRequestId) {
+            androidActiveSpeechRequestId = null;
+          }
           if (Platform.OS === "ios") {
             void cleanupIosSpeechSession(requestId);
           } else if (Platform.OS === "android") {
@@ -309,13 +420,18 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
               locale: bcp47,
               rate,
               request_id: androidRequestId,
+              started,
             });
+            if (!started) missingVoiceHandler?.({ language, locale: bcp47, reason: "playback_failed" });
           }
         },
         ...(Platform.OS === "ios" ? { useApplicationAudioSession: true } : {}),
       });
     } catch (error) {
       clearSpeechStartTimer();
+      if (Platform.OS === "android" && androidActiveSpeechRequestId === androidRequestId) {
+        androidActiveSpeechRequestId = null;
+      }
       captureGlobalHandledException(error, {
         error_context: "audio_speech_request_failed",
         platform: Platform.OS,

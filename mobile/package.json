@@ -3,6 +3,7 @@
   "version": "1.0.6",
   "main": "expo-router/entry",
   "scripts": {
+    "postinstall": "node scripts/patch-expo-speech.cjs",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",

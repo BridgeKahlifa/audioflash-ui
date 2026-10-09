@@ -8,6 +8,7 @@ import { useSRSQueue, useSavedReviews } from "../../lib/queries";
 import { useAppTheme } from "../../lib/theme-context";
 import {
   fetchFlashcards,
+  fetchLanguages,
   startLesson,
   startReviewLifecycle,
   type ApiReview,
@@ -69,12 +70,15 @@ export default function ReviewQueue() {
       const categoryCards = queue.cards.filter(
         (card) => String(card.category_id) === categoryId,
       );
+      const languages = await fetchLanguages();
+      const languageById = new Map(languages.map((item) => [String(item.id), item.language]));
       const mappedCards: Flashcard[] = categoryCards.map((card, index) => ({
         id: index + 1,
         dbId: String(card.id),
         sourceText: card.source_text,
         romanization: card.romanization ?? "",
         translation: card.translation,
+        language: languageById.get(String(card.language_id)),
       }));
 
       await setCurrentCards(topicKey, mappedCards);
@@ -122,7 +126,11 @@ export default function ReviewQueue() {
         return;
       }
 
-      const flashcards = await fetchFlashcards(session.access_token);
+      const [flashcards, languages] = await Promise.all([
+        fetchFlashcards(session.access_token),
+        fetchLanguages(),
+      ]);
+      const languageById = new Map(languages.map((item) => [String(item.id), item.language]));
       const flashcardsById = new Map(flashcards.map((card) => [String(card.id), card]));
       const reviewCards: Flashcard[] = startedReview.flashcard_ids
         .map((flashcardId, index) => {
@@ -134,6 +142,7 @@ export default function ReviewQueue() {
             sourceText: card.source_text,
             romanization: card.romanization ?? "",
             translation: card.translation,
+            language: languageById.get(String(card.language_id)),
           };
         })
         .filter(Boolean) as Flashcard[];

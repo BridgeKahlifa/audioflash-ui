@@ -427,6 +427,7 @@ export default function SessionSummary() {
         sourceText: card.sourceText,
         romanization: card.romanization,
         translation: card.translation,
+        language: card.language,
       }))
     );
 
@@ -516,6 +517,7 @@ export default function SessionSummary() {
         sourceText: card.sourceText,
         romanization: card.romanization,
         translation: card.translation,
+        language: card.language,
       })),
     );
 

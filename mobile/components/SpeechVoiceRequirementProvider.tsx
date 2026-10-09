@@ -45,10 +45,16 @@ export function SpeechVoiceRequirementProvider({ children }: PropsWithChildren) 
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
           <View className="w-full max-w-sm rounded-3xl bg-background p-6">
             <Text className="text-xl font-semibold text-foreground mb-2">
-              {requirement?.language} voice required
+              {requirement?.reason === "playback_failed"
+                ? `${requirement.language} speech could not start`
+                : requirement?.reason === "check_failed"
+                  ? `Could not check ${requirement.language} voices`
+                  : `${requirement?.language} voice required`}
             </Text>
             <Text className="text-muted leading-6 mb-5">
-              Your phone needs a {requirement?.language} speech voice to play this lesson.
+              {requirement?.reason === "missing"
+                ? `The selected speech engine did not report a ${requirement.language} voice.`
+                : `AudioFlash could not start ${requirement?.language} speech with the selected engine. Check the preferred engine and its voice data in Android settings.`}
             </Text>
             {showManualInstructions ? (
               <View className="bg-secondary rounded-2xl p-4 mb-4">
@@ -62,8 +68,8 @@ export function SpeechVoiceRequirementProvider({ children }: PropsWithChildren) 
                   4. Tap Text-to-speech{"\n"}
                   5. Check which Preferred engine is selected (Google or Samsung){"\n"}
                   6. Tap the gear/settings icon next to the selected engine{"\n"}
-                  7. Tap Install voice data{"\n"}
-                  8. Find {requirement?.language} and download/install its voice
+                  7. Try switching the Preferred engine (Google or Samsung){"\n"}
+                  8. Check that {requirement?.language} voice data is installed for that engine
                 </Text>
                 <Text className="text-muted text-sm leading-5 mt-3">
                   Once they're installed, completely close AudioFlash and reopen it, then try the audio again.
@@ -82,6 +88,9 @@ export function SpeechVoiceRequirementProvider({ children }: PropsWithChildren) 
                   Install {requirement?.language} Voice
                 </Text>
               )}
+            </Pressable>
+            <Pressable onPress={() => setShowManualInstructions(true)} className="py-3 items-center">
+              <Text className="text-foreground font-medium">How to change speech engine</Text>
             </Pressable>
             <Pressable onPress={() => setRequirement(null)} className="py-3 items-center mt-1">
               <Text className="text-muted font-medium">Not now</Text>

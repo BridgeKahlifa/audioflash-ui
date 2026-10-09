@@ -18,7 +18,7 @@ import { Flashcard, FlashcardDisplayMode } from "../../lib/types";
 import { getCurrentCards, getLessonDisplayMode } from "../../lib/storage";
 import { speakText } from "../../lib/audio";
 import { useAuth } from "../../lib/auth-context";
-import { fetchLessonSession, fetchLessonSessionFlashcards } from "../../lib/api";
+import { fetchLanguages, fetchLessonSession, fetchLessonSessionFlashcards } from "../../lib/api";
 import { useAnalytics } from "../../lib/analytics";
 import { useSessionManager } from "../../lib/use-session-manager";
 import { MatrixRainOverlay } from "../../components/MatrixRainOverlay";
@@ -193,10 +193,12 @@ export default function FlashcardPractice() {
     async function loadCards() {
       if (isResumeSession && lessonSessionId && session?.access_token) {
         try {
-          const [lessonSession, sessionFlashcards] = await Promise.all([
+          const [lessonSession, sessionFlashcards, languages] = await Promise.all([
             fetchLessonSession(session.access_token, lessonSessionId),
             fetchLessonSessionFlashcards(session.access_token, lessonSessionId),
+            fetchLanguages(),
           ]);
+          const languageById = new Map(languages.map((item) => [String(item.id), item.language]));
           const resolvedDisplayMode = normalizeFlashcardDisplayMode(
             lessonSession.session_mode ??
               displayModeParam ??
@@ -219,6 +221,7 @@ export default function FlashcardPractice() {
             sourceText: card.source_text,
             romanization: card.romanization ?? "",
             translation: card.translation,
+            language: languageById.get(String(card.language_id)),
           }));
 
           setDisplayMode(resolvedDisplayMode);
@@ -351,7 +354,7 @@ export default function FlashcardPractice() {
       setCanRevealAnswer(true);
       revealTimerRef.current = null;
     }, 1500);
-    speakText(card.sourceText, language ?? "chinese", playbackSpeed);
+    void speakText(card.sourceText, card.language ?? language ?? "chinese", playbackSpeed);
   }, [currentIndex, cards, displayModeResolved, isTraditionalMode]);
 
   // Whenever the visible card changes, make sure it rests at the center. Guards
@@ -545,7 +548,7 @@ export default function FlashcardPractice() {
     if (!showAnswer || isTraditionalMode) {
       setAudioPlayCount((count) => count + 1);
     }
-    speakText(currentCard.sourceText, language ?? "chinese", playbackSpeed);
+    void speakText(currentCard.sourceText, currentCard.language ?? language ?? "chinese", playbackSpeed);
   }
 
   function handleBackNavigation() {
