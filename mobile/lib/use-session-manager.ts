@@ -141,6 +141,7 @@ export function useSessionManager(params: SessionManagerParams): SessionManagerR
       sourceText: currentCard.sourceText,
       romanization: currentCard.romanization,
       translation: currentCard.translation,
+      language: currentCard.language ?? (language !== "review" && language !== "mixed" ? language : undefined),
       knew,
       confidenceRating: selectedConfidence,
       attemptId,

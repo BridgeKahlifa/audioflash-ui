@@ -6,6 +6,8 @@ export interface Flashcard {
   sourceText: string;
   romanization: string;
   translation: string;
+  /** Source language for mixed-language review playback. */
+  language?: string;
 }
 
 export interface DailySession {
@@ -27,6 +29,7 @@ export interface SessionCardResult {
   sourceText: string;
   romanization: string;
   translation: string;
+  language?: string;
   knew: boolean;
   confidenceRating?: number | null;
   attemptId?: string;
