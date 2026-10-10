@@ -371,7 +371,7 @@ export function FlashcardMockup() {
                 )}
 
                 <div className="mx-4 flex flex-col gap-2 pb-5 flex-shrink-0">
-                  <a href="#waitlist"
+                  <a href="#download"
                     className="block w-full rounded-2xl py-3 text-center text-sm font-semibold text-primary-foreground"
                     style={{ background: "var(--primary)", boxShadow: "0 4px 12px rgba(255,107,74,0.3)" }}>
                     Get the Full App

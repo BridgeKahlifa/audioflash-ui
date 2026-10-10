@@ -1,3 +1,5 @@
+export const appStoreUrl = "https://apps.apple.com/us/app/audioflash-ai/id6761799123";
+
 export const navLinks = [
   { href: "#how-it-works", label: "How It Works" },
   { href: "#features", label: "Features" },
