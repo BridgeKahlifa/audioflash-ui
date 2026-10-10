@@ -2,6 +2,13 @@ import { Platform } from "react-native";
 import * as Speech from "expo-speech";
 import { requireOptionalNativeModule } from "expo-modules-core";
 import { captureGlobalEvent, captureGlobalHandledException } from "./analytics";
+import {
+  defaultVoiceKey,
+  describeVoicesForLocale,
+  selectSpeechVoice,
+  usableVoicesForLocale,
+  type SpeechVoiceInfo,
+} from "./speech-voice";
 
 let audioModeConfigured = false;
 let iosSpeechRequestId = 0;
@@ -15,6 +22,9 @@ let androidSpeechRequestId = 0;
 let androidSpeechGeneration = 0;
 let androidActiveSpeechRequestId: number | null = null;
 let androidDiagnosticsSubscribed = false;
+let androidVoicesPromise: Promise<SpeechVoiceInfo[]> | null = null;
+// Voices (or the engine default for a locale) that failed to start during this app session.
+const androidFailedVoiceKeys = new Set<string>();
 
 const VOICE_ENUMERATION_TIMEOUT_MS = 3000;
 const SPEECH_START_TIMEOUT_MS = 3000;
@@ -147,6 +157,7 @@ type NativeSpeechDiagnostic = {
   engine?: string;
   availability?: number;
   setLanguageResult?: number;
+  setVoiceResult?: number;
   speakResult?: number;
   initStatus?: number;
   interrupted?: boolean;
@@ -166,6 +177,7 @@ function subscribeToAndroidSpeechDiagnostics(): void {
       engine: diagnostic.engine ?? null,
       availability: diagnostic.availability ?? null,
       set_language_result: diagnostic.setLanguageResult ?? null,
+      set_voice_result: diagnostic.setVoiceResult ?? null,
       speak_result: diagnostic.speakResult ?? null,
       init_status: diagnostic.initStatus ?? null,
       interrupted: diagnostic.interrupted ?? null,
@@ -197,10 +209,6 @@ function requiredVoice(language: string): MissingSpeechVoice | null {
   return null;
 }
 
-function normalizeLocale(locale: string): string {
-  return locale.replace(/_/g, "-").toLowerCase();
-}
-
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
@@ -220,6 +228,19 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: strin
   });
 }
 
+function loadAndroidVoices(): Promise<SpeechVoiceInfo[]> {
+  androidVoicesPromise ??= withTimeout(
+    Speech.getAvailableVoicesAsync(),
+    VOICE_ENUMERATION_TIMEOUT_MS,
+    "Android speech voice enumeration",
+  ).catch((error) => {
+    androidVoicesPromise = null;
+    captureGlobalHandledException(error, { error_context: "audio_list_android_voices" });
+    return [];
+  });
+  return androidVoicesPromise;
+}
+
 export async function ensureSpeechVoiceAvailable(language: string): Promise<boolean> {
   if (Platform.OS !== "android") return true;
 
@@ -232,18 +253,15 @@ export async function ensureSpeechVoiceAvailable(language: string): Promise<bool
       VOICE_ENUMERATION_TIMEOUT_MS,
       "Android speech voice enumeration",
     );
-    const requiredLocale = normalizeLocale(requirement.locale);
-    const requiredLanguage = requiredLocale.split("-")[0];
-    const available = voices.some((voice) => {
-      const voiceLocale = normalizeLocale(voice.language);
-      return voiceLocale === requiredLocale || voiceLocale.split("-")[0] === requiredLanguage;
-    });
+    androidVoicesPromise = Promise.resolve(voices);
+    const available = usableVoicesForLocale(voices, requirement.locale).length > 0;
 
     captureGlobalEvent("audio_android_voice_check", {
       language,
       locale: requirement.locale,
       available,
       voice_count: voices.length,
+      language_voices: describeVoicesForLocale(voices, requirement.locale),
     });
     if (!available) missingVoiceHandler?.({ ...requirement, reason: "missing" });
     return available;
@@ -259,7 +277,16 @@ export async function ensureSpeechVoiceAvailable(language: string): Promise<bool
 
 let webSpeakTimer: ReturnType<typeof setTimeout> | null = null;
 
-export async function speakText(text: string, language: string, rate = 1.0): Promise<void> {
+export function speakText(text: string, language: string, rate = 1.0): Promise<void> {
+  return speakTextAttempt(text, language, rate, false);
+}
+
+async function speakTextAttempt(
+  text: string,
+  language: string,
+  rate: number,
+  isRetry: boolean,
+): Promise<void> {
   let bcp47: string;
   try {
     bcp47 = languageToBcp47(language);
@@ -315,6 +342,29 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
     }
     if (Platform.OS === "android" && androidGeneration !== androidSpeechGeneration) return;
 
+    let androidVoices: SpeechVoiceInfo[] = [];
+    let androidVoice: string | undefined;
+    let androidVoiceKey = "";
+    if (Platform.OS === "android") {
+      androidVoices = await loadAndroidVoices();
+      if (androidGeneration !== androidSpeechGeneration) return;
+      androidVoice = selectSpeechVoice(androidVoices, bcp47, androidFailedVoiceKeys);
+      androidVoiceKey = androidVoice ?? defaultVoiceKey(bcp47);
+    }
+    // Marks the voice just tried as unusable for this session and reports whether a
+    // different one should be tried for this same request.
+    const failAndroidVoice = (): boolean => {
+      androidFailedVoiceKeys.add(androidVoiceKey);
+      // Voice data may have changed since the list was cached.
+      androidVoicesPromise = null;
+      const nextVoice = selectSpeechVoice(androidVoices, bcp47, androidFailedVoiceKeys);
+      return (
+        !isRetry &&
+        androidGeneration === androidSpeechGeneration &&
+        (nextVoice ?? defaultVoiceKey(bcp47)) !== androidVoiceKey
+      );
+    };
+
     const requestedAt = Date.now();
     let started = false;
     let speechStartTimer: ReturnType<typeof setTimeout> | null = null;
@@ -333,9 +383,27 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
         request_id: androidRequestId,
         text_length: text.length,
         was_speaking_before_request: speaking,
+        voice: androidVoice ?? null,
+        is_retry: isRetry,
+        language_voices: describeVoicesForLocale(androidVoices, bcp47),
       });
       speechStartTimer = setTimeout(() => {
         speechStartTimer = null;
+        // Some engines never start and never report an error for a voice they cannot use.
+        const willRetry = failAndroidVoice();
+        captureGlobalEvent("audio_android_speech_failed", {
+          reason: "start_timeout",
+          language,
+          locale: bcp47,
+          request_id: androidRequestId,
+          voice: androidVoice ?? null,
+          will_retry: willRetry,
+        });
+        if (willRetry) {
+          void speakTextAttempt(text, language, rate, true).catch(() => {});
+        } else if (androidGeneration === androidSpeechGeneration) {
+          missingVoiceHandler?.({ language, locale: bcp47, reason: "playback_failed" });
+        }
         captureGlobalHandledException(new Error("Android speech did not start within 3 seconds"), {
           error_context: "audio_android_speech_start_timeout",
           language,
@@ -351,6 +419,7 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
       Speech.speak(text, {
         language: bcp47,
         rate,
+        ...(androidVoice ? { voice: androidVoice } : {}),
         onStart: () => {
           started = true;
           clearSpeechStartTimer();
@@ -422,7 +491,22 @@ export async function speakText(text: string, language: string, rate = 1.0): Pro
               request_id: androidRequestId,
               started,
             });
-            if (!started) missingVoiceHandler?.({ language, locale: bcp47, reason: "playback_failed" });
+            const willRetry = !started && failAndroidVoice();
+            captureGlobalEvent("audio_android_speech_failed", {
+              reason: "error",
+              error_message: error.message,
+              language,
+              locale: bcp47,
+              request_id: androidRequestId,
+              voice: androidVoice ?? null,
+              started,
+              will_retry: willRetry,
+            });
+            if (willRetry) {
+              void speakTextAttempt(text, language, rate, true).catch(() => {});
+            } else if (!started) {
+              missingVoiceHandler?.({ language, locale: bcp47, reason: "playback_failed" });
+            }
           }
         },
         ...(Platform.OS === "ios" ? { useApplicationAudioSession: true } : {}),

@@ -25,9 +25,23 @@ const SENSITIVE_KEY_PATTERN = /(token|secret|password|authorization|cookie|sessi
 const SENSITIVE_VALUE_PATTERN =
   /((bearer\s+)?[a-z0-9_\-.]{16,}|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi;
 
+// Diagnostic identifiers that are long enough to look like tokens to SENSITIVE_VALUE_PATTERN
+// (e.g. "audio_android_speech_error", "es-us-x-sfb-network") but are never secrets.
+const UNREDACTED_VALUE_KEYS = new Set([
+  "error_context",
+  "voice",
+  "selected_voice",
+  "language_voices",
+  "native_utterance_id",
+]);
+
 function sanitizeValue(value: unknown, key?: string): AnalyticsValue {
   if (key && SENSITIVE_KEY_PATTERN.test(key)) {
     return REDACTED;
+  }
+
+  if (key && UNREDACTED_VALUE_KEYS.has(key) && typeof value === "string") {
+    return value;
   }
 
   if (typeof value === "string") {
