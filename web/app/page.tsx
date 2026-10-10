@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AndroidButton } from "../components/AndroidButton";
+import { AppStoreButton } from "../components/AppStoreButton";
 import { BulletList } from "../components/BulletList";
 import {
   Card,
@@ -8,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/Card";
-import { EmailForm } from "../components/EmailForm";
 import { FAQItem } from "../components/FAQItem";
 import { SectionHeading } from "../components/SectionHeading";
 import { FlashcardMockup } from "../components/phone/FlashcardMockup";
@@ -136,11 +137,10 @@ export default function HomePage() {
           </div>
           <div className="flex items-center gap-3">
             <a
-              href="#waitlist"
+              href="#download"
               className="matrix-glow whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
             >
-              <span className="sm:hidden">Join Free</span>
-              <span className="hidden sm:inline">Get Free Early Access</span>
+              Get the App
             </a>
             {/* <DarkModeToggle className="shrink-0" /> */}
           </div>
@@ -175,8 +175,9 @@ export default function HomePage() {
               <BulletList items={heroBullets} />
             </div>
 
-            <div className="flex justify-center lg:justify-start">
-              <EmailForm variant="hero" />
+            <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
+              <AppStoreButton />
+              <AndroidButton />
             </div>
           </div>
 
@@ -295,7 +296,7 @@ export default function HomePage() {
       </section>
 
       <section
-        id="waitlist"
+        id="download"
         className="py-24"
         style={{
           background:
@@ -307,17 +308,14 @@ export default function HomePage() {
             Stop freezing when native speakers talk to you in their language.
           </h2>
           <p className="mb-8 text-lg text-white/80">
-            Get free early access to audio flashcards built for listening comprehension, speaking
-            recall, and short daily practice.
+            Download AudioFlash free and start training with audio flashcards built for listening
+            comprehension, speaking recall, and short daily practice.
           </p>
 
-          <div className="flex justify-center">
-            <EmailForm variant="cta" />
+          <div className="flex flex-wrap justify-center gap-3">
+            <AppStoreButton />
+            <AndroidButton />
           </div>
-
-          <p className="mt-4 text-xs text-white/60">
-            Join free. We will email you when early access opens.
-          </p>
         </div>
       </section>
 
