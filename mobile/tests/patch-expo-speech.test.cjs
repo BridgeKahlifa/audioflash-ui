@@ -28,6 +28,11 @@ test('patch applies to the installed expo-speech and is idempotent', () => {
   assert.match(moduleSource, /KEY_FEATURE_NOT_INSTALLED/);
   // An explicit voice is applied without gating on the requested locale.
   assert.match(moduleSource, /textToSpeech\.setVoice\(explicitVoice\)/);
+  // JS can take a correlated snapshot even if the native diagnostic event bridge is unavailable.
+  assert.match(moduleSource, /AsyncFunction<Bundle>\("getDiagnostics"\)/);
+  assert.match(moduleSource, /requestedAvailability/);
+  assert.match(moduleSource, /requestedVoiceFound/);
+  assert.match(moduleSource, /requestedVoiceRequiresNetwork/);
   // Failures are reported instead of silently speaking nothing.
   assert.match(moduleSource, /"language_unavailable"/);
   assert.match(moduleSource, /"set_voice_failed"/);

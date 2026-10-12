@@ -22,6 +22,8 @@ let androidSpeechRequestId = 0;
 let androidSpeechGeneration = 0;
 let androidActiveSpeechRequestId: number | null = null;
 let androidDiagnosticsSubscribed = false;
+let androidNativeDiagnosticReceived = false;
+let androidNativeSpeechModule: AndroidSpeechNativeModule | null = null;
 let androidVoicesPromise: Promise<SpeechVoiceInfo[]> | null = null;
 // Voices (or the engine default for a locale) that failed to start during this app session.
 const androidFailedVoiceKeys = new Set<string>();
@@ -163,27 +165,169 @@ type NativeSpeechDiagnostic = {
   interrupted?: boolean;
 };
 
+type NativeSpeechSnapshot = {
+  ready?: boolean;
+  speaking?: boolean;
+  engine?: string;
+  currentLocale?: string;
+  currentVoice?: string;
+  requestedLocale?: string;
+  requestedAvailability?: number;
+  requestedVoice?: string;
+  requestedVoiceFound?: boolean;
+  requestedVoiceLocale?: string;
+  requestedVoiceInstalled?: boolean;
+  requestedVoiceRequiresNetwork?: boolean;
+};
+
+type AndroidSpeechNativeModule = {
+  addListener(
+    eventName: string,
+    listener: (diagnostic: NativeSpeechDiagnostic) => void,
+  ): unknown;
+  getDiagnostics?: (
+    requestedLocale: string,
+    requestedVoice: string | null,
+  ) => Promise<NativeSpeechSnapshot>;
+};
+
+function describeAndroidSpeechModule(nativeSpeech: AndroidSpeechNativeModule | null) {
+  if (!nativeSpeech) {
+    return {
+      native_module_available: false,
+      snapshot_available: false,
+      snapshot_property_present: false,
+      native_module_keys: null,
+      native_module_prototype_keys: null,
+    };
+  }
+
+  const prototype = Object.getPrototypeOf(nativeSpeech) as object | null;
+  return {
+    native_module_available: true,
+    snapshot_available: typeof nativeSpeech.getDiagnostics === "function",
+    snapshot_property_present: "getDiagnostics" in nativeSpeech,
+    native_module_keys: Object.keys(nativeSpeech).sort().join(",").slice(0, 1000),
+    native_module_prototype_keys: prototype
+      ? Object.getOwnPropertyNames(prototype).sort().join(",").slice(0, 1000)
+      : null,
+  };
+}
+
+function resolveAndroidSpeechNativeModule(): AndroidSpeechNativeModule | null {
+  const resolved = requireOptionalNativeModule<AndroidSpeechNativeModule>("ExpoSpeech");
+  if (resolved) androidNativeSpeechModule = resolved;
+  return resolved ?? androidNativeSpeechModule;
+}
+
 function subscribeToAndroidSpeechDiagnostics(): void {
   if (Platform.OS !== "android" || androidDiagnosticsSubscribed) return;
-  const nativeSpeech = requireOptionalNativeModule("ExpoSpeech");
-  if (!nativeSpeech) return;
-  nativeSpeech.addListener("Exponent.speakingDiagnostic", (diagnostic: NativeSpeechDiagnostic) => {
-    captureGlobalEvent("audio_android_native_diagnostic", {
-      native_utterance_id: diagnostic.id ?? null,
-      phase: diagnostic.phase ?? null,
-      requested_locale: diagnostic.requestedLocale ?? null,
-      selected_locale: diagnostic.selectedLocale ?? null,
-      selected_voice: diagnostic.selectedVoice ?? null,
-      engine: diagnostic.engine ?? null,
-      availability: diagnostic.availability ?? null,
-      set_language_result: diagnostic.setLanguageResult ?? null,
-      set_voice_result: diagnostic.setVoiceResult ?? null,
-      speak_result: diagnostic.speakResult ?? null,
-      init_status: diagnostic.initStatus ?? null,
-      interrupted: diagnostic.interrupted ?? null,
+  const nativeSpeech = resolveAndroidSpeechNativeModule();
+  if (!nativeSpeech) {
+    captureGlobalEvent("audio_android_diagnostics_status", {
+      ...describeAndroidSpeechModule(nativeSpeech),
+      listener_attached: false,
+      native_event_received: false,
+      status_phase: "subscription",
     });
-  });
-  androidDiagnosticsSubscribed = true;
+    return;
+  }
+  try {
+    nativeSpeech.addListener("Exponent.speakingDiagnostic", (diagnostic: NativeSpeechDiagnostic) => {
+      if (!androidNativeDiagnosticReceived) {
+        androidNativeDiagnosticReceived = true;
+        captureGlobalEvent("audio_android_diagnostics_status", {
+          ...describeAndroidSpeechModule(resolveAndroidSpeechNativeModule()),
+          listener_attached: true,
+          native_event_received: true,
+          status_phase: "first_native_event",
+        });
+      }
+      captureGlobalEvent("audio_android_native_diagnostic", {
+        request_id: androidActiveSpeechRequestId,
+        native_utterance_id: diagnostic.id ?? null,
+        phase: diagnostic.phase ?? null,
+        requested_locale: diagnostic.requestedLocale ?? null,
+        selected_locale: diagnostic.selectedLocale ?? null,
+        selected_voice: diagnostic.selectedVoice ?? null,
+        engine: diagnostic.engine ?? null,
+        availability: diagnostic.availability ?? null,
+        set_language_result: diagnostic.setLanguageResult ?? null,
+        set_voice_result: diagnostic.setVoiceResult ?? null,
+        speak_result: diagnostic.speakResult ?? null,
+        init_status: diagnostic.initStatus ?? null,
+        interrupted: diagnostic.interrupted ?? null,
+      });
+    });
+    androidDiagnosticsSubscribed = true;
+    captureGlobalEvent("audio_android_diagnostics_status", {
+      ...describeAndroidSpeechModule(nativeSpeech),
+      listener_attached: true,
+      native_event_received: false,
+      status_phase: "subscription",
+    });
+  } catch (error) {
+    captureGlobalHandledException(error, {
+      error_context: "audio_subscribe_android_native_diagnostics",
+    });
+    captureGlobalEvent("audio_android_diagnostics_status", {
+      ...describeAndroidSpeechModule(nativeSpeech),
+      listener_attached: false,
+      native_event_received: false,
+      status_phase: "subscription_error",
+    });
+  }
+}
+
+async function captureAndroidNativeSnapshot(
+  requestId: number,
+  locale: string,
+  voice: string | undefined,
+  phase: "before_speak" | "started" | "error" | "start_timeout",
+): Promise<void> {
+  const nativeSpeech = resolveAndroidSpeechNativeModule();
+  const getDiagnostics = nativeSpeech?.getDiagnostics;
+  if (!getDiagnostics || !nativeSpeech) {
+    captureGlobalEvent("audio_android_diagnostics_status", {
+      ...describeAndroidSpeechModule(nativeSpeech),
+      listener_attached: androidDiagnosticsSubscribed,
+      native_event_received: androidNativeDiagnosticReceived,
+      status_phase: `snapshot_unavailable_${phase}`,
+      request_id: requestId,
+    });
+    return;
+  }
+
+  try {
+    const snapshot = await withTimeout(
+      getDiagnostics.call(nativeSpeech, locale, voice ?? null),
+      VOICE_ENUMERATION_TIMEOUT_MS,
+      "Android native speech diagnostics",
+    );
+    captureGlobalEvent("audio_android_native_snapshot", {
+      request_id: requestId,
+      phase,
+      ready: snapshot.ready ?? null,
+      speaking: snapshot.speaking ?? null,
+      engine: snapshot.engine ?? null,
+      current_locale: snapshot.currentLocale ?? null,
+      current_voice: snapshot.currentVoice ?? null,
+      requested_locale: snapshot.requestedLocale ?? locale,
+      requested_availability: snapshot.requestedAvailability ?? null,
+      requested_voice: snapshot.requestedVoice ?? voice ?? null,
+      requested_voice_found: snapshot.requestedVoiceFound ?? null,
+      requested_voice_locale: snapshot.requestedVoiceLocale ?? null,
+      requested_voice_installed: snapshot.requestedVoiceInstalled ?? null,
+      requested_voice_requires_network: snapshot.requestedVoiceRequiresNetwork ?? null,
+    });
+  } catch (error) {
+    captureGlobalHandledException(error, {
+      error_context: "audio_android_native_snapshot_failed",
+      request_id: requestId,
+      locale,
+      voice: voice ?? null,
+    });
+  }
 }
 
 function requiredVoice(language: string): MissingSpeechVoice | null {
@@ -350,6 +494,8 @@ async function speakTextAttempt(
       if (androidGeneration !== androidSpeechGeneration) return;
       androidVoice = selectSpeechVoice(androidVoices, bcp47, androidFailedVoiceKeys);
       androidVoiceKey = androidVoice ?? defaultVoiceKey(bcp47);
+      await captureAndroidNativeSnapshot(androidRequestId, bcp47, androidVoice, "before_speak");
+      if (androidGeneration !== androidSpeechGeneration) return;
     }
     // Marks the voice just tried as unusable for this session and reports whether a
     // different one should be tried for this same request.
@@ -384,11 +530,18 @@ async function speakTextAttempt(
         text_length: text.length,
         was_speaking_before_request: speaking,
         voice: androidVoice ?? null,
+        voice_key: androidVoiceKey,
         is_retry: isRetry,
         language_voices: describeVoicesForLocale(androidVoices, bcp47),
       });
       speechStartTimer = setTimeout(() => {
         speechStartTimer = null;
+        void captureAndroidNativeSnapshot(
+          androidRequestId,
+          bcp47,
+          androidVoice,
+          "start_timeout",
+        );
         // Some engines never start and never report an error for a voice they cannot use.
         const willRetry = failAndroidVoice();
         captureGlobalEvent("audio_android_speech_failed", {
@@ -424,6 +577,7 @@ async function speakTextAttempt(
           started = true;
           clearSpeechStartTimer();
           if (Platform.OS === "android") {
+            void captureAndroidNativeSnapshot(androidRequestId, bcp47, androidVoice, "started");
             captureGlobalEvent("audio_android_speech_started", {
               language,
               locale: bcp47,
@@ -483,6 +637,7 @@ async function speakTextAttempt(
           if (Platform.OS === "ios") {
             void cleanupIosSpeechSession(requestId);
           } else if (Platform.OS === "android") {
+            void captureAndroidNativeSnapshot(androidRequestId, bcp47, androidVoice, "error");
             captureGlobalHandledException(error, {
               error_context: "audio_android_speech_error",
               language,

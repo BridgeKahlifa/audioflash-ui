@@ -31,6 +31,10 @@ const UNREDACTED_VALUE_KEYS = new Set([
   "error_context",
   "voice",
   "selected_voice",
+  "current_voice",
+  "requested_voice",
+  "requested_voice_locale",
+  "voice_key",
   "language_voices",
   "native_utterance_id",
 ]);

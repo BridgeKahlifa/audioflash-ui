@@ -140,6 +140,36 @@ function applyPatch(packageRoot) {
       '    AsyncFunction<Unit>("stop") {\n      for (utterance in delayedUtterances) {\n        sendEvent(speakingStoppedEvent, idToMap(utterance.id))\n        sendEvent(speakingDiagnosticEvent, Bundle().apply {\n          putString("id", utterance.id)\n          putString("phase", "stopped_before_init")\n        })\n      }\n      delayedUtterances.clear()\n      textToSpeech.stop()\n    }'
     );
     replaceOnce(
+      '    AsyncFunction("speak") { id: String, text: String, options: SpeechOptions ->',
+      [
+        '    AsyncFunction<Bundle>("getDiagnostics") { requestedLocale: String?, requestedVoice: String? ->',
+        '      val locale = requestedLocale?.let(Locale::forLanguageTag)',
+        '      val voices = if (isTextToSpeechReady) runCatching { textToSpeech.voices }.getOrNull() else null',
+        '      val voice = voices?.firstOrNull { it.name == requestedVoice }',
+        '      Bundle().apply {',
+        '        putBoolean("ready", isTextToSpeechReady)',
+        '        putBoolean("speaking", isTextToSpeechReady && textToSpeech.isSpeaking)',
+        '        putString("engine", if (isTextToSpeechReady) textToSpeech.defaultEngine else null)',
+        '        putString("currentLocale", if (isTextToSpeechReady) textToSpeech.voice?.locale?.toLanguageTag() else null)',
+        '        putString("currentVoice", if (isTextToSpeechReady) textToSpeech.voice?.name else null)',
+        '        putString("requestedLocale", requestedLocale)',
+        '        locale?.let { requested ->',
+        '          if (isTextToSpeechReady) putInt("requestedAvailability", textToSpeech.isLanguageAvailable(requested))',
+        '        }',
+        '        putString("requestedVoice", requestedVoice)',
+        '        putBoolean("requestedVoiceFound", voice != null)',
+        '        voice?.let { selected ->',
+        '          putString("requestedVoiceLocale", selected.locale.toLanguageTag())',
+        '          putBoolean("requestedVoiceInstalled", selected.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true)',
+        '          putBoolean("requestedVoiceRequiresNetwork", selected.isNetworkConnectionRequired)',
+        '        }',
+        '      }',
+        '    }',
+        '',
+        '    AsyncFunction("speak") { id: String, text: String, options: SpeechOptions ->',
+      ].join('\n')
+    );
+    replaceOnce(
       '  private fun speakOut(id: String, text: String, options: SpeechOptions) {\n    options.pitch?.let(textToSpeech::setPitch)\n    options.rate?.let(textToSpeech::setSpeechRate)\n\n    textToSpeech.language = options.language?.let {\n      val locale = Locale(it)\n      val languageAvailable = textToSpeech.isLanguageAvailable(locale)\n\n      return@let if (\n        languageAvailable != TextToSpeech.LANG_MISSING_DATA &&\n        languageAvailable != TextToSpeech.LANG_NOT_SUPPORTED\n      ) {\n        locale\n      } else {\n        Locale.getDefault()\n      }\n    } ?: Locale.getDefault()\n\n    options.voice?.let { voiceName ->\n      textToSpeech.voices\n        .firstOrNull { it.name == voiceName }\n        ?.let(textToSpeech::setVoice)\n    }\n\n    textToSpeech.speak(\n      text,\n      TextToSpeech.QUEUE_ADD,\n      null,\n      id\n    )\n  }',
       PATCHED_SPEAK_OUT
     );

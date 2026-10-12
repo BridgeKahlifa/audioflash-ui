@@ -814,23 +814,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function updateProfileData(updates: ApiUpdateProfile) {
     if (!session && !DEV_AUTH_MODE) return { error: "Not authenticated" };
 
-    // Optimistic update
-    const previous = queryClient.getQueryData<ApiProfile>(queryKeys.profile(userId));
+    const profileKey = queryKeys.profile(userId);
+    const changesTargetLanguage = updates.target_language_ids !== undefined;
+
+    // A focus/reconnect refetch may still be returning the profile that existed before
+    // this mutation. Cancel it before the optimistic write so its stale result cannot
+    // put the previous language back into the UI after the user makes a selection.
+    await queryClient.cancelQueries({ queryKey: profileKey, exact: true });
+
+    const previous = queryClient.getQueryData<ApiProfile>(profileKey);
     if (previous) {
-      queryClient.setQueryData(queryKeys.profile(userId), { ...previous, ...updates });
+      queryClient.setQueryData(profileKey, { ...previous, ...updates });
+    }
+
+    if (changesTargetLanguage) {
+      posthog?.capture("profile_language_update_started", {
+        previous_language_count: previous?.target_language_ids?.length ?? 0,
+        requested_language_count: updates.target_language_ids?.length ?? 0,
+      });
     }
 
     try {
       const updated = await updateProfile(authToken, updates);
-      queryClient.setQueryData(queryKeys.profile(userId), updated);
+
+      // A new automatic refetch can begin while the PATCH is in flight. Cancel that
+      // generation as well before committing the authoritative mutation response.
+      await queryClient.cancelQueries({ queryKey: profileKey, exact: true });
+      queryClient.setQueryData(profileKey, updated);
       syncSettingsFromProfile(updated);
+
+      if (changesTargetLanguage) {
+        const requested = (updates.target_language_ids ?? []).map(String);
+        const returned = (updated.target_language_ids ?? []).map(String);
+        posthog?.capture("profile_language_update_completed", {
+          response_matches_request:
+            requested.length === returned.length &&
+            requested.every((id, index) => id === returned[index]),
+          returned_language_count: returned.length,
+        });
+      }
       return { error: null };
     } catch (e: any) {
       captureHandledException(posthog, e, {
         error_context: "update_profile",
         updated_fields: Object.keys(updates).sort().join(","),
       });
-      if (previous) queryClient.setQueryData(queryKeys.profile(userId), previous);
+      if (previous) queryClient.setQueryData(profileKey, previous);
       return { error: e?.message ?? "Failed to update profile" };
     }
   }
