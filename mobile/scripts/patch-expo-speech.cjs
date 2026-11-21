@@ -1,10 +1,11 @@
-// Keep the Android speech fix attached to the exact Expo version used by this app.
+// Keep the native speech fixes attached to the exact Expo version used by this app.
 // EAS runs postinstall before compiling the native module.
 const fs = require('node:fs');
 const path = require('node:path');
 
 const SUPPORTED_VERSION = '14.0.8';
 const ANDROID_SOURCE_DIR = 'android/src/main/java/expo/modules/speech';
+const IOS_SOURCE_DIR = 'ios';
 
 let source = '';
 
@@ -20,8 +21,8 @@ function replaceOnce(original, replacement) {
   source = source.replace(original, () => replacement);
 }
 
-function patchFile(packageRoot, fileName, applyEdits) {
-  const filePath = path.join(packageRoot, ANDROID_SOURCE_DIR, fileName);
+function patchFile(packageRoot, sourceDir, fileName, applyEdits) {
+  const filePath = path.join(packageRoot, sourceDir, fileName);
   source = fs.readFileSync(filePath, 'utf8');
   applyEdits();
   fs.writeFileSync(filePath, source);
@@ -102,21 +103,53 @@ const PATCHED_SPEAK_OUT = [
   '  }',
 ].join('\n');
 
+// The synthesizer speaks through the app's audio session, whose default category is muted by
+// the ring/silent switch. lib/audio.ts used to fix that by looping a muted 50 ms clip through
+// expo-av beside every utterance, which made iOS speech choppy. Setting the playback category
+// here removes the need for that player. It is re-applied per utterance because an interruption
+// (a phone call, Siri) deactivates the session, and any other audio code may change the category.
+const IOS_ACTIVATE_PLAYBACK_SESSION = [
+  '  private func activatePlaybackAudioSession() {',
+  '    let session = AVAudioSession.sharedInstance()',
+  '    do {',
+  '      if session.category != .playback || session.mode != .default || session.categoryOptions != [.mixWithOthers] {',
+  '        try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])',
+  '      }',
+  '      try session.setActive(true)',
+  '    } catch {',
+  '      NSLog("[ExpoSpeech] Could not activate the playback audio session: %@", error.localizedDescription)',
+  '    }',
+  '  }',
+  '',
+].join('\n');
+
 function applyPatch(packageRoot) {
   const version = require(path.join(packageRoot, 'package.json')).version;
   if (version !== SUPPORTED_VERSION) {
-    throw new Error(`Review the Android speech patch for expo-speech ${version}`);
+    throw new Error(`Review the expo-speech native patch for expo-speech ${version}`);
   }
 
+  patchFile(packageRoot, IOS_SOURCE_DIR, 'SpeechModule.swift', () => {
+    replaceOnce('import ExpoModulesCore\n', 'import AVFoundation\nimport ExpoModulesCore\n');
+    replaceOnce(
+      '        synthesizer.usesApplicationAudioSession = useApplicationAudioSession\n      }\n\n      synthesizer.speak(utterance)',
+      '        synthesizer.usesApplicationAudioSession = useApplicationAudioSession\n      }\n\n      if synthesizer.usesApplicationAudioSession {\n        activatePlaybackAudioSession()\n      }\n\n      synthesizer.speak(utterance)'
+    );
+    replaceOnce(
+      '  func didStart(utterance: AVSpeechUtterance) {',
+      `${IOS_ACTIVATE_PLAYBACK_SESSION}\n  func didStart(utterance: AVSpeechUtterance) {`
+    );
+  });
+
   // Tell JS which voices actually have data on the device so it can pick a usable one.
-  patchFile(packageRoot, 'VoiceRecord.kt', () => {
+  patchFile(packageRoot, ANDROID_SOURCE_DIR, 'VoiceRecord.kt', () => {
     replaceOnce(
       '  @Field val language: String\n) : Record',
       '  @Field val language: String,\n  @Field val installed: Boolean,\n  @Field val requiresNetwork: Boolean\n) : Record'
     );
   });
 
-  patchFile(packageRoot, 'SpeechModule.kt', () => {
+  patchFile(packageRoot, ANDROID_SOURCE_DIR, 'SpeechModule.kt', () => {
     replaceOnce(
       '        language = LanguageUtils.getISOCode(it.locale)\n      )',
       [
@@ -162,5 +195,5 @@ module.exports = { applyPatch };
 
 if (require.main === module) {
   applyPatch(path.dirname(require.resolve('expo-speech/package.json')));
-  console.log('Applied Android expo-speech locale and diagnostics patch');
+  console.log('Applied expo-speech patch (Android locale/diagnostics, iOS playback audio session)');
 }
